@@ -1,0 +1,1 @@
+{"version":3,"file":"scroll.js","sourceRoot":"","sources":["../src/scroll.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AACH,MAAM,CAAC,MAAM,mBAAmB,GAAG,GAAG,CAAC;AAEvC,MAAM,UAAU,WAAW,CACzB,EAAqE,EACrE,SAAS,GAAG,mBAAmB;IAE/B,OAAO,EAAE,CAAC,YAAY,GAAG,EAAE,CAAC,SAAS,GAAG,EAAE,CAAC,YAAY,GAAG,SAAS,CAAC;AACtE,CAAC"}
