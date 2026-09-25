@@ -1,0 +1,12 @@
+export declare const IconArrowUp: () => import("react").JSX.Element;
+export declare const IconArrowDown: () => import("react").JSX.Element;
+export declare const IconMic: () => import("react").JSX.Element;
+export declare const IconCheck: () => import("react").JSX.Element;
+export declare const IconX: () => import("react").JSX.Element;
+export declare const IconStop: () => import("react").JSX.Element;
+export declare const IconSpinner: () => import("react").JSX.Element;
+export declare const IconCopy: () => import("react").JSX.Element;
+export declare const IconRetry: () => import("react").JSX.Element;
+export declare const IconPaperclip: () => import("react").JSX.Element;
+export declare const IconFile: () => import("react").JSX.Element;
+//# sourceMappingURL=icons.d.ts.map

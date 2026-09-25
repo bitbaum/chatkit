@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+    />
+    <title>chatkit demo</title>
+    <link rel="stylesheet" href="../node_modules/@bitbaum/design-tokens/tokens.css" />
+    <link rel="stylesheet" href="../styles.css" />
+    <style>
+      /* Page chrome only — the chat's look comes from styles.css + tokens. */
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+      }
+      .theme {
+        padding: 24px 16px;
+        background: hsl(var(--surface-page, 0 0% 98%));
+        color: hsl(var(--text-primary, 0 0% 10%));
+      }
+      .grid {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .demo-chat {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        height: 560px;
+      }
+      h2 {
+        font-size: 14px;
+        margin: 0 0 8px;
+        opacity: 0.6;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="theme">
+      <div class="grid">
+        <div>
+          <h2>Conversation — two agents</h2>
+          <div id="conversation"></div>
+        </div>
+        <div>
+          <h2>Empty — starters</h2>
+          <div id="empty"></div>
+        </div>
+        <div>
+          <h2>Failed turn — retry</h2>
+          <div id="failed"></div>
+        </div>
+      </div>
+    </section>
+    <script src="./dist/demo.js"></script>
+  </body>
+</html>
