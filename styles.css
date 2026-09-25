@@ -2,10 +2,11 @@
  * @bitbaum/chatkit — the look of the one chat.
  *
  * Every colour, radius and face is a --ck-* variable. By default they read
- * @bitbaum/design-tokens (OrangeCat, Loki, Solon, bitbaum), so those four look
- * alike without doing anything. Any other app sets the --ck-* variables on the
- * chat's container (or :root) and keeps looking like itself — the BEHAVIOUR is
- * what is shared, and it is not configurable.
+ * @bitbaum/design-tokens' HSL-triplet variables, so apps on those tokens match
+ * without doing anything. An app whose variables are full colours (loki's are
+ * OKLCH under the same names) maps them once — `:root { --ck-bg:
+ * var(--surface-base); … }` — and any other app sets --ck-* to keep its own
+ * look. The BEHAVIOUR is what is shared, and it is not configurable.
  *
  * Non-negotiable, and why:
  *  - 16px text in the input and the messages: under 16px iOS zooms the whole
@@ -15,7 +16,10 @@
  *    heidi composer.tsx).
  */
 
-:where(.ck-root, .ck-composer-wrap, .ck-thread-wrap, .ck-starters) {
+:where(:root) {
+  /* Defaults at ZERO specificity on the root: an app's own :root (or any
+     container) rule setting a --ck-* variable always wins. Declaring these on
+     the chat's elements instead would silently override the app. */
   --ck-bg: hsl(var(--surface-base, 0 0% 100%));
   --ck-raised: hsl(var(--surface-raised, 0 0% 96%));
   --ck-overlay: hsl(var(--surface-overlay, 0 0% 98%));
@@ -39,6 +43,11 @@
   --ck-text: 1rem;
   --ck-leading: 1.6;
   --ck-target: 2.75rem;
+}
+
+.ck-composer-wrap,
+.ck-thread-wrap,
+.ck-starters {
   font-family: var(--ck-font);
   color: var(--ck-fg);
 }

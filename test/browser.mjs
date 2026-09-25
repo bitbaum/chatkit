@@ -87,6 +87,20 @@ try {
     await page.close();
   }
 
+  // An app's own variables win: a --ck-* set on :root must reach the chat
+  // (the defaults are declared at zero specificity for exactly this).
+  {
+    const page = await browser.newPage();
+    await page.goto(base);
+    await page.waitForSelector("#conversation .ck-link");
+    const bg = await page.evaluate(() => {
+      document.documentElement.style.setProperty("--ck-accent", "rgb(0, 128, 0)");
+      return getComputedStyle(document.querySelector("#conversation .ck-link")).textDecorationColor;
+    });
+    check(bg === "rgb(0, 128, 0)", `an app's :root --ck-accent reaches the chat (${bg})`);
+    await page.close();
+  }
+
   const context = await browser.newContext({ permissions: ["microphone"] });
   const page = await context.newPage();
   let posted = 0;
