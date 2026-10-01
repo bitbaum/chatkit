@@ -25,10 +25,41 @@ export type AttachmentLimits = {
     maxFiles: number;
     /** Characters per text file (it is inlined into a prompt). */
     maxTextChars: number;
-    /** Raw image bytes before base64. */
+    /** Raw image bytes before base64 — checked AFTER any downscale. */
     maxImageBytes: number;
+    /**
+     * Longest edge, in pixels, an image is shrunk to in the browser before it is
+     * staged. 0 = send the original. A phone screenshot is ~1290×2796 and several
+     * megabytes; vision models bill by tile and read a chat bubble just as well
+     * at 1024px, so shrinking first is cheaper for the reader AND means the full
+     * screenshot never leaves the device. Shrunk images are re-encoded as JPEG
+     * (a screenshot re-encoded as PNG is often larger), stepping quality down
+     * until they fit `maxImageBytes`. From heidi `downscale.ts`.
+     */
+    maxImageEdge: number;
 };
 export declare const DEFAULT_ATTACHMENT_LIMITS: AttachmentLimits;
+/** Why a file did not attach — every one a label, so an app can say it in its
+ *  reader's language. */
+export type AttachmentNotes = {
+    wrongType: (name: string) => string;
+    imageTooLarge: (name: string, maxMb: number) => string;
+    textTooLarge: (name: string, maxThousandChars: number) => string;
+    unreadable: (name: string) => string;
+    tooMany: (max: number) => string;
+};
+export declare const DEFAULT_ATTACHMENT_NOTES: AttachmentNotes;
+/**
+ * The size an image is drawn at to fit `maxEdge` on its longest side. Never
+ * enlarges; 0 (or less) means "leave it". Pure, so it is tested without a DOM.
+ */
+export declare function fitWithin(width: number, height: number, maxEdge: number): {
+    width: number;
+    height: number;
+    scaled: boolean;
+};
+/** Bytes a base64 data URL decodes to — close enough to compare to a limit. */
+export declare function dataUrlBytes(dataUrl: string): number;
 export declare function isImageMime(mime: string): boolean;
 /** `data:image/png;base64,AAAA` → `AAAA`: FileReader hands back a data URL,
  *  the wire carries raw base64. */

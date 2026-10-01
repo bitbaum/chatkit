@@ -3,6 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useRef, useState } from "react";
 import { appendTranscript, composerCanSend, composerOutgoingText, formatElapsed, shouldClearDraft, } from "../composer.js";
 import { DEFAULT_DICTATION_MESSAGES } from "../dictation.js";
+import { DEFAULT_ATTACHMENT_NOTES, } from "../attachments.js";
 import { useDictation } from "./use-dictation.js";
 import { useAttachments } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
@@ -20,6 +21,7 @@ export const DEFAULT_COMPOSER_LABELS = {
     remove: (name) => `Remove ${name}`,
     dismiss: "Dismiss",
     dictation: DEFAULT_DICTATION_MESSAGES,
+    attachNotes: DEFAULT_ATTACHMENT_NOTES,
 };
 function AttachmentStrip({ attachments, labels, }) {
     if (attachments.attachments.length === 0 && !attachments.note)
@@ -52,6 +54,7 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
         ...DEFAULT_COMPOSER_LABELS,
         ...labelOverrides,
         dictation: { ...DEFAULT_COMPOSER_LABELS.dictation, ...labelOverrides?.dictation },
+        attachNotes: { ...DEFAULT_COMPOSER_LABELS.attachNotes, ...labelOverrides?.attachNotes },
     };
     const [ownText, setOwnText] = useState(defaultValue);
     const controlled = value !== undefined;
@@ -73,7 +76,7 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
     const textareaRef = inputRef ?? localRef;
     useAutoGrow(textareaRef, text);
     const attachOn = attach !== false;
-    const attachments = useAttachments(typeof attach === "object" ? attach : {});
+    const attachments = useAttachments(typeof attach === "object" ? attach : {}, labels.attachNotes);
     const dictation = useDictation({
         ...(voice || {}),
         onText: (said) => setText((prev) => appendTranscript(prev, said)),

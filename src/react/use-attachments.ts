@@ -3,14 +3,49 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import {
   DEFAULT_ATTACHMENT_LIMITS,
+  DEFAULT_ATTACHMENT_NOTES,
   attachmentKey,
+  dataUrlBytes,
+  fitWithin,
   isImageMime,
   stripDataUrlBase64,
   toWire,
   type Attachment,
   type AttachmentLimits,
+  type AttachmentNotes,
   type StagedAttachment,
 } from "../attachments.js";
+
+/**
+ * Draw the image no larger than `maxEdge` and encode it as JPEG, stepping the
+ * quality down until it fits `maxBytes`. Null when it cannot be made to fit,
+ * or the browser cannot decode it (no `createImageBitmap`, no canvas).
+ */
+async function shrink(file: File, maxEdge: number, maxBytes: number): Promise<string | null> {
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return null;
+  const bitmap = await createImageBitmap(file);
+  try {
+    const size = fitWithin(bitmap.width, bitmap.height, maxEdge);
+    const canvas = document.createElement("canvas");
+    canvas.width = size.width;
+    canvas.height = size.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    // JPEG has no alpha: paint white first so a transparent PNG does not turn black.
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, size.width, size.height);
+    ctx.drawImage(bitmap, 0, 0, size.width, size.height);
+    let quality = 0.82;
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+    while (dataUrlBytes(dataUrl) > maxBytes && quality > 0.4) {
+      quality -= 0.15;
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+    return dataUrlBytes(dataUrl) > maxBytes ? null : dataUrl;
+  } finally {
+    bitmap.close();
+  }
+}
 
 export type AttachmentsController = {
   attachments: StagedAttachment[];
@@ -35,9 +70,18 @@ export type AttachmentsController = {
  * are revoked on remove, clear and unmount (a preview never revoked is a leak
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
-export function useAttachments(limits: Partial<AttachmentLimits> = {}): AttachmentsController {
+export function useAttachments(
+  limits: Partial<AttachmentLimits> = {},
+  notes: Partial<AttachmentNotes> = {},
+): AttachmentsController {
   const lim: AttachmentLimits = { ...DEFAULT_ATTACHMENT_LIMITS, ...limits };
-  const { maxFiles, maxImageBytes, maxTextChars } = lim;
+  const { maxFiles, maxImageBytes, maxTextChars, maxImageEdge } = lim;
+  // Mirrored in a ref so a new `notes` object every render does not rebuild
+  // every callback below.
+  const say = useRef<AttachmentNotes>(DEFAULT_ATTACHMENT_NOTES);
+  useEffect(() => {
+    say.current = { ...DEFAULT_ATTACHMENT_NOTES, ...notes };
+  });
   const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const previews = useRef<Set<string>>(new Set());
@@ -67,12 +111,37 @@ export function useAttachments(limits: Partial<AttachmentLimits> = {}): Attachme
 
   const stageImage = useCallback(
     (file: File) => {
+      const name = file.name || "screenshot.png";
       if (!isImageMime(file.type)) {
-        setNote(`${file.name}: use PNG, JPEG, GIF or WebP.`);
+        setNote(say.current.wrongType(name));
+        return;
+      }
+      const tooLarge = () =>
+        setNote(say.current.imageTooLarge(name, Math.round(maxImageBytes / 1_000_000)));
+      if (maxImageEdge > 0) {
+        // Shrink first, then judge the size: a 4 MB screenshot is fine once it
+        // is the 300 KB it needed to be.
+        shrink(file, maxImageEdge, maxImageBytes)
+          .then((dataUrl) => {
+            if (!dataUrl) {
+              tooLarge();
+              return;
+            }
+            const previewUrl = URL.createObjectURL(file);
+            previews.current.add(previewUrl);
+            add({
+              kind: "image",
+              name: name.replace(/\.(png|gif|webp|jpe?g)$/i, "") + ".jpg",
+              mimeType: "image/jpeg",
+              dataBase64: stripDataUrlBase64(dataUrl),
+              previewUrl,
+            });
+          })
+          .catch(() => setNote(say.current.unreadable(name)));
         return;
       }
       if (file.size > maxImageBytes) {
-        setNote(`${file.name} is too large (max ${Math.round(maxImageBytes / 1_000_000)} MB).`);
+        tooLarge();
         return;
       }
       const reader = new FileReader();
@@ -81,22 +150,22 @@ export function useAttachments(limits: Partial<AttachmentLimits> = {}): Attachme
         previews.current.add(previewUrl);
         add({
           kind: "image",
-          name: file.name || "screenshot.png",
+          name,
           mimeType: file.type,
           dataBase64: stripDataUrlBase64(String(reader.result ?? "")),
           previewUrl,
         });
       };
-      reader.onerror = () => setNote(`Could not read ${file.name}.`);
+      reader.onerror = () => setNote(say.current.unreadable(name));
       reader.readAsDataURL(file);
     },
-    [add, maxImageBytes],
+    [add, maxImageBytes, maxImageEdge],
   );
 
   const stageText = useCallback(
     (file: File) => {
       if (file.size > maxTextChars) {
-        setNote(`${file.name} is too large (max ${Math.round(maxTextChars / 1000)}k characters).`);
+        setNote(say.current.textTooLarge(file.name, Math.round(maxTextChars / 1000)));
         return;
       }
       const reader = new FileReader();
@@ -106,7 +175,7 @@ export function useAttachments(limits: Partial<AttachmentLimits> = {}): Attachme
           name: file.name,
           content: String(reader.result ?? "").slice(0, maxTextChars),
         });
-      reader.onerror = () => setNote(`Could not read ${file.name}.`);
+      reader.onerror = () => setNote(say.current.unreadable(file.name));
       reader.readAsText(file);
     },
     [add, maxTextChars],
@@ -118,7 +187,7 @@ export function useAttachments(limits: Partial<AttachmentLimits> = {}): Attachme
       setNote(null);
       const room = maxFiles - count.current;
       if (room <= 0) {
-        setNote(`Up to ${maxFiles} files.`);
+        setNote(say.current.tooMany(maxFiles));
         return;
       }
       for (const file of Array.from(files).slice(0, room)) {
