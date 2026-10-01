@@ -68,11 +68,15 @@ function Demo({ empty, failed }: { empty?: boolean; failed?: boolean }) {
         }
       />
       <Composer
-        onSend={(t) => send(t)}
+        onSend={(t, attachments) => {
+          // Read back by test/browser.mjs: what an app's API would receive.
+          (window as unknown as { __sent?: unknown }).__sent = attachments;
+          send(t);
+        }}
         placeholder="Ask about any project…"
         sending={sending}
         onStop={() => setSending(false)}
-        attach
+        attach={{ maxImageEdge: 1024 }}
         voice={{ transcribeUrl: "/api/transcribe" }}
         hint="Enter sends · Shift+Enter new line"
       />

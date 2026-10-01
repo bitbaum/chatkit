@@ -1,5 +1,5 @@
 import { type ClipboardEvent } from "react";
-import { type Attachment, type AttachmentLimits, type StagedAttachment } from "../attachments.js";
+import { type Attachment, type AttachmentLimits, type AttachmentNotes, type StagedAttachment } from "../attachments.js";
 export type AttachmentsController = {
     attachments: StagedAttachment[];
     /** Why something did not attach (too big, wrong type, too many). Never
@@ -22,5 +22,5 @@ export type AttachmentsController = {
  * are revoked on remove, clear and unmount (a preview never revoked is a leak
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
-export declare function useAttachments(limits?: Partial<AttachmentLimits>): AttachmentsController;
+export declare function useAttachments(limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>): AttachmentsController;
 //# sourceMappingURL=use-attachments.d.ts.map

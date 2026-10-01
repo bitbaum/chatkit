@@ -101,6 +101,65 @@ try {
     await page.close();
   }
 
+  // A phone screenshot is shrunk in the browser before it is sent: the full
+  // 1290×2796 original never leaves the device, and what goes out fits the
+  // limit, whatever format it arrived in.
+  {
+    const page = await browser.newPage();
+    await page.goto(base);
+    const box = page.locator("#empty");
+    await box.locator(".ck-input").waitFor();
+    const png = await page.evaluate(() => {
+      const c = document.createElement("canvas");
+      c.width = 1290;
+      c.height = 2796;
+      const ctx = c.getContext("2d");
+      const img = ctx.createImageData(c.width, c.height);
+      for (let i = 0; i < img.data.length; i++) img.data[i] = (i * 2654435761) % 251;
+      ctx.putImageData(img, 0, 0);
+      return c.toDataURL("image/png").split(",")[1];
+    });
+    const original = Buffer.from(png, "base64");
+    await box.locator('input[type="file"]').setInputFiles({
+      name: "IMG_0001.PNG",
+      mimeType: "image/png",
+      buffer: original,
+    });
+    await box
+      .locator(".ck-attach-thumb")
+      .waitFor({ timeout: 10000 })
+      .catch(() => {});
+    check(
+      (await box.locator(".ck-attach-thumb").count()) === 1,
+      `attach: a ${(original.length / 1e6).toFixed(1)} MB screenshot attaches`,
+    );
+    await box.locator(".ck-input").fill("what does this say?");
+    await box.locator(".ck-send").click();
+    const sent = await page.evaluate(async () => {
+      const a = window.__sent?.[0];
+      if (!a) return null;
+      const img = new Image();
+      img.src = `data:${a.mimeType};base64,${a.dataBase64}`;
+      await img.decode();
+      return {
+        mime: a.mimeType,
+        name: a.name,
+        bytes: Math.floor(a.dataBase64.length * 0.75),
+        w: img.width,
+        h: img.height,
+      };
+    });
+    check(
+      sent !== null && sent.mime === "image/jpeg" && Math.max(sent.w, sent.h) === 1024,
+      `attach: sent as JPEG at 1024px on the long edge (${JSON.stringify(sent)})`,
+    );
+    check(
+      sent !== null && sent.bytes <= 2_800_000,
+      `attach: what is sent fits the limit (${sent?.bytes} bytes)`,
+    );
+    await page.close();
+  }
+
   const context = await browser.newContext({ permissions: ["microphone"] });
   const page = await context.newPage();
   let posted = 0;

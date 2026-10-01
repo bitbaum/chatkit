@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add github:bitbaum/chatkit#v0.1.0
+pnpm add github:bitbaum/chatkit#v0.2.0
 ```
 
 `dist/` is committed, so the install needs no build step and no `allowBuilds`
@@ -61,6 +61,19 @@ press records immediately. Every failure is shown in words (blocked mic,
 nothing heard, not available), never as a button that does nothing.
 `prefer: "server"` skips the browser leg (one model everywhere, language
 detected by the model). `rememberKey: null` stores nothing on the device.
+
+### Screenshots
+
+`attach` takes limits: `attach={{ maxImageEdge: 1024 }}` shrinks a picture in
+the browser to 1024px on its longest edge and re-encodes it as JPEG before it
+is staged, stepping quality down until it fits `maxImageBytes`. A phone
+screenshot (~1290×2796, several MB) goes out at a few hundred KB: cheaper for
+whoever pays for the vision model, and the full-resolution screenshot never
+leaves the device. Off by default (`0`).
+
+Every reason a file did not attach is a label — `labels={{ attachNotes: {
+imageTooLarge: (name, mb) => … } }}` — so it reaches the reader in their
+language.
 
 ### Look
 

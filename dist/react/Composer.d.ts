@@ -1,7 +1,7 @@
 import { type ReactNode, type RefObject } from "react";
 import { type ComposerMode, type ComposerSendResult } from "../composer.js";
 import { type DictationProblem } from "../dictation.js";
-import type { Attachment, AttachmentLimits } from "../attachments.js";
+import { type Attachment, type AttachmentLimits, type AttachmentNotes } from "../attachments.js";
 import { type UseDictationOptions } from "./use-dictation.js";
 export type ComposerLabels = {
     send: string;
@@ -16,9 +16,16 @@ export type ComposerLabels = {
     remove: (name: string) => string;
     dismiss: string;
     dictation: Record<DictationProblem, string>;
+    /** Why a file did not attach. */
+    attachNotes: AttachmentNotes;
 };
 export declare const DEFAULT_COMPOSER_LABELS: ComposerLabels;
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
+/** Overrides: every label is optional, including each dictation and attachment note. */
+export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes">> & {
+    dictation?: Partial<ComposerLabels["dictation"]>;
+    attachNotes?: Partial<AttachmentNotes>;
+};
 export type ComposerProps = {
     /** Deliver what was written. Return `false` (or resolve to it) to keep the
      *  draft — a failed send is retried from the same box, not retyped. */
@@ -63,7 +70,7 @@ export type ComposerProps = {
     /** Inside the box, under the controls. */
     footer?: ReactNode;
     hint?: string;
-    labels?: Partial<ComposerLabels>;
+    labels?: ComposerLabelOverrides;
     autoFocus?: boolean;
 };
 /**

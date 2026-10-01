@@ -18,6 +18,10 @@ import {
   safeHref,
   shouldClearDraft,
   toWire,
+  fitWithin,
+  dataUrlBytes,
+  DEFAULT_ATTACHMENT_NOTES,
+  DEFAULT_ATTACHMENT_LIMITS,
   DEAD_RECOGNISER_TTL_MS,
   PERMISSION_WAIT_MS,
 } from "../dist/index.js";
@@ -126,4 +130,31 @@ test("attachments: the wire never carries a preview URL", () => {
     { kind: "image", name: "a.png", mimeType: "image/png", dataBase64: "AA", previewUrl: "blob:x" },
   ]);
   assert.equal("previewUrl" in wire[0], false);
+});
+
+test("attach: an image is fitted on its longest edge, never enlarged, and 0 means leave it", () => {
+  assert.deepEqual(fitWithin(1290, 2796, 1024), { width: 472, height: 1024, scaled: true });
+  assert.deepEqual(fitWithin(2796, 1290, 1024), { width: 1024, height: 472, scaled: true });
+  assert.deepEqual(fitWithin(800, 600, 1024), { width: 800, height: 600, scaled: false });
+  assert.deepEqual(fitWithin(5000, 5000, 0), { width: 5000, height: 5000, scaled: false });
+  // Off by default, so no product's pictures change size without asking.
+  assert.equal(DEFAULT_ATTACHMENT_LIMITS.maxImageEdge, 0);
+});
+
+test("attach: bytes are measured from the data URL, header or not", () => {
+  assert.equal(dataUrlBytes("data:image/jpeg;base64,AAAA"), 3);
+  assert.equal(dataUrlBytes("AAAAAAAA"), 6);
+});
+
+test("attach: every reason a file did not attach is a sentence that names it", () => {
+  const n = DEFAULT_ATTACHMENT_NOTES;
+  for (const said of [
+    n.wrongType("a.bmp"),
+    n.imageTooLarge("a.png", 3),
+    n.textTooLarge("a.txt", 100),
+    n.unreadable("a.png"),
+  ]) {
+    assert.match(said, /a\.(bmp|png|txt)/);
+  }
+  assert.match(n.tooMany(5), /5/);
 });

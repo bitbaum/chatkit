@@ -11,7 +11,12 @@ import {
   type ComposerSendResult,
 } from "../composer.js";
 import { DEFAULT_DICTATION_MESSAGES, type DictationProblem } from "../dictation.js";
-import type { Attachment, AttachmentLimits } from "../attachments.js";
+import {
+  DEFAULT_ATTACHMENT_NOTES,
+  type Attachment,
+  type AttachmentLimits,
+  type AttachmentNotes,
+} from "../attachments.js";
 import { useDictation, type UseDictationOptions } from "./use-dictation.js";
 import { useAttachments, type AttachmentsController } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
@@ -39,6 +44,8 @@ export type ComposerLabels = {
   remove: (name: string) => string;
   dismiss: string;
   dictation: Record<DictationProblem, string>;
+  /** Why a file did not attach. */
+  attachNotes: AttachmentNotes;
 };
 
 export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
@@ -54,9 +61,16 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
   remove: (name) => `Remove ${name}`,
   dismiss: "Dismiss",
   dictation: DEFAULT_DICTATION_MESSAGES,
+  attachNotes: DEFAULT_ATTACHMENT_NOTES,
 };
 
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
+
+/** Overrides: every label is optional, including each dictation and attachment note. */
+export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes">> & {
+  dictation?: Partial<ComposerLabels["dictation"]>;
+  attachNotes?: Partial<AttachmentNotes>;
+};
 
 export type ComposerProps = {
   /** Deliver what was written. Return `false` (or resolve to it) to keep the
@@ -105,7 +119,7 @@ export type ComposerProps = {
   /** Inside the box, under the controls. */
   footer?: ReactNode;
   hint?: string;
-  labels?: Partial<ComposerLabels>;
+  labels?: ComposerLabelOverrides;
   autoFocus?: boolean;
 };
 
@@ -207,6 +221,7 @@ export function Composer({
     ...DEFAULT_COMPOSER_LABELS,
     ...labelOverrides,
     dictation: { ...DEFAULT_COMPOSER_LABELS.dictation, ...labelOverrides?.dictation },
+    attachNotes: { ...DEFAULT_COMPOSER_LABELS.attachNotes, ...labelOverrides?.attachNotes },
   };
   const [ownText, setOwnText] = useState(defaultValue);
   const controlled = value !== undefined;
@@ -229,7 +244,7 @@ export function Composer({
   useAutoGrow(textareaRef, text);
 
   const attachOn = attach !== false;
-  const attachments = useAttachments(typeof attach === "object" ? attach : {});
+  const attachments = useAttachments(typeof attach === "object" ? attach : {}, labels.attachNotes);
 
   const dictation = useDictation({
     ...(voice || {}),
