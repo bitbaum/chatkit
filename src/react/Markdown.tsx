@@ -45,9 +45,21 @@ function Inline({
               </code>
             );
           case "strong":
-            return <strong key={i}>{s.text}</strong>;
-          case "em":
-            return <em key={i}>{s.text}</em>;
+          case "em": {
+            // Plain emphasis stays plain markup; only what holds a link, code
+            // or a citation is rendered as nested spans.
+            const plain = s.children.every((c) => c.kind === "text");
+            const inner = plain ? (
+              s.text
+            ) : (
+              <Inline spans={s.children} citations={citations} renderLink={renderLink} />
+            );
+            return s.kind === "strong" ? (
+              <strong key={i}>{inner}</strong>
+            ) : (
+              <em key={i}>{inner}</em>
+            );
+          }
           case "link":
             return (
               <span key={i}>
