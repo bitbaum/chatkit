@@ -68,6 +68,11 @@ jobs:
       - if: steps.check.outputs.publish == 'true'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      # verify includes the real-browser test (test/browser.mjs), as in ci.yml;
+      # without the browser the v0.2.1 publish failed before reaching npm.
+      - if: steps.check.outputs.publish == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
       # Never publish something that would not have passed CI.
       - if: steps.check.outputs.publish == 'true'
         run: pnpm run verify
