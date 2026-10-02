@@ -77,10 +77,12 @@ export function parseInline(text) {
             out.push({ kind: "code", text: part.slice(1, -1) });
         }
         else if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-            out.push({ kind: "strong", text: part.slice(2, -2) });
+            const inner = part.slice(2, -2);
+            out.push({ kind: "strong", text: inner, children: parseInline(inner) });
         }
         else if (/^\*[^*\s][^*]*\*$/.test(part)) {
-            out.push({ kind: "em", text: part.slice(1, -1) });
+            const inner = part.slice(1, -1);
+            out.push({ kind: "em", text: inner, children: parseInline(inner) });
         }
         else {
             const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(part);

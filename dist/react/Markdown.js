@@ -8,9 +8,13 @@ function Inline({ spans, citations, renderLink, }) {
                 case "code":
                     return (_jsx("code", { className: "ck-code", children: s.text }, i));
                 case "strong":
-                    return _jsx("strong", { children: s.text }, i);
-                case "em":
-                    return _jsx("em", { children: s.text }, i);
+                case "em": {
+                    // Plain emphasis stays plain markup; only what holds a link, code
+                    // or a citation is rendered as nested spans.
+                    const plain = s.children.every((c) => c.kind === "text");
+                    const inner = plain ? (s.text) : (_jsx(Inline, { spans: s.children, citations: citations, renderLink: renderLink }));
+                    return s.kind === "strong" ? (_jsx("strong", { children: inner }, i)) : (_jsx("em", { children: inner }, i));
+                }
                 case "link":
                     return (_jsx("span", { children: renderLink({
                             href: s.href,

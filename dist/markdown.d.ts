@@ -39,9 +39,11 @@ export type InlineSpan = {
 } | {
     kind: "strong";
     text: string;
+    children: InlineSpan[];
 } | {
     kind: "em";
     text: string;
+    children: InlineSpan[];
 } | {
     kind: "link";
     text: string;

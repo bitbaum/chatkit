@@ -110,6 +110,16 @@ test("markdown: a streaming, unclosed code fence still renders as code", () => {
   assert.equal(blocks.at(-1).kind, "code");
 });
 
+test("a link inside bold or italic is still a link", () => {
+  const [strong] = parseInline("**[Chalco](/markets/chalco)**");
+  assert.equal(strong.kind, "strong");
+  assert.deepEqual(strong.children, [{ kind: "link", text: "Chalco", href: "/markets/chalco" }]);
+  const [em] = parseInline("*see [ASML](https://www.asml.com)*");
+  assert.equal(em.children.at(-1).kind, "link");
+  const [plain] = parseInline("**just bold**");
+  assert.deepEqual(plain.children, [{ kind: "text", text: "just bold" }]);
+});
+
 test("links: javascript: from a model is text, never a link", () => {
   assert.equal(safeHref("javascript:alert(1)"), null);
   assert.equal(safeHref("//evil.example"), null);

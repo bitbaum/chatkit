@@ -73,8 +73,11 @@ export function parseBlocks(text: string): MarkdownBlock[] {
 export type InlineSpan =
   | { kind: "text"; text: string }
   | { kind: "code"; text: string }
-  | { kind: "strong"; text: string }
-  | { kind: "em"; text: string }
+  // `children` is the same text parsed again: a link, code or citation inside
+  // bold is the commonest thing a model writes (`**[Chalco](/markets/chalco)**`)
+  // and rendered as raw markup when bold was only plain text (2026-10-02).
+  | { kind: "strong"; text: string; children: InlineSpan[] }
+  | { kind: "em"; text: string; children: InlineSpan[] }
   | { kind: "link"; text: string; href: string }
   | { kind: "cite"; ids: string[] };
 
@@ -90,9 +93,11 @@ export function parseInline(text: string): InlineSpan[] {
     } else if (part.startsWith("`") && part.endsWith("`") && part.length > 1) {
       out.push({ kind: "code", text: part.slice(1, -1) });
     } else if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-      out.push({ kind: "strong", text: part.slice(2, -2) });
+      const inner = part.slice(2, -2);
+      out.push({ kind: "strong", text: inner, children: parseInline(inner) });
     } else if (/^\*[^*\s][^*]*\*$/.test(part)) {
-      out.push({ kind: "em", text: part.slice(1, -1) });
+      const inner = part.slice(1, -1);
+      out.push({ kind: "em", text: inner, children: parseInline(inner) });
     } else {
       const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(part);
       const href = link
