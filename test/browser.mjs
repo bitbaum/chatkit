@@ -160,6 +160,45 @@ try {
     await page.close();
   }
 
+  // A recording that already exists goes through the paperclip to the same
+  // server leg as the mic, under its own name, and its words land in the box.
+  // Nothing is staged as an attachment: a memo is words, not a file the model
+  // reads. The file arrives typeless, as Android's picker hands over .m4a.
+  {
+    const page = await browser.newPage();
+    let filename = "";
+    await page.route("**/api/transcribe", async (route) => {
+      filename = /filename="([^"]+)"/.exec(route.request().postData() ?? "")?.[1] ?? "";
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ text: "use it to improve it" }),
+      });
+    });
+    await page.goto(base);
+    const box = page.locator("#empty");
+    await box.locator(".ck-input").waitFor();
+    await box.locator('input[type="file"]').setInputFiles({
+      name: "Meine Aufnahme 12.m4a",
+      mimeType: "application/octet-stream",
+      buffer: Buffer.alloc(4096, 1),
+    });
+    await page
+      .waitForFunction(() => document.querySelector("#empty .ck-input")?.value !== "", null, {
+        timeout: 5000,
+      })
+      .catch(() => {});
+    check(
+      (await box.locator(".ck-input").inputValue()) === "use it to improve it",
+      "memo: a recording picked through the paperclip is transcribed into the input",
+    );
+    check(filename === "Meine Aufnahme 12.m4a", `memo: posted under its own name (${filename})`);
+    check(
+      (await box.locator(".ck-attach-item").count()) === 0,
+      "memo: nothing is staged as an attachment",
+    );
+    await page.close();
+  }
+
   const context = await browser.newContext({ permissions: ["microphone"] });
   const page = await context.newPage();
   let posted = 0;

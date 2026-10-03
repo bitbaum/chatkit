@@ -10,7 +10,7 @@ import {
   type ComposerMode,
   type ComposerSendResult,
 } from "../composer.js";
-import { DEFAULT_DICTATION_MESSAGES, type DictationProblem } from "../dictation.js";
+import { DEFAULT_DICTATION_MESSAGES, isAudioFile, type DictationProblem } from "../dictation.js";
 import {
   DEFAULT_ATTACHMENT_NOTES,
   type Attachment,
@@ -41,6 +41,8 @@ export type ComposerLabels = {
   listening: string;
   transcribing: string;
   attach: string;
+  /** The placeholder while a turn runs and the next message will be queued. */
+  queue: string;
   remove: (name: string) => string;
   dismiss: string;
   dictation: Record<DictationProblem, string>;
@@ -58,6 +60,7 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
   listening: "Listening…",
   transcribing: "Transcribing…",
   attach: "Attach a screenshot or file",
+  queue: "Queue a message…",
   remove: (name) => `Remove ${name}`,
   dismiss: "Dismiss",
   dictation: DEFAULT_DICTATION_MESSAGES,
@@ -65,6 +68,12 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
 };
 
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
+
+/** What the paperclip offers. `image/*` is what makes a phone offer the camera
+ *  beside the gallery. */
+const ATTACH_ACCEPT = "image/*,text/*,.md,.txt,.json,.csv,.log";
+/** Recordings, by type and by the extensions a picker hands over typeless. */
+const AUDIO_ACCEPT = "audio/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.flac,.amr,.3gp";
 
 /** Overrides: every label is optional, including each dictation and attachment note. */
 export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes">> & {
@@ -90,6 +99,11 @@ export type ComposerProps = {
   onStop?: () => void;
   /** What an attachments-only send says. Omit and empty text cannot send. */
   attachmentOnlyText?: string;
+  /** The app takes a message while a turn runs and sends it when the turn
+   *  ends. Then Send stays live beside Stop and the placeholder says the
+   *  message will be queued — the next thought is typed while the last one is
+   *  still being answered, never held until a spinner stops. */
+  queue?: boolean;
   /** Attachments on, optionally with the app's own limits. Off by default:
    *  only offer what the app's API accepts. */
   attach?: boolean | Partial<AttachmentLimits>;
@@ -197,6 +211,7 @@ export function Composer({
   sending = false,
   onStop,
   attachmentOnlyText,
+  queue = false,
   attach = false,
   voice = {},
   modes,
@@ -262,6 +277,7 @@ export function Composer({
     sending,
     disabled,
     blocked: Boolean(sendBlockedReason),
+    queue,
   });
 
   const submit = async () => {
@@ -278,6 +294,25 @@ export function Composer({
 
   const fileInput = useRef<HTMLInputElement>(null);
   const showModes = Boolean(modes && modes.length > 1);
+
+  // The paperclip takes recordings too, when there is somewhere to send them.
+  // A voice memo is not an attachment the model reads — it is words the person
+  // said, so it goes to the same server leg as the mic and lands in the box.
+  // Recordings are transcribed in the order picked; everything else is staged.
+  const takesAudio = voice !== false && dictation.canTranscribeFile;
+  const accept = takesAudio ? `${ATTACH_ACCEPT},${AUDIO_ACCEPT}` : ATTACH_ACCEPT;
+  const onFiles = (files: FileList | null) => {
+    if (!files) return;
+    const all = Array.from(files);
+    const audio = takesAudio ? all.filter(isAudioFile) : [];
+    const rest = all.filter((f) => !audio.includes(f));
+    if (rest.length > 0) attachments.addFiles(rest);
+    if (audio.length > 0) {
+      void (async () => {
+        for (const file of audio) await dictation.transcribeFile(file);
+      })();
+    }
+  };
 
   return (
     <div className="ck-composer-wrap">
@@ -348,7 +383,9 @@ export function Composer({
             value={text}
             autoFocus={autoFocus}
             disabled={disabled || transcribing}
-            placeholder={listening ? labels.listening : placeholder}
+            placeholder={
+              listening ? labels.listening : sending && queue ? labels.queue : placeholder
+            }
             aria-label={ariaLabel ?? placeholder}
             enterKeyHint="send"
             onChange={(e) => {
@@ -381,9 +418,9 @@ export function Composer({
                     type="file"
                     multiple
                     hidden
-                    accept="image/*,text/*,.md,.txt,.json,.csv,.log"
+                    accept={accept}
                     onChange={(e) => {
-                      attachments.addFiles(e.target.files);
+                      onFiles(e.target.files);
                       e.target.value = "";
                     }}
                   />
@@ -418,17 +455,31 @@ export function Composer({
             <div className="ck-submit">
               {trailing}
               {/* Send and Stop share ONE slot, so the button you want never
-                  moves depending on state. */}
+                  moves depending on state. With `queue`, a message typed
+                  while a turn runs keeps its Send, before Stop. */}
               {sending && onStop ? (
-                <button
-                  type="button"
-                  className="ck-send ck-send-stop"
-                  onClick={onStop}
-                  aria-label={labels.stop}
-                  title={labels.stop}
-                >
-                  <IconStop />
-                </button>
+                <>
+                  {queue && canSend && (
+                    <button
+                      type="button"
+                      className="ck-send"
+                      onClick={() => void submit()}
+                      aria-label={labels.send}
+                      title={labels.send}
+                    >
+                      <IconArrowUp />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ck-send ck-send-stop"
+                    onClick={onStop}
+                    aria-label={labels.stop}
+                    title={labels.stop}
+                  >
+                    <IconStop />
+                  </button>
+                </>
               ) : (
                 !listening && (
                   <button

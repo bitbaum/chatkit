@@ -15,6 +15,8 @@ export type UseDictationOptions = {
     /** Or bring your own server leg (a widget token, a different body). */
     transcribe?: (audio: Blob, locale: string) => Promise<string>;
     maxRecordingMs?: number;
+    /** Largest recording `transcribeFile` will upload. */
+    maxAudioFileBytes?: number;
     /** Where a dead recogniser is remembered (localStorage). `null` to never
      *  store anything on the device. */
     rememberKey?: string | null;
@@ -33,6 +35,13 @@ export type DictationController = {
     /** End the take and throw it away. */
     cancel: () => void;
     toggle: () => void;
+    /** True when a recording that already exists can be transcribed here —
+     *  that is, when there is a server leg. Needs no microphone. */
+    canTranscribeFile: boolean;
+    /** A recording handed over as a file (a voice memo, a taped meeting): the
+     *  server transcribes it and the words are delivered like a mic take.
+     *  Resolves when the words have landed or the problem has been shown. */
+    transcribeFile: (audio: Blob) => Promise<void>;
 };
 /**
  * Speaking instead of typing — with a microphone that is never a dead button.

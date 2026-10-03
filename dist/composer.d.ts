@@ -15,13 +15,16 @@ export type ComposerMode = {
 /** `false` keeps the draft (the send failed or was refused); anything else
  *  clears it. A failed send must be retryable from the same box, not retyped. */
 export type ComposerSendResult = void | boolean;
-export declare function composerCanSend({ text, attachmentCount, attachmentOnlyText, sending, disabled, blocked, }: {
+export declare function composerCanSend({ text, attachmentCount, attachmentOnlyText, sending, disabled, blocked, queue, }: {
     text: string;
     attachmentCount: number;
     attachmentOnlyText?: string;
     sending: boolean;
     disabled: boolean;
     blocked: boolean;
+    /** The app takes a message while a turn runs and sends it after. With it,
+     *  `sending` no longer refuses the send — it queues it. */
+    queue?: boolean;
 }): boolean;
 /** The words actually sent: the draft, or the app's stand-in for an
  *  attachments-only send. */

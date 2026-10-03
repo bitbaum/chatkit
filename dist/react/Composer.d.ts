@@ -13,6 +13,8 @@ export type ComposerLabels = {
     listening: string;
     transcribing: string;
     attach: string;
+    /** The placeholder while a turn runs and the next message will be queued. */
+    queue: string;
     remove: (name: string) => string;
     dismiss: string;
     dictation: Record<DictationProblem, string>;
@@ -41,6 +43,11 @@ export type ComposerProps = {
     onStop?: () => void;
     /** What an attachments-only send says. Omit and empty text cannot send. */
     attachmentOnlyText?: string;
+    /** The app takes a message while a turn runs and sends it when the turn
+     *  ends. Then Send stays live beside Stop and the placeholder says the
+     *  message will be queued — the next thought is typed while the last one is
+     *  still being answered, never held until a spinner stops. */
+    queue?: boolean;
     /** Attachments on, optionally with the app's own limits. Off by default:
      *  only offer what the app's API accepts. */
     attach?: boolean | Partial<AttachmentLimits>;
@@ -81,5 +88,5 @@ export type ComposerProps = {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
+export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, queue, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
 //# sourceMappingURL=Composer.d.ts.map

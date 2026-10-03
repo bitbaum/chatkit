@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add github:bitbaum/chatkit#v0.2.0
+pnpm add github:bitbaum/chatkit#v0.3.1
 ```
 
 `dist/` is committed, so the install needs no build step and no `allowBuilds`
@@ -62,6 +62,26 @@ nothing heard, not available), never as a button that does nothing.
 `prefer: "server"` skips the browser leg (one model everywhere, language
 detected by the model). `rememberKey: null` stores nothing on the device.
 
+### The next message while a turn runs
+
+`queue` keeps Send live while `sending`, beside Stop, and the placeholder
+reads "Queue a message…": the app receives the message through `onSend` as
+usual and sends it on when the turn ends. Without it a send during a turn is
+refused, which holds the next thought until a spinner stops.
+
+### Recordings
+
+With a server leg, the paperclip also takes a recording that already exists —
+a voice memo from the phone's recorder, a taped meeting. It is dictation that
+happened earlier: the file is posted to `transcribeUrl` under its own name
+(Whisper reads the container from the extension) and the words land in the box
+like a mic take, never staged as an attachment the model would have to read.
+Files are recognised by type and, where a picker hands them over typeless as
+Android does with `.m4a`, by extension. Uploads are capped at
+`MAX_AUDIO_FILE_BYTES` (120 MB — an hour of phone memo with room to spare);
+over it, the person is told in words before any bytes move. Your server leg
+should compress and split long audio before Whisper; loki's does.
+
 ### Screenshots
 
 `attach` takes limits: `attach={{ maxImageEdge: 1024 }}` shrinks a picture in
@@ -90,7 +110,8 @@ on `Composer`, `labels` on `ChatThread`.
 
 ## The standard (what this package guarantees)
 
-1. A microphone in the composer, with the server fallback above.
+1. A microphone in the composer, with the server fallback above — and the
+   same server leg for a recording picked as a file.
 2. 16px text in the input and the messages (below that iOS zooms the page).
 3. A composer that belongs to the conversation: auto-growing textarea, Enter
    sends, Shift+Enter breaks the line, IME composition respected, 44px targets,
