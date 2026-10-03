@@ -6,8 +6,10 @@
  * From loki `src/components/composer/composer-logic.ts`, where these were
  * written after four composers in one app gave four different answers.
  */
-export function composerCanSend({ text, attachmentCount, attachmentOnlyText, sending, disabled, blocked, }) {
-    if (sending || disabled || blocked)
+export function composerCanSend({ text, attachmentCount, attachmentOnlyText, sending, disabled, blocked, queue = false, }) {
+    if (disabled || blocked)
+        return false;
+    if (sending && !queue)
         return false;
     if (text.trim().length > 0)
         return true;

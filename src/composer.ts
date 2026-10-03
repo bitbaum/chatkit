@@ -21,6 +21,7 @@ export function composerCanSend({
   sending,
   disabled,
   blocked,
+  queue = false,
 }: {
   text: string;
   attachmentCount: number;
@@ -28,8 +29,12 @@ export function composerCanSend({
   sending: boolean;
   disabled: boolean;
   blocked: boolean;
+  /** The app takes a message while a turn runs and sends it after. With it,
+   *  `sending` no longer refuses the send — it queues it. */
+  queue?: boolean;
 }): boolean {
-  if (sending || disabled || blocked) return false;
+  if (disabled || blocked) return false;
+  if (sending && !queue) return false;
   if (text.trim().length > 0) return true;
   // A screenshot with no words is still a complete message — but only where
   // the app has said what that message means.

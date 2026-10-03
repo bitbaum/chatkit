@@ -40,6 +40,13 @@ test("send: empty text cannot send; a screenshot alone only where the app said w
     true,
   );
   assert.equal(composerCanSend({ ...base, text: "hi", sending: true }), false);
+  // An app that queues takes the next message while the turn still runs —
+  // but never a disabled or blocked one.
+  assert.equal(composerCanSend({ ...base, text: "hi", sending: true, queue: true }), true);
+  assert.equal(
+    composerCanSend({ ...base, text: "hi", sending: true, queue: true, disabled: true }),
+    false,
+  );
   assert.equal(composerOutgoingText("", 1, "See image"), "See image");
   assert.equal(composerOutgoingText("  hi  ", 0), "hi");
 });

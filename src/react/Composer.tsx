@@ -41,6 +41,8 @@ export type ComposerLabels = {
   listening: string;
   transcribing: string;
   attach: string;
+  /** The placeholder while a turn runs and the next message will be queued. */
+  queue: string;
   remove: (name: string) => string;
   dismiss: string;
   dictation: Record<DictationProblem, string>;
@@ -58,6 +60,7 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
   listening: "Listening…",
   transcribing: "Transcribing…",
   attach: "Attach a screenshot or file",
+  queue: "Queue a message…",
   remove: (name) => `Remove ${name}`,
   dismiss: "Dismiss",
   dictation: DEFAULT_DICTATION_MESSAGES,
@@ -96,6 +99,11 @@ export type ComposerProps = {
   onStop?: () => void;
   /** What an attachments-only send says. Omit and empty text cannot send. */
   attachmentOnlyText?: string;
+  /** The app takes a message while a turn runs and sends it when the turn
+   *  ends. Then Send stays live beside Stop and the placeholder says the
+   *  message will be queued — the next thought is typed while the last one is
+   *  still being answered, never held until a spinner stops. */
+  queue?: boolean;
   /** Attachments on, optionally with the app's own limits. Off by default:
    *  only offer what the app's API accepts. */
   attach?: boolean | Partial<AttachmentLimits>;
@@ -203,6 +211,7 @@ export function Composer({
   sending = false,
   onStop,
   attachmentOnlyText,
+  queue = false,
   attach = false,
   voice = {},
   modes,
@@ -268,6 +277,7 @@ export function Composer({
     sending,
     disabled,
     blocked: Boolean(sendBlockedReason),
+    queue,
   });
 
   const submit = async () => {
@@ -373,7 +383,9 @@ export function Composer({
             value={text}
             autoFocus={autoFocus}
             disabled={disabled || transcribing}
-            placeholder={listening ? labels.listening : placeholder}
+            placeholder={
+              listening ? labels.listening : sending && queue ? labels.queue : placeholder
+            }
             aria-label={ariaLabel ?? placeholder}
             enterKeyHint="send"
             onChange={(e) => {
@@ -443,17 +455,31 @@ export function Composer({
             <div className="ck-submit">
               {trailing}
               {/* Send and Stop share ONE slot, so the button you want never
-                  moves depending on state. */}
+                  moves depending on state. With `queue`, a message typed
+                  while a turn runs keeps its Send, before Stop. */}
               {sending && onStop ? (
-                <button
-                  type="button"
-                  className="ck-send ck-send-stop"
-                  onClick={onStop}
-                  aria-label={labels.stop}
-                  title={labels.stop}
-                >
-                  <IconStop />
-                </button>
+                <>
+                  {queue && canSend && (
+                    <button
+                      type="button"
+                      className="ck-send"
+                      onClick={() => void submit()}
+                      aria-label={labels.send}
+                      title={labels.send}
+                    >
+                      <IconArrowUp />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ck-send ck-send-stop"
+                    onClick={onStop}
+                    aria-label={labels.stop}
+                    title={labels.stop}
+                  >
+                    <IconStop />
+                  </button>
+                </>
               ) : (
                 !listening && (
                   <button

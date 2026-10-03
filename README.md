@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add github:bitbaum/chatkit#v0.3.0
+pnpm add github:bitbaum/chatkit#v0.3.1
 ```
 
 `dist/` is committed, so the install needs no build step and no `allowBuilds`
@@ -61,6 +61,13 @@ press records immediately. Every failure is shown in words (blocked mic,
 nothing heard, not available), never as a button that does nothing.
 `prefer: "server"` skips the browser leg (one model everywhere, language
 detected by the model). `rememberKey: null` stores nothing on the device.
+
+### The next message while a turn runs
+
+`queue` keeps Send live while `sending`, beside Stop, and the placeholder
+reads "Queue a message…": the app receives the message through `onSend` as
+usual and sends it on when the turn ends. Without it a send during a turn is
+refused, which holds the next thought until a spinner stops.
 
 ### Recordings
 
