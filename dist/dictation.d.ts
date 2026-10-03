@@ -16,8 +16,10 @@
  * Kept pure so "never forever" and "which failures the fallback rescues" are
  * tested properties rather than behaviour buried in a timeout.
  */
-/** Why a dictation produced no text, in terms the person can act on. */
-export type DictationProblem = "mic" | "silence" | "unavailable";
+/** Why a dictation produced no text, in terms the person can act on.
+ *  `fileTooLarge` is the fourth word, for a recording handed over as a file
+ *  (see `isAudioFile`) that the server leg would refuse. */
+export type DictationProblem = "mic" | "silence" | "unavailable" | "fileTooLarge";
 /** Which path to try first. `browser` is free and instant; `server` is one
  *  model everywhere (and detects the language by itself). Either falls back to
  *  the other when it cannot work. */
@@ -55,6 +57,35 @@ export declare function deadRecogniserStillTrusted(rememberedAt: number | null, 
 export declare const MAX_RECORDING_MS = 120000;
 /** Candidate containers for MediaRecorder, best first. */
 export declare const RECORDING_MIME_CANDIDATES: readonly ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
+/**
+ * A recording that already exists — a voice memo from the phone's recorder, a
+ * meeting someone taped — is dictation that happened earlier. It goes to the
+ * same server leg as the mic and its words land in the box the same way.
+ *
+ * The cap is on the upload, not the recording: the server compresses and
+ * splits long audio before Whisper, but a phone on mobile data still has to
+ * send the bytes. A one-hour memo from a phone recorder is about 60 MB; this
+ * takes that with room to spare, and refuses the ten-hour one in words rather
+ * than after a ten-minute upload that fails.
+ */
+export declare const MAX_AUDIO_FILE_BYTES: number;
+/**
+ * Does this file hold a recording? By MIME where the browser gives one, by
+ * extension where it does not: Android's picker hands over `.m4a` from the
+ * stock recorder with an empty type often enough that mime alone would call
+ * it a text file and inline the bytes into a prompt.
+ */
+export declare function isAudioFile(file: {
+    type?: string;
+    name?: string;
+}): boolean;
+/** The name a recording travels under. Whisper services read the container
+ *  from the extension, so a mic take keeps the type's extension and a file
+ *  keeps its own name. */
+export declare function audioFileName(audio: {
+    type?: string;
+    name?: string;
+}): string;
 /** The default words for each problem. Override per app (and per language). */
 export declare const DEFAULT_DICTATION_MESSAGES: Record<DictationProblem, string>;
 //# sourceMappingURL=dictation.d.ts.map

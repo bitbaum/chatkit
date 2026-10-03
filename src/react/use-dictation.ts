@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
+  MAX_AUDIO_FILE_BYTES,
   MAX_RECORDING_MS,
   PERMISSION_WAIT_MS,
   RECORDING_MIME_CANDIDATES,
   START_TIMEOUT_MS,
+  audioFileName,
   deadRecogniserStillTrusted,
   fallbackCanRescue,
   problemFor,
@@ -69,6 +71,8 @@ export type UseDictationOptions = {
   /** Or bring your own server leg (a widget token, a different body). */
   transcribe?: (audio: Blob, locale: string) => Promise<string>;
   maxRecordingMs?: number;
+  /** Largest recording `transcribeFile` will upload. */
+  maxAudioFileBytes?: number;
   /** Where a dead recogniser is remembered (localStorage). `null` to never
    *  store anything on the device. */
   rememberKey?: string | null;
@@ -88,6 +92,13 @@ export type DictationController = {
   /** End the take and throw it away. */
   cancel: () => void;
   toggle: () => void;
+  /** True when a recording that already exists can be transcribed here —
+   *  that is, when there is a server leg. Needs no microphone. */
+  canTranscribeFile: boolean;
+  /** A recording handed over as a file (a voice memo, a taped meeting): the
+   *  server transcribes it and the words are delivered like a mic take.
+   *  Resolves when the words have landed or the problem has been shown. */
+  transcribeFile: (audio: Blob) => Promise<void>;
 };
 
 const DEFAULT_REMEMBER_KEY = "chatkit.dictation.recogniser-dead.v1";
@@ -122,8 +133,8 @@ async function awaitingPermission(): Promise<boolean> {
 
 async function postAudio(url: string, audio: Blob, locale: string): Promise<string> {
   const body = new FormData();
-  const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
-  body.append("audio", new File([audio], `voice.${ext}`, { type: audio.type || "audio/webm" }));
+  const name = audioFileName(audio as { type?: string; name?: string });
+  body.append("audio", new File([audio], name, { type: audio.type || "audio/webm" }));
   body.append("locale", locale);
   const res = await fetch(url, { method: "POST", body });
   if (!res.ok) throw new Error(`transcription ${res.status}`);
@@ -143,7 +154,11 @@ async function postAudio(url: string, audio: Blob, locale: string): Promise<stri
  * someone's device because a request failed is the worst bug a chat can have.
  */
 export function useDictation(opts: UseDictationOptions): DictationController {
-  const { prefer = "browser", maxRecordingMs = MAX_RECORDING_MS } = opts;
+  const {
+    prefer = "browser",
+    maxRecordingMs = MAX_RECORDING_MS,
+    maxAudioFileBytes = MAX_AUDIO_FILE_BYTES,
+  } = opts;
   const rememberKey = opts.rememberKey === undefined ? DEFAULT_REMEMBER_KEY : opts.rememberKey;
   const hasServer = Boolean(opts.transcribe || opts.transcribeUrl);
 
@@ -399,6 +414,36 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     setStartedAt(null);
   }, [releaseMic]);
 
+  // A promise, not fire-and-forget: a composer handed three memos at once
+  // transcribes them in order, so the words arrive in the order they were
+  // picked. The status is the mic's — one spinner, one meaning.
+  const transcribeFile = useCallback(
+    async (audio: Blob) => {
+      if (!hasServer) {
+        setProblem("unavailable");
+        return;
+      }
+      if (audio.size > maxAudioFileBytes) {
+        setProblem("fileTooLarge");
+        return;
+      }
+      if (audio.size === 0) {
+        setProblem("silence");
+        return;
+      }
+      setProblem(null);
+      setStatus("transcribing");
+      try {
+        deliver(await transcribe(audio));
+      } catch {
+        setProblem("unavailable");
+      } finally {
+        setStatus("idle");
+      }
+    },
+    [deliver, hasServer, maxAudioFileBytes, transcribe],
+  );
+
   const toggle = useCallback(() => {
     // A press while the server is answering is ignored: a second take would
     // race the first one's words into the box.
@@ -433,5 +478,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     stop,
     cancel,
     toggle,
+    canTranscribeFile: hasServer,
+    transcribeFile,
   };
 }

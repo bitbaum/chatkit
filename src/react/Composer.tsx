@@ -10,7 +10,7 @@ import {
   type ComposerMode,
   type ComposerSendResult,
 } from "../composer.js";
-import { DEFAULT_DICTATION_MESSAGES, type DictationProblem } from "../dictation.js";
+import { DEFAULT_DICTATION_MESSAGES, isAudioFile, type DictationProblem } from "../dictation.js";
 import {
   DEFAULT_ATTACHMENT_NOTES,
   type Attachment,
@@ -65,6 +65,12 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
 };
 
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
+
+/** What the paperclip offers. `image/*` is what makes a phone offer the camera
+ *  beside the gallery. */
+const ATTACH_ACCEPT = "image/*,text/*,.md,.txt,.json,.csv,.log";
+/** Recordings, by type and by the extensions a picker hands over typeless. */
+const AUDIO_ACCEPT = "audio/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.flac,.amr,.3gp";
 
 /** Overrides: every label is optional, including each dictation and attachment note. */
 export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes">> & {
@@ -279,6 +285,25 @@ export function Composer({
   const fileInput = useRef<HTMLInputElement>(null);
   const showModes = Boolean(modes && modes.length > 1);
 
+  // The paperclip takes recordings too, when there is somewhere to send them.
+  // A voice memo is not an attachment the model reads — it is words the person
+  // said, so it goes to the same server leg as the mic and lands in the box.
+  // Recordings are transcribed in the order picked; everything else is staged.
+  const takesAudio = voice !== false && dictation.canTranscribeFile;
+  const accept = takesAudio ? `${ATTACH_ACCEPT},${AUDIO_ACCEPT}` : ATTACH_ACCEPT;
+  const onFiles = (files: FileList | null) => {
+    if (!files) return;
+    const all = Array.from(files);
+    const audio = takesAudio ? all.filter(isAudioFile) : [];
+    const rest = all.filter((f) => !audio.includes(f));
+    if (rest.length > 0) attachments.addFiles(rest);
+    if (audio.length > 0) {
+      void (async () => {
+        for (const file of audio) await dictation.transcribeFile(file);
+      })();
+    }
+  };
+
   return (
     <div className="ck-composer-wrap">
       {above}
@@ -381,9 +406,9 @@ export function Composer({
                     type="file"
                     multiple
                     hidden
-                    accept="image/*,text/*,.md,.txt,.json,.csv,.log"
+                    accept={accept}
                     onChange={(e) => {
-                      attachments.addFiles(e.target.files);
+                      onFiles(e.target.files);
                       e.target.value = "";
                     }}
                   />

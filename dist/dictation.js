@@ -84,10 +84,56 @@ export const RECORDING_MIME_CANDIDATES = [
     "audio/mp4",
     "audio/ogg",
 ];
+/**
+ * A recording that already exists — a voice memo from the phone's recorder, a
+ * meeting someone taped — is dictation that happened earlier. It goes to the
+ * same server leg as the mic and its words land in the box the same way.
+ *
+ * The cap is on the upload, not the recording: the server compresses and
+ * splits long audio before Whisper, but a phone on mobile data still has to
+ * send the bytes. A one-hour memo from a phone recorder is about 60 MB; this
+ * takes that with room to spare, and refuses the ten-hour one in words rather
+ * than after a ten-minute upload that fails.
+ */
+export const MAX_AUDIO_FILE_BYTES = 120 * 1024 * 1024;
+const AUDIO_EXT = /\.(m4a|mp3|wav|ogg|oga|opus|webm|aac|flac|amr|3gp|3gpp|mp4|caf|aiff?|wma)$/i;
+/**
+ * Does this file hold a recording? By MIME where the browser gives one, by
+ * extension where it does not: Android's picker hands over `.m4a` from the
+ * stock recorder with an empty type often enough that mime alone would call
+ * it a text file and inline the bytes into a prompt.
+ */
+export function isAudioFile(file) {
+    const type = (file.type ?? "").toLowerCase();
+    if (type.startsWith("audio/"))
+        return true;
+    if (type.startsWith("image/") || type.startsWith("text/"))
+        return false;
+    return AUDIO_EXT.test(file.name ?? "");
+}
+/** The name a recording travels under. Whisper services read the container
+ *  from the extension, so a mic take keeps the type's extension and a file
+ *  keeps its own name. */
+export function audioFileName(audio) {
+    if (audio.name && AUDIO_EXT.test(audio.name))
+        return audio.name;
+    const type = (audio.type ?? "").toLowerCase();
+    const ext = type.includes("mp4") || type.includes("m4a")
+        ? "m4a"
+        : type.includes("ogg")
+            ? "ogg"
+            : type.includes("mpeg") || type.includes("mp3")
+                ? "mp3"
+                : type.includes("wav")
+                    ? "wav"
+                    : "webm";
+    return `voice.${ext}`;
+}
 /** The default words for each problem. Override per app (and per language). */
 export const DEFAULT_DICTATION_MESSAGES = {
     mic: "The microphone is blocked. Allow it for this site and try again.",
     silence: "Nothing was heard. Try again, a little closer to the mic.",
     unavailable: "Voice input is not available right now. Type instead, or try again later.",
+    fileTooLarge: `That recording is too large to transcribe here (max ${Math.round(MAX_AUDIO_FILE_BYTES / 1024 / 1024)} MB).`,
 };
 //# sourceMappingURL=dictation.js.map

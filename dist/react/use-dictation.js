@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, deadRecogniserStillTrusted, fallbackCanRescue, problemFor, problemForRecording, } from "../dictation.js";
+import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, fallbackCanRescue, problemFor, problemForRecording, } from "../dictation.js";
 function recogniser() {
     if (typeof window === "undefined")
         return undefined;
@@ -46,8 +46,8 @@ async function awaitingPermission() {
 }
 async function postAudio(url, audio, locale) {
     const body = new FormData();
-    const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
-    body.append("audio", new File([audio], `voice.${ext}`, { type: audio.type || "audio/webm" }));
+    const name = audioFileName(audio);
+    body.append("audio", new File([audio], name, { type: audio.type || "audio/webm" }));
     body.append("locale", locale);
     const res = await fetch(url, { method: "POST", body });
     if (!res.ok)
@@ -67,7 +67,7 @@ async function postAudio(url, audio, locale) {
  * someone's device because a request failed is the worst bug a chat can have.
  */
 export function useDictation(opts) {
-    const { prefer = "browser", maxRecordingMs = MAX_RECORDING_MS } = opts;
+    const { prefer = "browser", maxRecordingMs = MAX_RECORDING_MS, maxAudioFileBytes = MAX_AUDIO_FILE_BYTES, } = opts;
     const rememberKey = opts.rememberKey === undefined ? DEFAULT_REMEMBER_KEY : opts.rememberKey;
     const hasServer = Boolean(opts.transcribe || opts.transcribeUrl);
     const supported = useSyncExternalStore(noSubscribe, () => Boolean(recogniser()) || (hasServer && canRecord()), () => false);
@@ -326,6 +326,34 @@ export function useDictation(opts) {
         setStatus("idle");
         setStartedAt(null);
     }, [releaseMic]);
+    // A promise, not fire-and-forget: a composer handed three memos at once
+    // transcribes them in order, so the words arrive in the order they were
+    // picked. The status is the mic's — one spinner, one meaning.
+    const transcribeFile = useCallback(async (audio) => {
+        if (!hasServer) {
+            setProblem("unavailable");
+            return;
+        }
+        if (audio.size > maxAudioFileBytes) {
+            setProblem("fileTooLarge");
+            return;
+        }
+        if (audio.size === 0) {
+            setProblem("silence");
+            return;
+        }
+        setProblem(null);
+        setStatus("transcribing");
+        try {
+            deliver(await transcribe(audio));
+        }
+        catch {
+            setProblem("unavailable");
+        }
+        finally {
+            setStatus("idle");
+        }
+    }, [deliver, hasServer, maxAudioFileBytes, transcribe]);
     const toggle = useCallback(() => {
         // A press while the server is answering is ignored: a second take would
         // race the first one's words into the box.
@@ -360,6 +388,8 @@ export function useDictation(opts) {
         stop,
         cancel,
         toggle,
+        canTranscribeFile: hasServer,
+        transcribeFile,
     };
 }
 //# sourceMappingURL=use-dictation.js.map

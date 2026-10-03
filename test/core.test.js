@@ -22,6 +22,10 @@ import {
   dataUrlBytes,
   DEFAULT_ATTACHMENT_NOTES,
   DEFAULT_ATTACHMENT_LIMITS,
+  DEFAULT_DICTATION_MESSAGES,
+  MAX_AUDIO_FILE_BYTES,
+  audioFileName,
+  isAudioFile,
   DEAD_RECOGNISER_TTL_MS,
   PERMISSION_WAIT_MS,
 } from "../dist/index.js";
@@ -167,4 +171,32 @@ test("attach: every reason a file did not attach is a sentence that names it", (
     assert.match(said, /a\.(bmp|png|txt)/);
   }
   assert.match(n.tooMany(5), /5/);
+});
+
+test("recordings: a file holding a recording is recognised by type, or by name when the picker gives none", () => {
+  // Android's stock recorder hands over .m4a with an empty type (loki, 2026-10-03).
+  assert.equal(isAudioFile({ type: "", name: "Meine Aufnahme 12.m4a" }), true);
+  assert.equal(isAudioFile({ type: "audio/mp4", name: "Kivitendo.m4a" }), true);
+  assert.equal(isAudioFile({ type: "audio/webm", name: "" }), true);
+  assert.equal(isAudioFile({ type: "", name: "notes.MP3" }), true);
+  assert.equal(isAudioFile({ type: "image/png", name: "shot.png" }), false);
+  assert.equal(isAudioFile({ type: "text/plain", name: "a.txt" }), false);
+  assert.equal(isAudioFile({ type: "", name: "report.pdf" }), false);
+});
+
+test("recordings: a file keeps its own name on the wire, a mic take gets one from its type", () => {
+  // Whisper services read the container from the extension.
+  assert.equal(audioFileName({ type: "", name: "Kivitendo.m4a" }), "Kivitendo.m4a");
+  assert.equal(audioFileName({ type: "audio/mp4" }), "voice.m4a");
+  assert.equal(audioFileName({ type: "audio/ogg" }), "voice.ogg");
+  assert.equal(audioFileName({ type: "audio/webm;codecs=opus" }), "voice.webm");
+  assert.equal(audioFileName({ type: "audio/mpeg" }), "voice.mp3");
+});
+
+test("recordings: too large is a sentence that names the limit, and the limit fits an hour-long memo", () => {
+  // A one-hour phone memo is ~60 MB; a ten-hour one is refused before upload.
+  assert.ok(MAX_AUDIO_FILE_BYTES >= 100 * 1024 * 1024);
+  assert.match(DEFAULT_DICTATION_MESSAGES.fileTooLarge, /\d+ MB/);
+  // The fallback never rescues it: the file is the same size on every path.
+  assert.equal(fallbackCanRescue("fileTooLarge"), false);
 });
