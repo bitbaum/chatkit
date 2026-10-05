@@ -3,6 +3,7 @@ import { type ComposerMode, type ComposerSendResult } from "../composer.js";
 import { type DictationProblem } from "../dictation.js";
 import { type Attachment, type AttachmentLimits, type AttachmentNotes } from "../attachments.js";
 import { type UseDictationOptions } from "./use-dictation.js";
+import { type AttachMenuLabels } from "./AttachMenu.js";
 export type ComposerLabels = {
     send: string;
     stop: string;
@@ -13,6 +14,8 @@ export type ComposerLabels = {
     listening: string;
     transcribing: string;
     attach: string;
+    /** The Camera / Photos / Files sheet the paperclip opens on a phone. */
+    attachMenu: Omit<AttachMenuLabels, "attach">;
     /** The placeholder while a turn runs and the next message will be queued. */
     queue: string;
     remove: (name: string) => string;
@@ -24,9 +27,12 @@ export type ComposerLabels = {
 export declare const DEFAULT_COMPOSER_LABELS: ComposerLabels;
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
 /** Overrides: every label is optional, including each dictation and attachment note. */
-export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes">> & {
+export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes" | "attachMenu">> & {
     dictation?: Partial<ComposerLabels["dictation"]>;
     attachNotes?: Partial<AttachmentNotes>;
+    attachMenu?: Partial<Omit<ComposerLabels["attachMenu"], "sources">> & {
+        sources?: Partial<ComposerLabels["attachMenu"]["sources"]>;
+    };
 };
 export type ComposerProps = {
     /** Deliver what was written. Return `false` (or resolve to it) to keep the

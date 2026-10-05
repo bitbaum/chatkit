@@ -22,6 +22,22 @@ test("composer: textarea, send, and 16px guaranteed by the stylesheet", () => {
   assert.match(css, /--ck-text:\s*1rem/);
 });
 
+test("composer: the paperclip carries one input per source, not one mixed input", () => {
+  const html = renderToStaticMarkup(
+    h(Composer, { onSend: () => {}, placeholder: "Ask", attach: true }),
+  );
+  assert.match(html, /<input[^>]*data-ck-source="camera"[^>]*>/);
+  assert.match(
+    html,
+    /<input[^>]*accept="image\/\*"[^>]*capture="environment"|capture="environment"[^>]*accept="image\/\*"/,
+  );
+  assert.match(html, /<input[^>]*data-ck-source="photos"/);
+  const files = /<input[^>]*data-ck-source="files"[^>]*>/.exec(html)?.[0] ?? "";
+  assert.ok(files, "a Files input");
+  assert.doesNotMatch(files, /accept=/, "Files accepts anything: the real document browser");
+  assert.match(html, /aria-haspopup="dialog"/);
+});
+
 test("composer: labels are translatable (heidi is not in English)", () => {
   const html = renderToStaticMarkup(
     h(Composer, { onSend: () => {}, placeholder: "Frag", labels: { send: "Senden" } }),

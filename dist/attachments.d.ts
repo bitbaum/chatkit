@@ -61,6 +61,33 @@ export declare function fitWithin(width: number, height: number, maxEdge: number
 /** Bytes a base64 data URL decodes to — close enough to compare to a limit. */
 export declare function dataUrlBytes(dataUrl: string): number;
 export declare function isImageMime(mime: string): boolean;
+/**
+ * Whether a file is text the model can read inline. The Files picker accepts
+ * anything — that is what keeps it the phone's real document browser instead
+ * of a camera chooser — so the decision about what can actually be sent moves
+ * here, after the pick, where a PDF gets a sentence instead of being read as
+ * binary noise and pasted into a prompt.
+ */
+export declare function isTextFile(name: string, mime: string): boolean;
+/**
+ * Where an attachment comes from. Three sources, three inputs, because a phone
+ * answers ONE input with a mixed `accept` ("image/*,text/*,audio/*") by
+ * opening a chooser of capture apps — Camera, Camera, Recorder, "Photos &
+ * Videos" — in which the screenshot you came to send is three levels down,
+ * and the file browser is not offered at all. Measured on Android/Brave,
+ * 2026-10-05; it is what made attaching to Loki "impossible".
+ *
+ * - camera: `capture` opens the camera straight away.
+ * - photos: `image/*` alone opens the system photo picker (Screenshots is its
+ *   first album), not a chooser.
+ * - files: no `accept` at all opens the real document browser — Downloads,
+ *   Drive, any folder. The type check happens after, in `isTextFile`.
+ */
+export type AttachSource = "camera" | "photos" | "files";
+export declare const ATTACH_SOURCE_INPUT: Record<AttachSource, {
+    accept?: string;
+    capture?: "environment";
+}>;
 /** `data:image/png;base64,AAAA` → `AAAA`: FileReader hands back a data URL,
  *  the wire carries raw base64. */
 export declare function stripDataUrlBase64(dataUrl: string): string;

@@ -54,7 +54,7 @@ export type AttachmentNotes = {
 };
 
 export const DEFAULT_ATTACHMENT_NOTES: AttachmentNotes = {
-  wrongType: (name) => `${name}: use PNG, JPEG, GIF or WebP.`,
+  wrongType: (name) => `${name}: attach an image (PNG, JPEG, GIF, WebP) or a text file.`,
   imageTooLarge: (name, maxMb) => `${name} is too large (max ${maxMb} MB).`,
   textTooLarge: (name, k) => `${name} is too large (max ${k}k characters).`,
   unreadable: (name) => `Could not read ${name}.`,
@@ -90,6 +90,50 @@ const IMAGE_MIME = /^image\/(jpeg|jpg|png|gif|webp)$/i;
 export function isImageMime(mime: string): boolean {
   return IMAGE_MIME.test(mime);
 }
+
+/** Extensions a picker may hand over with no type, or as
+ *  application/octet-stream, that are still plain text a model can read. */
+const TEXT_EXTENSIONS =
+  /\.(txt|md|markdown|json|jsonl|csv|tsv|log|ya?ml|toml|ini|xml|html?|css|scss|js|jsx|mjs|cjs|ts|tsx|py|rb|go|rs|java|kt|swift|c|h|cpp|hpp|cs|php|sh|bash|zsh|sql|env|diff|patch|srt|vtt)$/i;
+const TEXT_MIME = /^(text\/|application\/(json|xml|x-yaml|yaml|javascript|x-sh|sql))/i;
+
+/**
+ * Whether a file is text the model can read inline. The Files picker accepts
+ * anything — that is what keeps it the phone's real document browser instead
+ * of a camera chooser — so the decision about what can actually be sent moves
+ * here, after the pick, where a PDF gets a sentence instead of being read as
+ * binary noise and pasted into a prompt.
+ */
+export function isTextFile(name: string, mime: string): boolean {
+  if (TEXT_MIME.test(mime)) return true;
+  if (mime && mime !== "application/octet-stream") return false;
+  return TEXT_EXTENSIONS.test(name);
+}
+
+/**
+ * Where an attachment comes from. Three sources, three inputs, because a phone
+ * answers ONE input with a mixed `accept` ("image/*,text/*,audio/*") by
+ * opening a chooser of capture apps — Camera, Camera, Recorder, "Photos &
+ * Videos" — in which the screenshot you came to send is three levels down,
+ * and the file browser is not offered at all. Measured on Android/Brave,
+ * 2026-10-05; it is what made attaching to Loki "impossible".
+ *
+ * - camera: `capture` opens the camera straight away.
+ * - photos: `image/*` alone opens the system photo picker (Screenshots is its
+ *   first album), not a chooser.
+ * - files: no `accept` at all opens the real document browser — Downloads,
+ *   Drive, any folder. The type check happens after, in `isTextFile`.
+ */
+export type AttachSource = "camera" | "photos" | "files";
+
+export const ATTACH_SOURCE_INPUT: Record<
+  AttachSource,
+  { accept?: string; capture?: "environment" }
+> = {
+  camera: { accept: "image/*", capture: "environment" },
+  photos: { accept: "image/*" },
+  files: {},
+};
 
 /** `data:image/png;base64,AAAA` → `AAAA`: FileReader hands back a data URL,
  *  the wire carries raw base64. */

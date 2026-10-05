@@ -20,6 +20,8 @@ import {
   toWire,
   fitWithin,
   dataUrlBytes,
+  isTextFile,
+  ATTACH_SOURCE_INPUT,
   DEFAULT_ATTACHMENT_NOTES,
   DEFAULT_ATTACHMENT_LIMITS,
   DEFAULT_DICTATION_MESSAGES,
@@ -206,4 +208,27 @@ test("recordings: too large is a sentence that names the limit, and the limit fi
   assert.match(DEFAULT_DICTATION_MESSAGES.fileTooLarge, /\d+ MB/);
   // The fallback never rescues it: the file is the same size on every path.
   assert.equal(fallbackCanRescue("fileTooLarge"), false);
+});
+
+test("attach: three sources, and never one mixed accept — that is what hid the screenshots", () => {
+  assert.deepEqual(ATTACH_SOURCE_INPUT.camera, { accept: "image/*", capture: "environment" });
+  assert.deepEqual(ATTACH_SOURCE_INPUT.photos, { accept: "image/*" });
+  // No accept at all is what opens the phone's real document browser.
+  assert.equal(ATTACH_SOURCE_INPUT.files.accept, undefined);
+  for (const src of Object.values(ATTACH_SOURCE_INPUT)) {
+    assert.ok(!src.accept || !src.accept.includes(","), "one type family per input");
+  }
+});
+
+test("attach: Files takes anything, so text is decided after the pick", () => {
+  assert.equal(isTextFile("notes.md", ""), true);
+  assert.equal(isTextFile("trace.log", "application/octet-stream"), true);
+  assert.equal(isTextFile("data.json", "application/json"), true);
+  assert.equal(isTextFile("page.tsx", ""), true);
+  assert.equal(isTextFile("a.txt", "text/plain"), true);
+  // A PDF read as text is binary noise pasted into a prompt.
+  assert.equal(isTextFile("invoice.pdf", "application/pdf"), false);
+  assert.equal(isTextFile("photo.heic", "image/heic"), false);
+  assert.equal(isTextFile("archive.zip", ""), false);
+  assert.match(DEFAULT_ATTACHMENT_NOTES.wrongType("invoice.pdf"), /image .*or a text file/);
 });
