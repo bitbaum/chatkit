@@ -14,6 +14,11 @@ export declare const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels;
  * not one: a single mixed-`accept` input is what made a phone offer a recorder
  * and no way to the screenshot.
  *
+ * The sheet is a native `<dialog>` opened with `showModal()`: it renders in the
+ * browser's top layer, so a composer inside a transformed or overflow-clipped
+ * panel (a drawer, a floating rail) still gets a full-screen sheet — and the
+ * browser supplies Escape, the focus trap and focus restore.
+ *
  * Every app that attaches anything gets this from the composer. An app with a
  * custom box renders `<AttachMenu>` itself rather than a bare file input.
  */

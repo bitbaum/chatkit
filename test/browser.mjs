@@ -214,9 +214,9 @@ try {
     const box = page.locator("#empty");
     await box.locator(".ck-input").waitFor();
     await box.locator('button[aria-haspopup="dialog"]').click();
-    const sheet = page.locator(".ck-sheet");
+    const sheet = box.locator(".ck-sheet");
     check(await sheet.isVisible(), "attach sheet: the paperclip opens it on a phone");
-    const sources = await page.$$eval(".ck-attach-source", (els) =>
+    const sources = await page.$$eval(".ck-sheet[open] .ck-attach-source", (els) =>
       els.map((e) => {
         const r = e.getBoundingClientRect();
         return { src: e.dataset.ckSource, ok: r.width >= 44 && r.height >= 44 };
@@ -227,7 +227,7 @@ try {
       `attach sheet: Camera, Photos, Files, each >= 44px (${JSON.stringify(sources)})`,
     );
     const chooser = page.waitForEvent("filechooser", { timeout: 3000 }).catch(() => null);
-    await page.locator('.ck-attach-source[data-ck-source="photos"]').click();
+    await sheet.locator('.ck-attach-source[data-ck-source="photos"]').click();
     const fc = await chooser;
     check(
       fc !== null && (await fc.element().getAttribute("accept")) === "image/*",
@@ -237,6 +237,9 @@ try {
     await box.locator('button[aria-haspopup="dialog"]').click();
     await page.keyboard.press("Escape");
     check(!(await sheet.isVisible()), "attach sheet: Escape closes it");
+    await box.locator('button[aria-haspopup="dialog"]').click();
+    await page.mouse.click(195, 100);
+    check(!(await sheet.isVisible()), "attach sheet: a tap on the scrim closes it");
     // A file nobody can read inline gets a sentence, not a prompt full of bytes.
     await box.locator('input[data-ck-source="files"]').setInputFiles({
       name: "invoice.pdf",
@@ -259,7 +262,7 @@ try {
     await box.locator('button[aria-haspopup="dialog"]').click();
     const fc = await chooser;
     check(
-      fc !== null && (await page.locator(".ck-sheet").count()) === 0,
+      fc !== null && (await page.locator(".ck-sheet[open]").count()) === 0,
       "attach: with a mouse the paperclip opens the file dialog directly",
     );
     await page.close();

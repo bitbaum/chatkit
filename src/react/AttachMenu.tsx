@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRef } from "react";
 import { ATTACH_SOURCE_INPUT, type AttachSource } from "../attachments.js";
 import { IconCamera, IconFileUp, IconImage, IconPaperclip, IconX } from "./icons.js";
 
@@ -40,6 +39,11 @@ function prefersSheet(): boolean {
  * not one: a single mixed-`accept` input is what made a phone offer a recorder
  * and no way to the screenshot.
  *
+ * The sheet is a native `<dialog>` opened with `showModal()`: it renders in the
+ * browser's top layer, so a composer inside a transformed or overflow-clipped
+ * panel (a drawer, a floating rail) still gets a full-screen sheet — and the
+ * browser supplies Escape, the focus trap and focus restore.
+ *
  * Every app that attaches anything gets this from the composer. An app with a
  * custom box renders `<AttachMenu>` itself rather than a bare file input.
  */
@@ -52,28 +56,19 @@ export function AttachMenu({
   disabled?: boolean;
   labels?: AttachMenuLabels;
 }) {
-  const [open, setOpen] = useState(false);
   const inputs = useRef<Partial<Record<AttachSource, HTMLInputElement | null>>>({});
-  const sheet = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
 
+  const close = () => dialog.current?.close();
   const pick = (source: AttachSource) => {
-    setOpen(false);
+    close();
     inputs.current[source]?.click();
   };
-
-  useEffect(() => {
-    if (!open) return;
-    sheet.current?.querySelector<HTMLButtonElement>(".ck-attach-source")?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  const open = () => {
+    const d = dialog.current;
+    if (prefersSheet() && d && typeof d.showModal === "function") d.showModal();
+    else pick("files");
+  };
 
   return (
     <>
@@ -95,65 +90,58 @@ export function AttachMenu({
         />
       ))}
       <button
-        ref={trigger}
         type="button"
         className="ck-icon-btn"
-        onClick={() => (prefersSheet() ? setOpen(true) : pick("files"))}
+        onClick={open}
         disabled={disabled}
         aria-label={labels.attach}
         aria-haspopup="dialog"
-        aria-expanded={open}
         title={labels.attach}
       >
         <IconPaperclip />
       </button>
-      {/* Portalled to <body>: a composer often sits inside a transformed or
-          overflow-clipped panel (a drawer, a floating rail), and a fixed
-          sheet inside one is pinned to the panel instead of the screen. */}
-      {open &&
-        createPortal(
-          <div className="ck-sheet-root">
-            <div className="ck-sheet-scrim" onClick={() => setOpen(false)} aria-hidden />
-            <div
-              ref={sheet}
-              className="ck-sheet"
-              role="dialog"
-              aria-modal="true"
-              aria-label={labels.title}
+      <dialog
+        ref={dialog}
+        className="ck-sheet"
+        aria-label={labels.title}
+        // A tap on the backdrop lands on the <dialog> itself, never on the
+        // panel inside it: that is the scrim.
+        onClick={(e) => {
+          if (e.target === e.currentTarget) close();
+        }}
+      >
+        <div className="ck-sheet-panel">
+          <div className="ck-sheet-head">
+            <span className="ck-sheet-title">{labels.title}</span>
+            <button
+              type="button"
+              className="ck-icon-btn ck-sheet-close"
+              onClick={close}
+              aria-label={labels.close}
+              title={labels.close}
             >
-              <div className="ck-sheet-head">
-                <span className="ck-sheet-title">{labels.title}</span>
+              <IconX />
+            </button>
+          </div>
+          <div className="ck-attach-sources">
+            {SOURCES.map((source) => {
+              const Icon = ICONS[source];
+              return (
                 <button
+                  key={source}
                   type="button"
-                  className="ck-icon-btn ck-sheet-close"
-                  onClick={() => setOpen(false)}
-                  aria-label={labels.close}
-                  title={labels.close}
+                  className="ck-attach-source"
+                  data-ck-source={source}
+                  onClick={() => pick(source)}
                 >
-                  <IconX />
+                  <Icon />
+                  <span>{labels.sources[source]}</span>
                 </button>
-              </div>
-              <div className="ck-attach-sources">
-                {SOURCES.map((source) => {
-                  const Icon = ICONS[source];
-                  return (
-                    <button
-                      key={source}
-                      type="button"
-                      className="ck-attach-source"
-                      data-ck-source={source}
-                      onClick={() => pick(source)}
-                    >
-                      <Icon />
-                      <span>{labels.sources[source]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+              );
+            })}
+          </div>
+        </div>
+      </dialog>
     </>
   );
 }

@@ -78,7 +78,6 @@
     "typescript-eslint": "^8.68.0"
   },
   "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
+    "react": ">=18"
   }
 }
