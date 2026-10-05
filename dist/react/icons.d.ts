@@ -9,4 +9,7 @@ export declare const IconCopy: () => import("react").JSX.Element;
 export declare const IconRetry: () => import("react").JSX.Element;
 export declare const IconPaperclip: () => import("react").JSX.Element;
 export declare const IconFile: () => import("react").JSX.Element;
+export declare const IconCamera: () => import("react").JSX.Element;
+export declare const IconImage: () => import("react").JSX.Element;
+export declare const IconFileUp: () => import("react").JSX.Element;
 //# sourceMappingURL=icons.d.ts.map

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DEFAULT_ATTACHMENT_LIMITS, DEFAULT_ATTACHMENT_NOTES, attachmentKey, dataUrlBytes, fitWithin, isImageMime, stripDataUrlBase64, toWire, } from "../attachments.js";
+import { DEFAULT_ATTACHMENT_LIMITS, DEFAULT_ATTACHMENT_NOTES, attachmentKey, dataUrlBytes, fitWithin, isImageMime, isTextFile, stripDataUrlBase64, toWire, } from "../attachments.js";
 /**
  * Draw the image no larger than `maxEdge` and encode it as JPEG, stepping the
  * quality down until it fits `maxBytes`. Null when it cannot be made to fit,
@@ -120,6 +120,10 @@ export function useAttachments(limits = {}, notes = {}) {
         reader.readAsDataURL(file);
     }, [add, maxImageBytes, maxImageEdge]);
     const stageText = useCallback((file) => {
+        if (!isTextFile(file.name, file.type)) {
+            setNote(say.current.wrongType(file.name));
+            return;
+        }
         if (file.size > maxTextChars) {
             setNote(say.current.textTooLarge(file.name, Math.round(maxTextChars / 1000)));
             return;

@@ -20,12 +20,12 @@ import {
 import { useDictation, type UseDictationOptions } from "./use-dictation.js";
 import { useAttachments, type AttachmentsController } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
+import { AttachMenu, DEFAULT_ATTACH_MENU_LABELS, type AttachMenuLabels } from "./AttachMenu.js";
 import {
   IconArrowUp,
   IconCheck,
   IconFile,
   IconMic,
-  IconPaperclip,
   IconSpinner,
   IconStop,
   IconX,
@@ -41,6 +41,8 @@ export type ComposerLabels = {
   listening: string;
   transcribing: string;
   attach: string;
+  /** The Camera / Photos / Files sheet the paperclip opens on a phone. */
+  attachMenu: Omit<AttachMenuLabels, "attach">;
   /** The placeholder while a turn runs and the next message will be queued. */
   queue: string;
   remove: (name: string) => string;
@@ -60,6 +62,11 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
   listening: "Listening…",
   transcribing: "Transcribing…",
   attach: "Attach a screenshot or file",
+  attachMenu: {
+    title: DEFAULT_ATTACH_MENU_LABELS.title,
+    close: DEFAULT_ATTACH_MENU_LABELS.close,
+    sources: DEFAULT_ATTACH_MENU_LABELS.sources,
+  },
   queue: "Queue a message…",
   remove: (name) => `Remove ${name}`,
   dismiss: "Dismiss",
@@ -69,16 +76,15 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
 
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
 
-/** What the paperclip offers. `image/*` is what makes a phone offer the camera
- *  beside the gallery. */
-const ATTACH_ACCEPT = "image/*,text/*,.md,.txt,.json,.csv,.log";
-/** Recordings, by type and by the extensions a picker hands over typeless. */
-const AUDIO_ACCEPT = "audio/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.flac,.amr,.3gp";
-
 /** Overrides: every label is optional, including each dictation and attachment note. */
-export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes">> & {
+export type ComposerLabelOverrides = Partial<
+  Omit<ComposerLabels, "dictation" | "attachNotes" | "attachMenu">
+> & {
   dictation?: Partial<ComposerLabels["dictation"]>;
   attachNotes?: Partial<AttachmentNotes>;
+  attachMenu?: Partial<Omit<ComposerLabels["attachMenu"], "sources">> & {
+    sources?: Partial<ComposerLabels["attachMenu"]["sources"]>;
+  };
 };
 
 export type ComposerProps = {
@@ -237,6 +243,14 @@ export function Composer({
     ...labelOverrides,
     dictation: { ...DEFAULT_COMPOSER_LABELS.dictation, ...labelOverrides?.dictation },
     attachNotes: { ...DEFAULT_COMPOSER_LABELS.attachNotes, ...labelOverrides?.attachNotes },
+    attachMenu: {
+      ...DEFAULT_COMPOSER_LABELS.attachMenu,
+      ...labelOverrides?.attachMenu,
+      sources: {
+        ...DEFAULT_COMPOSER_LABELS.attachMenu.sources,
+        ...labelOverrides?.attachMenu?.sources,
+      },
+    },
   };
   const [ownText, setOwnText] = useState(defaultValue);
   const controlled = value !== undefined;
@@ -292,15 +306,14 @@ export function Composer({
     attachments.clear();
   };
 
-  const fileInput = useRef<HTMLInputElement>(null);
   const showModes = Boolean(modes && modes.length > 1);
 
-  // The paperclip takes recordings too, when there is somewhere to send them.
-  // A voice memo is not an attachment the model reads — it is words the person
-  // said, so it goes to the same server leg as the mic and lands in the box.
-  // Recordings are transcribed in the order picked; everything else is staged.
+  // The paperclip takes recordings too (through Files), when there is
+  // somewhere to send them. A voice memo is not an attachment the model reads —
+  // it is words the person said, so it goes to the same server leg as the mic
+  // and lands in the box. Recordings are transcribed in the order picked;
+  // everything else is staged.
   const takesAudio = voice !== false && dictation.canTranscribeFile;
-  const accept = takesAudio ? `${ATTACH_ACCEPT},${AUDIO_ACCEPT}` : ATTACH_ACCEPT;
   const onFiles = (files: FileList | null) => {
     if (!files) return;
     const all = Array.from(files);
@@ -412,29 +425,11 @@ export function Composer({
           <div className="ck-actions">
             <div className="ck-tools">
               {attachOn && (
-                <>
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    multiple
-                    hidden
-                    accept={accept}
-                    onChange={(e) => {
-                      onFiles(e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="ck-icon-btn"
-                    onClick={() => fileInput.current?.click()}
-                    disabled={disabled || attachments.full}
-                    aria-label={labels.attach}
-                    title={labels.attach}
-                  >
-                    <IconPaperclip />
-                  </button>
-                </>
+                <AttachMenu
+                  onFiles={onFiles}
+                  disabled={disabled || attachments.full}
+                  labels={{ attach: labels.attach, ...labels.attachMenu }}
+                />
               )}
               {voiceOn && (
                 <button

@@ -45,6 +45,7 @@ const check = (ok, what) => {
 };
 
 const browser = await chromium.launch({
+  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
   args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
 });
 try {
@@ -120,7 +121,7 @@ try {
       return c.toDataURL("image/png").split(",")[1];
     });
     const original = Buffer.from(png, "base64");
-    await box.locator('input[type="file"]').setInputFiles({
+    await box.locator('input[data-ck-source="photos"]').setInputFiles({
       name: "IMG_0001.PNG",
       mimeType: "image/png",
       buffer: original,
@@ -177,7 +178,7 @@ try {
     await page.goto(base);
     const box = page.locator("#empty");
     await box.locator(".ck-input").waitFor();
-    await box.locator('input[type="file"]').setInputFiles({
+    await box.locator('input[data-ck-source="files"]').setInputFiles({
       name: "Meine Aufnahme 12.m4a",
       mimeType: "application/octet-stream",
       buffer: Buffer.alloc(4096, 1),
@@ -195,6 +196,74 @@ try {
     check(
       (await box.locator(".ck-attach-item").count()) === 0,
       "memo: nothing is staged as an attachment",
+    );
+    await page.close();
+  }
+
+  // On a phone the paperclip opens Camera / Photos / Files — each a real
+  // input, each 44px+, and the sheet goes away with Escape or the scrim.
+  // A mouse skips the sheet: on a desktop all three are the same dialog.
+  {
+    const phone = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await phone.newPage();
+    await page.goto(base);
+    const box = page.locator("#empty");
+    await box.locator(".ck-input").waitFor();
+    await box.locator('button[aria-haspopup="dialog"]').click();
+    const sheet = box.locator(".ck-sheet");
+    check(await sheet.isVisible(), "attach sheet: the paperclip opens it on a phone");
+    const sources = await page.$$eval(".ck-sheet[open] .ck-attach-source", (els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return { src: e.dataset.ckSource, ok: r.width >= 44 && r.height >= 44 };
+      }),
+    );
+    check(
+      sources.map((s) => s.src).join(",") === "camera,photos,files" && sources.every((s) => s.ok),
+      `attach sheet: Camera, Photos, Files, each >= 44px (${JSON.stringify(sources)})`,
+    );
+    const chooser = page.waitForEvent("filechooser", { timeout: 3000 }).catch(() => null);
+    await sheet.locator('.ck-attach-source[data-ck-source="photos"]').click();
+    const fc = await chooser;
+    check(
+      fc !== null && (await fc.element().getAttribute("accept")) === "image/*",
+      "attach sheet: Photos opens an images-only picker",
+    );
+    check(!(await sheet.isVisible()), "attach sheet: closes once a source is chosen");
+    await box.locator('button[aria-haspopup="dialog"]').click();
+    await page.keyboard.press("Escape");
+    check(!(await sheet.isVisible()), "attach sheet: Escape closes it");
+    await box.locator('button[aria-haspopup="dialog"]').click();
+    await page.mouse.click(195, 100);
+    check(!(await sheet.isVisible()), "attach sheet: a tap on the scrim closes it");
+    // A file nobody can read inline gets a sentence, not a prompt full of bytes.
+    await box.locator('input[data-ck-source="files"]').setInputFiles({
+      name: "invoice.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.7 binary"),
+    });
+    check(
+      (await box.locator(".ck-attach-item").count()) === 0 &&
+        /invoice\.pdf/.test((await box.locator(".ck-note").textContent()) ?? ""),
+      "attach: a PDF is explained, not staged as text",
+    );
+    await phone.close();
+  }
+  {
+    const page = await browser.newPage();
+    await page.goto(base);
+    const box = page.locator("#empty");
+    await box.locator(".ck-input").waitFor();
+    const chooser = page.waitForEvent("filechooser", { timeout: 3000 }).catch(() => null);
+    await box.locator('button[aria-haspopup="dialog"]').click();
+    const fc = await chooser;
+    check(
+      fc !== null && (await page.locator(".ck-sheet[open]").count()) === 0,
+      "attach: with a mouse the paperclip opens the file dialog directly",
     );
     await page.close();
   }

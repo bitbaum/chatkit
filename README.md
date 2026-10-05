@@ -82,6 +82,22 @@ Android does with `.m4a`, by extension. Uploads are capped at
 over it, the person is told in words before any bytes move. Your server leg
 should compress and split long audio before Whisper; loki's does.
 
+### Camera, Photos, Files
+
+On a touch screen the paperclip opens a sheet with three choices — Camera,
+Photos, Files — each its own file input. One input with a mixed `accept`
+(`image/*,text/*,audio/*`) is what a phone answers with a chooser of capture
+apps (Camera, Camera, Recorder, "Photos & Videos"), where the screenshot you
+came to send is three levels down and the file browser is not offered at all.
+`ATTACH_SOURCE_INPUT` is the SSOT: Camera captures, Photos opens the system
+photo picker, Files has no `accept` and opens the real document browser.
+Because Files takes anything, `isTextFile` decides afterwards what can be read
+inline; a PDF gets a sentence, not a prompt full of bytes. With a mouse the
+paperclip opens the file dialog directly — on a desktop all three are the
+same dialog. A box that is not chatkit's composer renders `<AttachMenu
+onFiles={…} />` rather than a bare `<input type="file">`. Labels:
+`labels={{ attachMenu: { title, close, sources: { camera, photos, files } } }}`.
+
 ### Screenshots
 
 `attach` takes limits: `attach={{ maxImageEdge: 1024 }}` shrinks a picture in

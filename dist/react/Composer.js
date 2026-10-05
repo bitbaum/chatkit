@@ -7,7 +7,8 @@ import { DEFAULT_ATTACHMENT_NOTES, } from "../attachments.js";
 import { useDictation } from "./use-dictation.js";
 import { useAttachments } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
-import { IconArrowUp, IconCheck, IconFile, IconMic, IconPaperclip, IconSpinner, IconStop, IconX, } from "./icons.js";
+import { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
+import { IconArrowUp, IconCheck, IconFile, IconMic, IconSpinner, IconStop, IconX, } from "./icons.js";
 export const DEFAULT_COMPOSER_LABELS = {
     send: "Send",
     stop: "Stop generating",
@@ -18,17 +19,17 @@ export const DEFAULT_COMPOSER_LABELS = {
     listening: "Listening…",
     transcribing: "Transcribing…",
     attach: "Attach a screenshot or file",
+    attachMenu: {
+        title: DEFAULT_ATTACH_MENU_LABELS.title,
+        close: DEFAULT_ATTACH_MENU_LABELS.close,
+        sources: DEFAULT_ATTACH_MENU_LABELS.sources,
+    },
     queue: "Queue a message…",
     remove: (name) => `Remove ${name}`,
     dismiss: "Dismiss",
     dictation: DEFAULT_DICTATION_MESSAGES,
     attachNotes: DEFAULT_ATTACHMENT_NOTES,
 };
-/** What the paperclip offers. `image/*` is what makes a phone offer the camera
- *  beside the gallery. */
-const ATTACH_ACCEPT = "image/*,text/*,.md,.txt,.json,.csv,.log";
-/** Recordings, by type and by the extensions a picker hands over typeless. */
-const AUDIO_ACCEPT = "audio/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.flac,.amr,.3gp";
 function AttachmentStrip({ attachments, labels, }) {
     if (attachments.attachments.length === 0 && !attachments.note)
         return null;
@@ -61,6 +62,14 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
         ...labelOverrides,
         dictation: { ...DEFAULT_COMPOSER_LABELS.dictation, ...labelOverrides?.dictation },
         attachNotes: { ...DEFAULT_COMPOSER_LABELS.attachNotes, ...labelOverrides?.attachNotes },
+        attachMenu: {
+            ...DEFAULT_COMPOSER_LABELS.attachMenu,
+            ...labelOverrides?.attachMenu,
+            sources: {
+                ...DEFAULT_COMPOSER_LABELS.attachMenu.sources,
+                ...labelOverrides?.attachMenu?.sources,
+            },
+        },
     };
     const [ownText, setOwnText] = useState(defaultValue);
     const controlled = value !== undefined;
@@ -114,14 +123,13 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
             setText("");
         attachments.clear();
     };
-    const fileInput = useRef(null);
     const showModes = Boolean(modes && modes.length > 1);
-    // The paperclip takes recordings too, when there is somewhere to send them.
-    // A voice memo is not an attachment the model reads — it is words the person
-    // said, so it goes to the same server leg as the mic and lands in the box.
-    // Recordings are transcribed in the order picked; everything else is staged.
+    // The paperclip takes recordings too (through Files), when there is
+    // somewhere to send them. A voice memo is not an attachment the model reads —
+    // it is words the person said, so it goes to the same server leg as the mic
+    // and lands in the box. Recordings are transcribed in the order picked;
+    // everything else is staged.
     const takesAudio = voice !== false && dictation.canTranscribeFile;
-    const accept = takesAudio ? `${ATTACH_ACCEPT},${AUDIO_ACCEPT}` : ATTACH_ACCEPT;
     const onFiles = (files) => {
         if (!files)
             return;
@@ -152,9 +160,6 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
                                         e.preventDefault();
                                         void submit();
                                     }
-                                } }), attachOn && _jsx(AttachmentStrip, { attachments: attachments, labels: labels }), _jsxs("div", { className: "ck-actions", children: [_jsxs("div", { className: "ck-tools", children: [attachOn && (_jsxs(_Fragment, { children: [_jsx("input", { ref: fileInput, type: "file", multiple: true, hidden: true, accept: accept, onChange: (e) => {
-                                                            onFiles(e.target.files);
-                                                            e.target.value = "";
-                                                        } }), _jsx("button", { type: "button", className: "ck-icon-btn", onClick: () => fileInput.current?.click(), disabled: disabled || attachments.full, "aria-label": labels.attach, title: labels.attach, children: _jsx(IconPaperclip, {}) })] })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) })), tools, hint && _jsx("span", { className: "ck-hint", children: hint })] }), _jsxs("div", { className: "ck-submit", children: [trailing, sending && onStop ? (_jsxs(_Fragment, { children: [queue && canSend && (_jsx("button", { type: "button", className: "ck-send", onClick: () => void submit(), "aria-label": labels.send, title: labels.send, children: _jsx(IconArrowUp, {}) })), _jsx("button", { type: "button", className: "ck-send ck-send-stop", onClick: onStop, "aria-label": labels.stop, title: labels.stop, children: _jsx(IconStop, {}) })] })) : (!listening && (_jsx("button", { type: "button", className: "ck-send", disabled: !canSend, onClick: () => void submit(), "aria-label": labels.send, title: sendBlockedReason ?? labels.send, children: sending ? _jsx(IconSpinner, {}) : _jsx(IconArrowUp, {}) })))] })] }), footer] })] }), dictation.problem && (_jsxs("p", { className: "ck-problem", role: "status", children: [_jsx("span", { children: labels.dictation[dictation.problem] }), _jsx("button", { type: "button", className: "ck-problem-x", onClick: dictation.clearProblem, "aria-label": labels.dismiss, children: _jsx(IconX, {}) })] }))] }));
+                                } }), attachOn && _jsx(AttachmentStrip, { attachments: attachments, labels: labels }), _jsxs("div", { className: "ck-actions", children: [_jsxs("div", { className: "ck-tools", children: [attachOn && (_jsx(AttachMenu, { onFiles: onFiles, disabled: disabled || attachments.full, labels: { attach: labels.attach, ...labels.attachMenu } })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) })), tools, hint && _jsx("span", { className: "ck-hint", children: hint })] }), _jsxs("div", { className: "ck-submit", children: [trailing, sending && onStop ? (_jsxs(_Fragment, { children: [queue && canSend && (_jsx("button", { type: "button", className: "ck-send", onClick: () => void submit(), "aria-label": labels.send, title: labels.send, children: _jsx(IconArrowUp, {}) })), _jsx("button", { type: "button", className: "ck-send ck-send-stop", onClick: onStop, "aria-label": labels.stop, title: labels.stop, children: _jsx(IconStop, {}) })] })) : (!listening && (_jsx("button", { type: "button", className: "ck-send", disabled: !canSend, onClick: () => void submit(), "aria-label": labels.send, title: sendBlockedReason ?? labels.send, children: sending ? _jsx(IconSpinner, {}) : _jsx(IconArrowUp, {}) })))] })] }), footer] })] }), dictation.problem && (_jsxs("p", { className: "ck-problem", role: "status", children: [_jsx("span", { children: labels.dictation[dictation.problem] }), _jsx("button", { type: "button", className: "ck-problem-x", onClick: dictation.clearProblem, "aria-label": labels.dismiss, children: _jsx(IconX, {}) })] }))] }));
 }
 //# sourceMappingURL=Composer.js.map

@@ -8,6 +8,7 @@ import {
   dataUrlBytes,
   fitWithin,
   isImageMime,
+  isTextFile,
   stripDataUrlBase64,
   toWire,
   type Attachment,
@@ -164,6 +165,10 @@ export function useAttachments(
 
   const stageText = useCallback(
     (file: File) => {
+      if (!isTextFile(file.name, file.type)) {
+        setNote(say.current.wrongType(file.name));
+        return;
+      }
       if (file.size > maxTextChars) {
         setNote(say.current.textTooLarge(file.name, Math.round(maxTextChars / 1000)));
         return;
