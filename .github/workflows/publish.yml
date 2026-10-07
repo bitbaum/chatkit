@@ -17,6 +17,13 @@ name: Publish
 on:
   push:
     tags: ["v*"]
+    # A merged version bump releases itself — no tag for a human (or an agent
+    # whose proxy cannot push tags) to remember. Idempotent: the registry check
+    # below skips every merge that did not change the version.
+    branches: [main]
+  # The auto-merge sweep re-arms this after a GITHUB_TOKEN merge, which
+  # starts no push workflow on its own (rearm_workflows in auto-merge.yml).
+  workflow_dispatch: {}
 
 # Publishing is idempotent: the job first asks the registry whether
 # package.json's version already exists and skips (green) if it does. A
@@ -34,7 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.NPM_PUBLISHING == 'on'
     permissions:
-      contents: read
+      # write: tag the released commit v<version> when the release came from
+      # main rather than from a pushed tag.
+      contents: write
       # Required for npm provenance — proves on the registry that this tarball
       # was built by this workflow from this commit.
       id-token: write
@@ -80,7 +89,7 @@ jobs:
       # Refuse to publish a tag whose version does not match package.json,
       # rather than silently shipping the wrong number.
       - name: Check tag matches package version
-        if: steps.check.outputs.publish == 'true'
+        if: steps.check.outputs.publish == 'true' && github.ref_type == 'tag'
         run: |
           tag="${GITHUB_REF_NAME#v}"
           pkg=$(node -p "require('./package.json').version")
@@ -106,6 +115,20 @@ jobs:
             echo "✅ \`$NAME@$VERSION\` was published by a concurrent run — nothing to do." >> "$GITHUB_STEP_SUMMARY"
           else
             exit 1
+          fi
+
+      # A release from main gets its tag here, so every published version is
+      # still traceable to a commit by name.
+      - name: Tag the released commit
+        if: steps.check.outputs.publish == 'true' && github.ref_type != 'tag'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "→ v$VERSION already tagged."
+          else
+            git tag "v$VERSION" "$GITHUB_SHA"
+            git push origin "v$VERSION"
           fi
 
   # Present only so a tag before the bootstrap reads as a decision, not a

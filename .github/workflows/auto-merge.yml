@@ -47,7 +47,7 @@ jobs:
       # NOT fire after a merge made with GITHUB_TOKEN (ci.yml, publish.yml…).
       # A comma becomes one bogus token: every dispatch fails, nothing ships,
       # and the sweep still reports success.
-      rearm_workflows: "ci.yml"
+      rearm_workflows: "ci.yml publish.yml"
     secrets:
       # Org secret, every bitbaum repo. A dispatch made with a PAT emits
       # workflow_run, so after each merge the next PR's sweep fires at CI speed
