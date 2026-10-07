@@ -189,8 +189,9 @@ different chats. If your app needs something truly its own, it goes in a slot
 (`tools`, `header`, `footer`, `renderFooter`, `renderLink`) — ask for a new slot
 here rather than forking the component.
 
-Release: bump `version` in `package.json`, merge, then
-`git tag v<version> origin/main && git push origin v<version>`.
+Release: bump `version` in `package.json` and merge. The merge publishes it
+(`publish.yml` runs on main, skips a version already on npm, and tags the
+commit `v<version>`). No manual tag.
 
 ## Develop
 
