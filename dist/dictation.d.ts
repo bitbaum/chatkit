@@ -86,6 +86,27 @@ export declare function audioFileName(audio: {
     type?: string;
     name?: string;
 }): string;
+/**
+ * A server leg that refused, with the server's own words when it gave any.
+ *
+ * A failed transcription used to reach the person as one sentence whatever
+ * went wrong — and in OrangeCat as "check your connection", while the server
+ * had answered plainly that it was busy (2026-10-07). `reason` is what the
+ * server said, for the UI to show beside the generic line; a custom
+ * `transcribe` may throw one too.
+ */
+export declare class TranscriptionError extends Error {
+    readonly reason: string | null;
+    readonly status: number | null;
+    constructor(reason: string | null, status?: number | null);
+}
+/** The server's sentence from a failed transcription, if it sent one. Reads
+ *  the shapes servers actually answer with: `{ error }`, `{ message }`,
+ *  `{ error: { message } }`. Capped, because it is shown in a status line. */
+export declare function reasonFromBody(body: unknown): string | null;
+/** What a thrown transcription error says, for any thrower: ours, or an
+ *  app's `transcribe` that sets `reason` on whatever it throws. */
+export declare function reasonOf(error: unknown): string | null;
 /** The default words for each problem. Override per app (and per language). */
 export declare const DEFAULT_DICTATION_MESSAGES: Record<DictationProblem, string>;
 //# sourceMappingURL=dictation.d.ts.map

@@ -14,6 +14,9 @@ import {
   parseBlocks,
   parseInline,
   problemFor,
+  reasonFromBody,
+  reasonOf,
+  TranscriptionError,
   problemForRecording,
   safeHref,
   shouldClearDraft,
@@ -244,4 +247,24 @@ test("accept families: what kind of picker a phone is asked for", () => {
   // Every source the composer offers asks for one family at most.
   for (const s of Object.values(ATTACH_SOURCE_INPUT))
     assert.ok(acceptFamilies(s.accept ?? "").length <= 1);
+});
+
+test("a failed transcription keeps the server's reason", () => {
+  assert.equal(
+    reasonFromBody({ error: "Dictation is busy right now." }),
+    "Dictation is busy right now.",
+  );
+  assert.equal(reasonFromBody({ error: { message: "Quota" } }), "Quota");
+  assert.equal(reasonFromBody({ message: "Not configured" }), "Not configured");
+  assert.equal(reasonFromBody({ error: "  " }), null);
+  assert.equal(reasonFromBody(null), null);
+  assert.equal(reasonFromBody("<html>"), null);
+  assert.equal(reasonFromBody({ error: "x".repeat(500) }).length, 200, "capped for a status line");
+  assert.equal(reasonOf(new TranscriptionError("Busy", 429)), "Busy");
+  assert.equal(
+    reasonOf(new Error("transcription 502")),
+    null,
+    "a bare Error says nothing to the person",
+  );
+  assert.equal(reasonOf(Object.assign(new Error("x"), { reason: "App says so" })), "App says so");
 });

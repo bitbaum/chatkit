@@ -28,6 +28,13 @@ export type DictationController = {
     /** When the current take began (ms epoch), for the timer. */
     startedAt: number | null;
     problem: DictationProblem | null;
+    /** The server's own words for a failed transcription ("busy, try again in a
+     *  moment"), when it gave any. Shown beside the problem, never instead. */
+    problemDetail: string | null;
+    /** A take whose transcription failed is KEPT: `retry` sends it again, so
+     *  the person does not have to say it all a second time. */
+    canRetry: boolean;
+    retry: () => Promise<void>;
     clearProblem: () => void;
     start: () => void;
     /** End the take and deliver what was said. */

@@ -298,6 +298,51 @@ try {
     (await box.locator(".ck-input").inputValue()) === "hello from the mic",
     "mic: the spoken sentence lands in the input",
   );
+
+  // A failed transcription keeps the take: the server's reason is shown and
+  // "Try again" sends the same audio (OrangeCat, 2026-10-07: "check your
+  // connection" while the server had said it was busy, and the words gone).
+  const sizes = [];
+  await page.unroute("**/api/transcribe");
+  await page.route("**/api/transcribe", async (route) => {
+    sizes.push(route.request().postDataBuffer()?.length ?? 0);
+    if (sizes.length === 1) {
+      await route.fulfill({
+        status: 429,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Dictation is busy right now." }),
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ text: "second time lucky" }),
+    });
+  });
+  await box.locator(".ck-input").fill("");
+  await box.locator(".ck-mic").click();
+  await page.waitForTimeout(800);
+  await box.locator(".ck-voice-confirm").click();
+  const retry = box.locator(".ck-problem-retry");
+  await retry.waitFor({ timeout: 5000 }).catch(() => {});
+  check(
+    (await box.locator(".ck-problem-detail").textContent())?.includes("busy") === true,
+    "mic: a failed transcription shows the server's reason",
+  );
+  check(await retry.isVisible(), "mic: a failed take offers Try again");
+  await retry.click();
+  await page
+    .waitForFunction(() => document.querySelector("#empty .ck-input")?.value !== "", null, {
+      timeout: 5000,
+    })
+    .catch(() => {});
+  check(
+    (await box.locator(".ck-input").inputValue()) === "second time lucky" &&
+      sizes.length === 2 &&
+      sizes[0] === sizes[1],
+    `mic: Try again resends the same recording (${sizes.join(" / ")} bytes)`,
+  );
+  check((await box.locator(".ck-problem").count()) === 0, "mic: the problem clears once it lands");
   await context.close();
 } finally {
   await browser.close();

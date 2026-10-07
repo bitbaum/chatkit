@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, fallbackCanRescue, problemFor, problemForRecording, } from "../dictation.js";
+import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, fallbackCanRescue, problemFor, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
 function recogniser() {
     if (typeof window === "undefined")
         return undefined;
@@ -50,8 +50,10 @@ async function postAudio(url, audio, locale) {
     body.append("audio", new File([audio], name, { type: audio.type || "audio/webm" }));
     body.append("locale", locale);
     const res = await fetch(url, { method: "POST", body });
-    if (!res.ok)
-        throw new Error(`transcription ${res.status}`);
+    if (!res.ok) {
+        const said = reasonFromBody(await res.json().catch(() => null));
+        throw new TranscriptionError(said, res.status);
+    }
     const data = (await res.json().catch(() => ({})));
     return typeof data.text === "string" ? data.text.trim() : "";
 }
@@ -73,7 +75,26 @@ export function useDictation(opts) {
     const supported = useSyncExternalStore(noSubscribe, () => Boolean(recogniser()) || (hasServer && canRecord()), () => false);
     const [status, setStatus] = useState("idle");
     const [startedAt, setStartedAt] = useState(null);
-    const [problem, setProblem] = useState(null);
+    const [problem, setProblemState] = useState(null);
+    const [problemDetail, setProblemDetail] = useState(null);
+    // The last take the server failed on — kept so a retry costs a tap, not a
+    // repeat of everything that was said. Cleared by anything that moves on.
+    const failedTake = useRef(null);
+    const [canRetry, setCanRetry] = useState(false);
+    const setProblem = useCallback((next) => {
+        setProblemState(next);
+        setProblemDetail(null);
+        if (next === null || next !== "unavailable") {
+            failedTake.current = null;
+            setCanRetry(false);
+        }
+    }, []);
+    const failTake = useCallback((audio, error) => {
+        setProblemState("unavailable");
+        setProblemDetail(reasonOf(error));
+        failedTake.current = audio;
+        setCanRetry(true);
+    }, []);
     // Latest options in refs, assigned in an effect (never during render), so a
     // take that outlives a re-render calls the current callbacks.
     const optsRef = useRef(opts);
@@ -168,8 +189,8 @@ export function useDictation(opts) {
             try {
                 deliver(await transcribe(audio));
             }
-            catch {
-                setProblem("unavailable");
+            catch (e) {
+                failTake(audio, e);
             }
             finally {
                 setStatus("idle");
@@ -183,7 +204,7 @@ export function useDictation(opts) {
             if (recorderRef.current?.state === "recording")
                 recorderRef.current.stop();
         }, maxRecordingMs);
-    }, [deliver, maxRecordingMs, releaseMic, transcribe]);
+    }, [deliver, failTake, maxRecordingMs, releaseMic, setProblem, transcribe]);
     /** The browser leg, with the silent-recogniser watchdog. */
     const listen = useCallback((Ctor) => {
         setProblem(null);
@@ -347,13 +368,29 @@ export function useDictation(opts) {
         try {
             deliver(await transcribe(audio));
         }
-        catch {
-            setProblem("unavailable");
+        catch (e) {
+            failTake(audio, e);
         }
         finally {
             setStatus("idle");
         }
-    }, [deliver, hasServer, maxAudioFileBytes, transcribe]);
+    }, [deliver, failTake, hasServer, maxAudioFileBytes, setProblem, transcribe]);
+    const retry = useCallback(async () => {
+        const audio = failedTake.current;
+        if (!audio || status !== "idle")
+            return;
+        setProblem(null);
+        setStatus("transcribing");
+        try {
+            deliver(await transcribe(audio));
+        }
+        catch (e) {
+            failTake(audio, e);
+        }
+        finally {
+            setStatus("idle");
+        }
+    }, [deliver, failTake, setProblem, status, transcribe]);
     const toggle = useCallback(() => {
         // A press while the server is answering is ignored: a second take would
         // race the first one's words into the box.
@@ -383,6 +420,9 @@ export function useDictation(opts) {
         status,
         startedAt,
         problem,
+        problemDetail,
+        canRetry,
+        retry,
         clearProblem: () => setProblem(null),
         start,
         stop,

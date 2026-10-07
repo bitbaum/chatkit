@@ -20,6 +20,8 @@ export type ComposerLabels = {
     queue: string;
     remove: (name: string) => string;
     dismiss: string;
+    /** Re-send a take whose transcription failed (it is kept). */
+    retryTake: string;
     dictation: Record<DictationProblem, string>;
     /** Why a file did not attach. */
     attachNotes: AttachmentNotes;
