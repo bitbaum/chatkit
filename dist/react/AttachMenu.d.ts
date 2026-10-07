@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { type AttachSource } from "../attachments.js";
 export type AttachMenuLabels = {
     /** The paperclip's name. */
@@ -22,9 +23,15 @@ export declare const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels;
  * Every app that attaches anything gets this from the composer. An app with a
  * custom box renders `<AttachMenu>` itself rather than a bare file input.
  */
-export declare function AttachMenu({ onFiles, disabled, labels, }: {
+export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger, }: {
     onFiles: (files: FileList | null) => void;
     disabled?: boolean;
     labels?: AttachMenuLabels;
+    /** Which sources to offer, in order. An avatar or product-photo uploader
+     *  passes `["camera", "photos"]`; one source skips the sheet entirely. */
+    sources?: readonly AttachSource[];
+    /** The button's content. Defaults to a paperclip icon; an uploader passes
+     *  its own ("Add photo"). The button keeps chatkit's 44px target. */
+    trigger?: ReactNode;
 }): import("react").JSX.Element;
 //# sourceMappingURL=AttachMenu.d.ts.map

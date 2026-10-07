@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Composer, ChatThread, ChatStarters, Markdown } from "../dist/react/index.js";
+import { AttachMenu, ATTACH_SOURCE_INPUT, shrinkImage } from "../dist/react/attach.js";
 
 test("composer: textarea, send, and 16px guaranteed by the stylesheet", () => {
   const html = renderToStaticMarkup(h(Composer, { onSend: () => {}, placeholder: "Ask" }));
@@ -110,4 +111,16 @@ test("markdown never renders model text as HTML", () => {
   const html = renderToStaticMarkup(h(Markdown, { text: "<img src=x onerror=alert(1)> **ok**" }));
   assert.ok(!html.includes("<img"), "raw HTML must be escaped");
   assert.match(html, /&lt;img/);
+});
+
+test("attach entry: usable without the composer, sources can be narrowed", () => {
+  assert.equal(typeof shrinkImage, "function");
+  assert.ok(ATTACH_SOURCE_INPUT.files);
+  const html = renderToStaticMarkup(
+    h(AttachMenu, { onFiles: () => {}, sources: ["camera", "photos"], trigger: "Add photo" }),
+  );
+  assert.match(html, /data-ck-source="camera"/);
+  assert.match(html, /data-ck-source="photos"/);
+  assert.doesNotMatch(html, /data-ck-source="files"/, "an image uploader offers no Files");
+  assert.match(html, /class="ck-attach-trigger"[^>]*>Add photo</);
 });

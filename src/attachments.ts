@@ -135,6 +135,57 @@ export const ATTACH_SOURCE_INPUT: Record<
   files: {},
 };
 
+/** What kind of picker a file `accept` asks a phone for. */
+export type AcceptFamily = "image" | "audio" | "video" | "document";
+
+const FAMILY_BY_EXTENSION: Record<string, AcceptFamily> = {};
+for (const ext of [
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "heic",
+  "heif",
+  "avif",
+  "bmp",
+  "svg",
+  "tif",
+  "tiff",
+])
+  FAMILY_BY_EXTENSION[ext] = "image";
+for (const ext of ["mp3", "m4a", "wav", "ogg", "oga", "opus", "aac", "flac", "amr", "wma"])
+  FAMILY_BY_EXTENSION[ext] = "audio";
+for (const ext of ["mp4", "mov", "m4v", "mkv", "avi", "wmv"]) FAMILY_BY_EXTENSION[ext] = "video";
+// Containers that hold either sound or picture (.webm, .3gp) say nothing about
+// the picker on their own, so they are not counted for either family.
+const AMBIGUOUS_EXTENSIONS = new Set(["webm", "3gp", "3g2", "mpeg", "mpg"]);
+
+/**
+ * The families an `accept` value spans. More than one is the bug
+ * `ATTACH_SOURCE_INPUT` exists to prevent: a phone answers a mixed accept with
+ * a chooser of capture apps instead of the picker the person needed. Pure, so
+ * the fleet's file-input check (`chatkit-check-file-inputs`) and the tests
+ * share one definition.
+ */
+export function acceptFamilies(accept: string): AcceptFamily[] {
+  const found = new Set<AcceptFamily>();
+  for (const raw of accept.split(",")) {
+    const token = raw.trim().toLowerCase();
+    if (!token) continue;
+    if (token.startsWith(".")) {
+      const ext = token.slice(1);
+      if (AMBIGUOUS_EXTENSIONS.has(ext)) continue;
+      found.add(FAMILY_BY_EXTENSION[ext] ?? "document");
+      continue;
+    }
+    const major = token.split("/")[0];
+    if (major === "image" || major === "audio" || major === "video") found.add(major);
+    else found.add("document");
+  }
+  return [...found];
+}
+
 /** `data:image/png;base64,AAAA` → `AAAA`: FileReader hands back a data URL,
  *  the wire carries raw base64. */
 export function stripDataUrlBase64(dataUrl: string): string {

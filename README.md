@@ -15,11 +15,15 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add github:bitbaum/chatkit#v0.3.1
+pnpm add @bitbaum/chatkit@^0.4.0
 ```
 
-`dist/` is committed, so the install needs no build step and no `allowBuilds`
-entry. (npm publishing is set up once the package has its first release there.)
+**Install releases from npm, never a commit or a branch.** A semver range is
+what lets a fix reach every product: Renovate/Dependabot opens the bump PR in
+each app when a release ships. A pinned commit or tag silently freezes the app
+on whatever it pinned — heidi and substrata kept the broken Android paperclip
+for days after the fix merged, because one pinned `v0.2.0` and npm had only
+`0.2.1`.
 
 ## Use
 
@@ -97,6 +101,36 @@ paperclip opens the file dialog directly — on a desktop all three are the
 same dialog. A box that is not chatkit's composer renders `<AttachMenu
 onFiles={…} />` rather than a bare `<input type="file">`. Labels:
 `labels={{ attachMenu: { title, close, sources: { camera, photos, files } } }}`.
+
+### Picking files anywhere — `@bitbaum/chatkit/attach`
+
+An app with no chat still has uploaders (an avatar, product photos, a receipt).
+They need the same thing from a phone, so they use the same piece:
+
+```tsx
+import { AttachMenu, shrinkImage } from "@bitbaum/chatkit/attach";
+
+<AttachMenu
+  sources={["camera", "photos"]} // an image uploader offers no Files
+  trigger="Add photo"
+  onFiles={(files) => upload(files)}
+/>;
+```
+
+`sources` narrows the sheet (one source skips it). `shrinkImage(file, maxEdge,
+maxBytes)` is the in-browser downscale the composer uses. `acceptFamilies` and
+`ATTACH_SOURCE_INPUT` are the rule itself.
+
+### The check every app runs in CI
+
+```sh
+pnpm exec chatkit-check-file-inputs            # src app components
+```
+
+Fails on any file input whose literal `accept` mixes families (image + text,
+audio + text…) — the exact shape that hid screenshots on Android. One input per
+family, or `AttachMenu`. A real exception carries
+`// chatkit-allow-mixed-accept: <reason>` on the line or the line above.
 
 ### Screenshots
 
