@@ -309,6 +309,25 @@
   flex: 1;
   min-width: 0;
 }
+.ck-problem-detail {
+  color: var(--ck-muted);
+}
+.ck-problem-retry {
+  flex-shrink: 0;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ck-problem-retry:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .ck-problem-x {
   display: inline-flex;
   flex-shrink: 0;
