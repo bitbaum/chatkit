@@ -20,4 +20,7 @@ test("a mixed accept fails, naming the file, line and families", () => {
   assert.match(r.stderr, /Mixed\.tsx:1 .*image \+ document/);
   assert.match(r.stderr, /Mixed\.tsx:2 .*audio \+ document/);
   assert.match(r.stderr, /@bitbaum\/chatkit\/attach/);
+  // A trailing comment must not hide the input before it ("image/*" holds "/*").
+  assert.match(r.stderr, /Trailing\.tsx:1 /);
+  assert.match(r.stderr, /Trailing\.tsx:2 /);
 });

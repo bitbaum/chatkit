@@ -10,7 +10,7 @@
 // written its own input. The fix is one input per source (AttachMenu from
 // @bitbaum/chatkit/attach); this check keeps a new one from coming back.
 //
-// It reads literal accept values (accept="…", accept={"…"}, accept: "…",
+// Comments are skipped. It reads literal accept values (accept="…", accept={"…"}, accept: "…",
 // accept={`…`} without interpolation). A value built at runtime is not seen,
 // so build mixed lists nowhere. A line, or the line above it, carrying
 // `chatkit-allow-mixed-accept: <reason>` is skipped — say why.
@@ -40,8 +40,24 @@ for (const dir of dirs) {
   for (const file of walk(dir)) {
     scanned++;
     const lines = readFileSync(file, "utf8").split("\n");
+    let inBlockComment = false;
     lines.forEach((line, i) => {
-      for (const m of line.matchAll(ACCEPT)) {
+      // Comments describe inputs; they are not inputs. A note recording the
+      // old bug ("used to be accept=\"image/*,text/*\"") must not fail CI.
+      const trimmed = line.trim();
+      if (inBlockComment) {
+        if (trimmed.includes("*/")) inBlockComment = false;
+        return;
+      }
+      if (/^(\/\/|\*|\{\s*\/\*)/.test(trimmed)) return;
+      if (trimmed.startsWith("/*")) {
+        if (!trimmed.includes("*/")) inBlockComment = true;
+        return;
+      }
+      // "/*" opens a comment only after space, "{" or "(" — inside an accept
+      // value it follows a letter ("image/*") and must survive.
+      const code = line.replace(/(^|[\s{(])\/\*.*?\*\//g, "$1").replace(/(^|\s)\/\/.*$/, "$1");
+      for (const m of code.matchAll(ACCEPT)) {
         const value = m[1] ?? m[2] ?? m[3] ?? "";
         const families = acceptFamilies(value);
         if (families.length < 2) continue;
