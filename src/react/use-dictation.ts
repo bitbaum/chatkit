@@ -12,6 +12,9 @@ import {
   fallbackCanRescue,
   problemFor,
   problemForRecording,
+  reasonFromBody,
+  reasonOf,
+  TranscriptionError,
   type DictationPreference,
   type DictationProblem,
 } from "../dictation.js";
@@ -85,6 +88,13 @@ export type DictationController = {
   /** When the current take began (ms epoch), for the timer. */
   startedAt: number | null;
   problem: DictationProblem | null;
+  /** The server's own words for a failed transcription ("busy, try again in a
+   *  moment"), when it gave any. Shown beside the problem, never instead. */
+  problemDetail: string | null;
+  /** A take whose transcription failed is KEPT: `retry` sends it again, so
+   *  the person does not have to say it all a second time. */
+  canRetry: boolean;
+  retry: () => Promise<void>;
   clearProblem: () => void;
   start: () => void;
   /** End the take and deliver what was said. */
@@ -137,7 +147,10 @@ async function postAudio(url: string, audio: Blob, locale: string): Promise<stri
   body.append("audio", new File([audio], name, { type: audio.type || "audio/webm" }));
   body.append("locale", locale);
   const res = await fetch(url, { method: "POST", body });
-  if (!res.ok) throw new Error(`transcription ${res.status}`);
+  if (!res.ok) {
+    const said = reasonFromBody(await res.json().catch(() => null));
+    throw new TranscriptionError(said, res.status);
+  }
   const data = (await res.json().catch(() => ({}))) as { text?: unknown };
   return typeof data.text === "string" ? data.text.trim() : "";
 }
@@ -170,7 +183,26 @@ export function useDictation(opts: UseDictationOptions): DictationController {
 
   const [status, setStatus] = useState<DictationStatus>("idle");
   const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [problem, setProblem] = useState<DictationProblem | null>(null);
+  const [problem, setProblemState] = useState<DictationProblem | null>(null);
+  const [problemDetail, setProblemDetail] = useState<string | null>(null);
+  // The last take the server failed on — kept so a retry costs a tap, not a
+  // repeat of everything that was said. Cleared by anything that moves on.
+  const failedTake = useRef<Blob | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
+  const setProblem = useCallback((next: DictationProblem | null) => {
+    setProblemState(next);
+    setProblemDetail(null);
+    if (next === null || next !== "unavailable") {
+      failedTake.current = null;
+      setCanRetry(false);
+    }
+  }, []);
+  const failTake = useCallback((audio: Blob, error: unknown) => {
+    setProblemState("unavailable");
+    setProblemDetail(reasonOf(error));
+    failedTake.current = audio;
+    setCanRetry(true);
+  }, []);
 
   // Latest options in refs, assigned in an effect (never during render), so a
   // take that outlives a re-render calls the current callbacks.
@@ -268,8 +300,8 @@ export function useDictation(opts: UseDictationOptions): DictationController {
       setStatus("transcribing");
       try {
         deliver(await transcribe(audio));
-      } catch {
-        setProblem("unavailable");
+      } catch (e) {
+        failTake(audio, e);
       } finally {
         setStatus("idle");
       }
@@ -281,7 +313,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     capTimer.current = setTimeout(() => {
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     }, maxRecordingMs);
-  }, [deliver, maxRecordingMs, releaseMic, transcribe]);
+  }, [deliver, failTake, maxRecordingMs, releaseMic, setProblem, transcribe]);
 
   /** The browser leg, with the silent-recogniser watchdog. */
   const listen = useCallback(
@@ -435,14 +467,28 @@ export function useDictation(opts: UseDictationOptions): DictationController {
       setStatus("transcribing");
       try {
         deliver(await transcribe(audio));
-      } catch {
-        setProblem("unavailable");
+      } catch (e) {
+        failTake(audio, e);
       } finally {
         setStatus("idle");
       }
     },
-    [deliver, hasServer, maxAudioFileBytes, transcribe],
+    [deliver, failTake, hasServer, maxAudioFileBytes, setProblem, transcribe],
   );
+
+  const retry = useCallback(async () => {
+    const audio = failedTake.current;
+    if (!audio || status !== "idle") return;
+    setProblem(null);
+    setStatus("transcribing");
+    try {
+      deliver(await transcribe(audio));
+    } catch (e) {
+      failTake(audio, e);
+    } finally {
+      setStatus("idle");
+    }
+  }, [deliver, failTake, setProblem, status, transcribe]);
 
   const toggle = useCallback(() => {
     // A press while the server is answering is ignored: a second take would
@@ -473,6 +519,9 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     status,
     startedAt,
     problem,
+    problemDetail,
+    canRetry,
+    retry,
     clearProblem: () => setProblem(null),
     start,
     stop,

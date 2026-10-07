@@ -129,6 +129,50 @@ export function audioFileName(audio) {
                     : "webm";
     return `voice.${ext}`;
 }
+/**
+ * A server leg that refused, with the server's own words when it gave any.
+ *
+ * A failed transcription used to reach the person as one sentence whatever
+ * went wrong — and in OrangeCat as "check your connection", while the server
+ * had answered plainly that it was busy (2026-10-07). `reason` is what the
+ * server said, for the UI to show beside the generic line; a custom
+ * `transcribe` may throw one too.
+ */
+export class TranscriptionError extends Error {
+    reason;
+    status;
+    constructor(reason, status = null) {
+        super(reason ?? `transcription failed${status ? ` (${status})` : ""}`);
+        this.name = "TranscriptionError";
+        this.reason = reason;
+        this.status = status;
+    }
+}
+/** The server's sentence from a failed transcription, if it sent one. Reads
+ *  the shapes servers actually answer with: `{ error }`, `{ message }`,
+ *  `{ error: { message } }`. Capped, because it is shown in a status line. */
+export function reasonFromBody(body) {
+    if (!body || typeof body !== "object")
+        return null;
+    const b = body;
+    const pick = typeof b.error === "string"
+        ? b.error
+        : b.error &&
+            typeof b.error === "object" &&
+            typeof b.error.message === "string"
+            ? b.error.message
+            : typeof b.message === "string"
+                ? b.message
+                : null;
+    const t = pick?.trim();
+    return t ? t.slice(0, 200) : null;
+}
+/** What a thrown transcription error says, for any thrower: ours, or an
+ *  app's `transcribe` that sets `reason` on whatever it throws. */
+export function reasonOf(error) {
+    const r = error?.reason;
+    return typeof r === "string" && r.trim() ? r.trim().slice(0, 200) : null;
+}
 /** The default words for each problem. Override per app (and per language). */
 export const DEFAULT_DICTATION_MESSAGES = {
     mic: "The microphone is blocked. Allow it for this site and try again.",

@@ -152,6 +152,53 @@ export function audioFileName(audio: { type?: string; name?: string }): string {
   return `voice.${ext}`;
 }
 
+/**
+ * A server leg that refused, with the server's own words when it gave any.
+ *
+ * A failed transcription used to reach the person as one sentence whatever
+ * went wrong — and in OrangeCat as "check your connection", while the server
+ * had answered plainly that it was busy (2026-10-07). `reason` is what the
+ * server said, for the UI to show beside the generic line; a custom
+ * `transcribe` may throw one too.
+ */
+export class TranscriptionError extends Error {
+  readonly reason: string | null;
+  readonly status: number | null;
+  constructor(reason: string | null, status: number | null = null) {
+    super(reason ?? `transcription failed${status ? ` (${status})` : ""}`);
+    this.name = "TranscriptionError";
+    this.reason = reason;
+    this.status = status;
+  }
+}
+
+/** The server's sentence from a failed transcription, if it sent one. Reads
+ *  the shapes servers actually answer with: `{ error }`, `{ message }`,
+ *  `{ error: { message } }`. Capped, because it is shown in a status line. */
+export function reasonFromBody(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as { error?: unknown; message?: unknown };
+  const pick =
+    typeof b.error === "string"
+      ? b.error
+      : b.error &&
+          typeof b.error === "object" &&
+          typeof (b.error as { message?: unknown }).message === "string"
+        ? (b.error as { message: string }).message
+        : typeof b.message === "string"
+          ? b.message
+          : null;
+  const t = pick?.trim();
+  return t ? t.slice(0, 200) : null;
+}
+
+/** What a thrown transcription error says, for any thrower: ours, or an
+ *  app's `transcribe` that sets `reason` on whatever it throws. */
+export function reasonOf(error: unknown): string | null {
+  const r = (error as { reason?: unknown } | null)?.reason;
+  return typeof r === "string" && r.trim() ? r.trim().slice(0, 200) : null;
+}
+
 /** The default words for each problem. Override per app (and per language). */
 export const DEFAULT_DICTATION_MESSAGES: Record<DictationProblem, string> = {
   mic: "The microphone is blocked. Allow it for this site and try again.",

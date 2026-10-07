@@ -47,6 +47,8 @@ export type ComposerLabels = {
   queue: string;
   remove: (name: string) => string;
   dismiss: string;
+  /** Re-send a take whose transcription failed (it is kept). */
+  retryTake: string;
   dictation: Record<DictationProblem, string>;
   /** Why a file did not attach. */
   attachNotes: AttachmentNotes;
@@ -70,6 +72,7 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
   queue: "Queue a message…",
   remove: (name) => `Remove ${name}`,
   dismiss: "Dismiss",
+  retryTake: "Try again",
   dictation: DEFAULT_DICTATION_MESSAGES,
   attachNotes: DEFAULT_ATTACHMENT_NOTES,
 };
@@ -496,7 +499,22 @@ export function Composer({
       </div>
       {dictation.problem && (
         <p className="ck-problem" role="status">
-          <span>{labels.dictation[dictation.problem]}</span>
+          <span>
+            {labels.dictation[dictation.problem]}
+            {dictation.problemDetail && (
+              <span className="ck-problem-detail"> {dictation.problemDetail}</span>
+            )}
+          </span>
+          {dictation.canRetry && (
+            <button
+              type="button"
+              className="ck-problem-retry"
+              onClick={() => void dictation.retry()}
+              disabled={dictation.status !== "idle"}
+            >
+              {labels.retryTake}
+            </button>
+          )}
           <button
             type="button"
             className="ck-problem-x"
