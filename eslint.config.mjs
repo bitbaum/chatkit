@@ -19,8 +19,8 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
-    // Tests are plain Node running under `node --test`.
-    files: ["test/**/*.js", "test/**/*.mjs"],
+    // Tests and bin/ are plain Node (tests under `node --test`).
+    files: ["test/**/*.js", "test/**/*.mjs", "bin/**/*.mjs"],
     // browser.mjs is Node driving a browser: page.evaluate bodies run there.
     languageOptions: { globals: { ...globals.node, ...globals.nodeBuiltin, ...globals.browser } },
   },

@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { shrinkImage as shrink } from "../image.js";
 import {
   DEFAULT_ATTACHMENT_LIMITS,
   DEFAULT_ATTACHMENT_NOTES,
   attachmentKey,
-  dataUrlBytes,
-  fitWithin,
   isImageMime,
   isTextFile,
   stripDataUrlBase64,
@@ -16,37 +15,6 @@ import {
   type AttachmentNotes,
   type StagedAttachment,
 } from "../attachments.js";
-
-/**
- * Draw the image no larger than `maxEdge` and encode it as JPEG, stepping the
- * quality down until it fits `maxBytes`. Null when it cannot be made to fit,
- * or the browser cannot decode it (no `createImageBitmap`, no canvas).
- */
-async function shrink(file: File, maxEdge: number, maxBytes: number): Promise<string | null> {
-  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return null;
-  const bitmap = await createImageBitmap(file);
-  try {
-    const size = fitWithin(bitmap.width, bitmap.height, maxEdge);
-    const canvas = document.createElement("canvas");
-    canvas.width = size.width;
-    canvas.height = size.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    // JPEG has no alpha: paint white first so a transparent PNG does not turn black.
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, size.width, size.height);
-    ctx.drawImage(bitmap, 0, 0, size.width, size.height);
-    let quality = 0.82;
-    let dataUrl = canvas.toDataURL("image/jpeg", quality);
-    while (dataUrlBytes(dataUrl) > maxBytes && quality > 0.4) {
-      quality -= 0.15;
-      dataUrl = canvas.toDataURL("image/jpeg", quality);
-    }
-    return dataUrlBytes(dataUrl) > maxBytes ? null : dataUrl;
-  } finally {
-    bitmap.close();
-  }
-}
 
 export type AttachmentsController = {
   attachments: StagedAttachment[];

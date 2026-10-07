@@ -25,6 +25,7 @@ import {
   dataUrlBytes,
   isTextFile,
   ATTACH_SOURCE_INPUT,
+  acceptFamilies,
   DEFAULT_ATTACHMENT_NOTES,
   DEFAULT_ATTACHMENT_LIMITS,
   DEFAULT_DICTATION_MESSAGES,
@@ -234,6 +235,18 @@ test("attach: Files takes anything, so text is decided after the pick", () => {
   assert.equal(isTextFile("photo.heic", "image/heic"), false);
   assert.equal(isTextFile("archive.zip", ""), false);
   assert.match(DEFAULT_ATTACHMENT_NOTES.wrongType("invoice.pdf"), /image .*or a text file/);
+});
+
+test("accept families: what kind of picker a phone is asked for", () => {
+  assert.deepEqual(acceptFamilies("image/*"), ["image"]);
+  assert.deepEqual(acceptFamilies(".jpg, .PNG ,image/webp"), ["image"]);
+  assert.deepEqual(acceptFamilies("audio/*,.mp3,.m4a,.webm,.3gp"), ["audio"]);
+  assert.deepEqual(acceptFamilies(".txt,.md,.pdf,application/json"), ["document"]);
+  assert.deepEqual(acceptFamilies("image/*,text/*,.md").sort(), ["document", "image"]);
+  assert.deepEqual(acceptFamilies(""), []);
+  // Every source the composer offers asks for one family at most.
+  for (const s of Object.values(ATTACH_SOURCE_INPUT))
+    assert.ok(acceptFamilies(s.accept ?? "").length <= 1);
 });
 
 test("a failed transcription keeps the server's reason", () => {

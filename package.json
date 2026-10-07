@@ -1,6 +1,6 @@
 {
   "name": "@bitbaum/chatkit",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "One chat for every product: a composer with a microphone that always works, a thread that does not fight the reader, messages with copy and retry, and LLM markdown \u2014 the fleet's chat standard as a package.",
   "license": "MIT",
   "author": "Cato",
@@ -36,8 +36,12 @@
   },
   "files": [
     "dist",
+    "bin",
     "styles.css"
   ],
+  "bin": {
+    "chatkit-check-file-inputs": "./bin/chatkit-check-file-inputs.mjs"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -46,6 +50,10 @@
     "./react": {
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
+    },
+    "./attach": {
+      "types": "./dist/react/attach.d.ts",
+      "default": "./dist/react/attach.js"
     },
     "./styles.css": "./styles.css"
   },

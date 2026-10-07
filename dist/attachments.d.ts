@@ -88,6 +88,16 @@ export declare const ATTACH_SOURCE_INPUT: Record<AttachSource, {
     accept?: string;
     capture?: "environment";
 }>;
+/** What kind of picker a file `accept` asks a phone for. */
+export type AcceptFamily = "image" | "audio" | "video" | "document";
+/**
+ * The families an `accept` value spans. More than one is the bug
+ * `ATTACH_SOURCE_INPUT` exists to prevent: a phone answers a mixed accept with
+ * a chooser of capture apps instead of the picker the person needed. Pure, so
+ * the fleet's file-input check (`chatkit-check-file-inputs`) and the tests
+ * share one definition.
+ */
+export declare function acceptFamilies(accept: string): AcceptFamily[];
 /** `data:image/png;base64,AAAA` → `AAAA`: FileReader hands back a data URL,
  *  the wire carries raw base64. */
 export declare function stripDataUrlBase64(dataUrl: string): string;

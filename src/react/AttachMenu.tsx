@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { ATTACH_SOURCE_INPUT, type AttachSource } from "../attachments.js";
 import { IconCamera, IconFileUp, IconImage, IconPaperclip, IconX } from "./icons.js";
 
@@ -51,10 +51,18 @@ export function AttachMenu({
   onFiles,
   disabled = false,
   labels = DEFAULT_ATTACH_MENU_LABELS,
+  sources = SOURCES,
+  trigger,
 }: {
   onFiles: (files: FileList | null) => void;
   disabled?: boolean;
   labels?: AttachMenuLabels;
+  /** Which sources to offer, in order. An avatar or product-photo uploader
+   *  passes `["camera", "photos"]`; one source skips the sheet entirely. */
+  sources?: readonly AttachSource[];
+  /** The button's content. Defaults to a paperclip icon; an uploader passes
+   *  its own ("Add photo"). The button keeps chatkit's 44px target. */
+  trigger?: ReactNode;
 }) {
   const inputs = useRef<Partial<Record<AttachSource, HTMLInputElement | null>>>({});
   const dialog = useRef<HTMLDialogElement>(null);
@@ -66,13 +74,16 @@ export function AttachMenu({
   };
   const open = () => {
     const d = dialog.current;
-    if (prefersSheet() && d && typeof d.showModal === "function") d.showModal();
-    else pick("files");
+    if (sources.length > 1 && prefersSheet() && d && typeof d.showModal === "function")
+      d.showModal();
+    // A mouse gets the broadest picker offered: Files when it is one of the
+    // sources, else the last one (Photos, for an image uploader).
+    else pick(sources.includes("files") ? "files" : sources[sources.length - 1]!);
   };
 
   return (
     <>
-      {SOURCES.map((source) => (
+      {sources.map((source) => (
         <input
           key={source}
           ref={(el) => {
@@ -91,14 +102,14 @@ export function AttachMenu({
       ))}
       <button
         type="button"
-        className="ck-icon-btn"
+        className={trigger ? "ck-attach-trigger" : "ck-icon-btn"}
         onClick={open}
         disabled={disabled}
         aria-label={labels.attach}
         aria-haspopup="dialog"
         title={labels.attach}
       >
-        <IconPaperclip />
+        {trigger ?? <IconPaperclip />}
       </button>
       <dialog
         ref={dialog}
@@ -124,7 +135,7 @@ export function AttachMenu({
             </button>
           </div>
           <div className="ck-attach-sources">
-            {SOURCES.map((source) => {
+            {sources.map((source) => {
               const Icon = ICONS[source];
               return (
                 <button
