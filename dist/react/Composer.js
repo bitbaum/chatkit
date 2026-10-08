@@ -57,7 +57,7 @@ function Elapsed({ since }) {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sendBlockedReason = null, sending = false, onStop, attachmentOnlyText, queue = false, attach = false, voice = {}, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue = "", inputRef, density = "comfortable", above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }) {
+export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sendBlockedReason = null, sending = false, onStop, attachmentOnlyText, heldAttachments = 0, queue = false, attach = false, voice = {}, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue = "", inputRef, density = "comfortable", above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }) {
     const labels = {
         ...DEFAULT_COMPOSER_LABELS,
         ...labelOverrides,
@@ -100,7 +100,7 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
     const voiceOn = voice !== false && dictation.supported;
     const listening = dictation.status === "listening";
     const transcribing = dictation.status === "transcribing";
-    const attachCount = attachOn ? attachments.attachments.length : 0;
+    const attachCount = (attachOn ? attachments.attachments.length : 0) + Math.max(0, heldAttachments);
     const canSend = composerCanSend({
         text,
         attachmentCount: attachCount,

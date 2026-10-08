@@ -39,6 +39,21 @@ test("composer: the paperclip carries one input per source, not one mixed input"
   assert.match(html, /aria-haspopup="dialog"/);
 });
 
+test("composer: an attachment the APP holds can be sent with no words", () => {
+  const send = (props) =>
+    renderToStaticMarkup(h(Composer, { onSend: () => {}, placeholder: "Ask", ...props }));
+  const sendButton = (html) => /<button[^>]*aria-label="Send"[^>]*>/.exec(html)?.[0] ?? "";
+  // Nothing typed, nothing held: nothing to send.
+  assert.match(sendButton(send({ attachmentOnlyText: "See attached" })), /disabled/);
+  // The app holds one (a reference, a staged photo): it is a message.
+  assert.doesNotMatch(
+    sendButton(send({ attachmentOnlyText: "See attached", heldAttachments: 1 })),
+    /disabled/,
+  );
+  // Held, but the app never said what such a message means: still not one.
+  assert.match(sendButton(send({ heldAttachments: 1 })), /disabled/);
+});
+
 test("composer: labels are translatable (heidi is not in English)", () => {
   const html = renderToStaticMarkup(
     h(Composer, { onSend: () => {}, placeholder: "Frag", labels: { send: "Senden" } }),

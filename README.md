@@ -46,6 +46,8 @@ import "@bitbaum/chatkit/styles.css";
   voice={{ transcribeUrl: "/api/transcribe" }}
   attach                             // only if your API accepts attachments
   tools={<ModelPicker />}            // app-specific controls go in slots
+  heldAttachments={refs.length}      // attachments the APP keeps (shown in `header`)
+  attachmentOnlyText="See attached"  //   so a message of only those can still send
 />
 ```
 
