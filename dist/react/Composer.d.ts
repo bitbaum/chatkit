@@ -51,6 +51,13 @@ export type ComposerProps = {
     onStop?: () => void;
     /** What an attachments-only send says. Omit and empty text cannot send. */
     attachmentOnlyText?: string;
+    /** Attachments the APP holds rather than the composer — things chatkit has
+     *  no model for (orangecat's references to the person's own listings, a
+     *  photo already shrunk and staged by the app) and shows in `header`. They
+     *  count toward "may this send?" exactly like the composer's own, so a
+     *  message that is only such an attachment can be sent; without this the
+     *  send button stayed dead for it. Pair with `attachmentOnlyText`. */
+    heldAttachments?: number;
     /** The app takes a message while a turn runs and sends it when the turn
      *  ends. Then Send stays live beside Stop and the placeholder says the
      *  message will be queued — the next thought is typed while the last one is
@@ -96,5 +103,5 @@ export type ComposerProps = {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, queue, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
+export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
 //# sourceMappingURL=Composer.d.ts.map

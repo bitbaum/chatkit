@@ -1,6 +1,6 @@
 {
   "name": "@bitbaum/chatkit",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "One chat for every product: a composer with a microphone that always works, a thread that does not fight the reader, messages with copy and retry, and LLM markdown \u2014 the fleet's chat standard as a package.",
   "license": "MIT",
   "author": "Cato",
