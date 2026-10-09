@@ -19,7 +19,7 @@ const SEED: ChatMessageData[] = [
     role: "assistant",
     speaker: { name: "Loki", id: "loki" },
     content:
-      "If you want a portfolio site around it, I can build that too — see https://loki.orangecat.ch.",
+      'If you want a portfolio site around it, I can build that too — see https://loki.orangecat.ch.\n\n```quick_replies\n["Set up the pay link", "Build the site too", "What does it cost?"]\n```',
   },
 ];
 
@@ -55,6 +55,7 @@ function Demo({ empty, failed }: { empty?: boolean; failed?: boolean }) {
         live={sending ? { status: "Reading the catalogue" } : null}
         onStop={() => setSending(false)}
         onRetry={() => {}}
+        onReply={send}
         empty={
           <ChatStarters
             title="Ask about any project — the Cat and Loki are both in here."

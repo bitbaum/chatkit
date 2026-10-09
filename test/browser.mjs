@@ -68,15 +68,20 @@ try {
         input: Math.min(...px(".ck-input")),
         text: Math.min(...px(".ck-md, .ck-bubble")),
         composers: document.querySelectorAll(".ck-composer").length,
+        replies: document.querySelectorAll(".ck-reply").length,
+        rawReplies: document.body.innerText.includes("quick_replies"),
         mics: document.querySelectorAll(".ck-composer .ck-mic").length,
         small: [
-          ...document.querySelectorAll(".ck-icon-btn, .ck-send, .ck-starter, .ck-voice-confirm"),
+          ...document.querySelectorAll(
+            ".ck-icon-btn, .ck-send, .ck-starter, .ck-reply, .ck-voice-confirm",
+          ),
         ]
           .map((e) => e.getBoundingClientRect())
           .filter((r) => r.width > 0 && (r.width < 44 || r.height < 44)).length,
       };
     });
     check(m.overflow <= 0, `${name}: no horizontal scroll (${m.overflow}px over)`);
+    check(m.replies === 3 && !m.rawReplies, `${name}: suggested replies as buttons (${m.replies})`);
     check(m.input >= 16, `${name}: input text >= 16px (${m.input}px)`);
     check(m.text >= 16, `${name}: message text >= 16px (${m.text}px)`);
     check(

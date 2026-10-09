@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Markdown, defaultRenderLink, type CitationMap, type RenderLink } from "./Markdown.js";
 import { useClipboard, useStickToBottom } from "./hooks.js";
+import { extractReplies } from "../replies.js";
 import { IconArrowDown, IconCheck, IconCopy, IconRetry, IconStop } from "./icons.js";
 
 export type ChatSpeaker = {
@@ -20,6 +21,12 @@ export type ChatMessageData = {
   citations?: CitationMap;
   /** The turn failed: shown as a failure with Retry, never as silence. */
   failed?: boolean;
+  /**
+   * What the person is likely to say next, as one-tap buttons under the
+   * latest answer. Leave it out and a `quick_replies` block in `content` is
+   * used instead (see `REPLIES_INSTRUCTION`).
+   */
+  replies?: readonly string[];
 };
 
 export type ThreadLabels = {
@@ -32,6 +39,7 @@ export type ThreadLabels = {
   jump: string;
   failed: string;
   loading: string;
+  replies: string;
 };
 
 export const DEFAULT_THREAD_LABELS: ThreadLabels = {
@@ -44,6 +52,7 @@ export const DEFAULT_THREAD_LABELS: ThreadLabels = {
   jump: "Jump to the latest message",
   failed: "That did not go through.",
   loading: "Loading conversation",
+  replies: "Suggested replies",
 };
 
 /**
@@ -59,9 +68,12 @@ export function ChatMessage({
   showSpeaker = true,
   footer,
   last = false,
+  onReply,
   labels = DEFAULT_THREAD_LABELS,
 }: {
   message: ChatMessageData;
+  /** Send a suggested reply. Without it no reply buttons are shown. */
+  onReply?: (text: string) => void;
   /** The latest answer: its actions stay visible (they are what you want next). */
   last?: boolean;
   onRetry?: () => void;
@@ -82,6 +94,8 @@ export function ChatMessage({
     );
   }
 
+  const parsed = extractReplies(message.content);
+  const replies = message.replies ?? parsed.replies;
   const cls = ["ck-turn", "ck-turn-answer"];
   if (message.speaker?.id) cls.push(`ck-from-${message.speaker.id}`);
   // A failed turn and the latest answer never hide their buttons: Retry after
@@ -96,7 +110,7 @@ export function ChatMessage({
           {message.content || labels.failed}
         </p>
       ) : (
-        <Markdown text={message.content} citations={message.citations} renderLink={renderLink} />
+        <Markdown text={parsed.text} citations={message.citations} renderLink={renderLink} />
       )}
       {footer}
       <div className="ck-turn-actions">
@@ -104,7 +118,7 @@ export function ChatMessage({
           <button
             type="button"
             className="ck-action"
-            onClick={() => copy(message.content)}
+            onClick={() => copy(parsed.text)}
             aria-label={copied ? labels.copied : labels.copy}
           >
             {copied ? <IconCheck /> : <IconCopy />}
@@ -118,6 +132,42 @@ export function ChatMessage({
           </button>
         )}
       </div>
+      {last && onReply && !message.failed && replies.length > 0 && (
+        <ChatReplies replies={replies} onPick={onReply} label={labels.replies} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The replies under an answer. Exported for apps that render their own
+ * thread, so the buttons look and behave the same in every product.
+ */
+export function ChatReplies({
+  replies,
+  onPick,
+  label = DEFAULT_THREAD_LABELS.replies,
+  disabled = false,
+}: {
+  replies: readonly string[];
+  onPick: (text: string) => void;
+  label?: string;
+  disabled?: boolean;
+}) {
+  if (replies.length === 0) return null;
+  return (
+    <div className="ck-replies" role="group" aria-label={label}>
+      {replies.map((r) => (
+        <button
+          key={r}
+          type="button"
+          className="ck-reply"
+          disabled={disabled}
+          onClick={() => onPick(r)}
+        >
+          {r}
+        </button>
+      ))}
     </div>
   );
 }
@@ -142,6 +192,7 @@ export function ChatThread({
   stopped = false,
   onStop,
   onRetry,
+  onReply,
   renderLink = defaultRenderLink,
   renderFooter,
   showSpeakers,
@@ -157,6 +208,12 @@ export function ChatThread({
   onStop?: () => void;
   /** Retry the last answer (offered on it, and on a failed one). */
   onRetry?: () => void;
+  /**
+   * Send a suggested reply — usually the same function the Composer's
+   * `onSend` calls. Buttons appear under the latest answer only, and never
+   * while a turn is in flight.
+   */
+  onReply?: (text: string) => void;
   renderLink?: RenderLink;
   /** App-specific content under an answer (sources, an action card). */
   renderFooter?: (m: ChatMessageData) => ReactNode;
@@ -202,6 +259,7 @@ export function ChatThread({
               showSpeaker={named}
               footer={renderFooter?.(m)}
               last={m.id === lastAnswer?.id}
+              onReply={live || stopped ? undefined : onReply}
               labels={labels}
             />
           ))}
@@ -209,7 +267,7 @@ export function ChatThread({
             <div className="ck-turn ck-turn-answer">
               {named && live.speaker && <span className="ck-speaker">{live.speaker.name}</span>}
               {live.text ? (
-                <Markdown text={live.text} renderLink={renderLink} />
+                <Markdown text={extractReplies(live.text).text} renderLink={renderLink} />
               ) : (
                 <p className="ck-live" role="status" aria-live="polite">
                   <span className="ck-dots" aria-hidden>

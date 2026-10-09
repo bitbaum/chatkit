@@ -47,14 +47,16 @@
 
 .ck-composer-wrap,
 .ck-thread-wrap,
-.ck-starters {
+.ck-starters,
+.ck-replies {
   font-family: var(--ck-font);
   color: var(--ck-fg);
 }
 
 .ck-composer-wrap *,
 .ck-thread-wrap *,
-.ck-starters * {
+.ck-starters *,
+.ck-replies * {
   box-sizing: border-box;
 }
 
@@ -195,7 +197,7 @@
   color: var(--ck-fg);
   border: 1px solid var(--ck-line-2);
 }
-:where(.ck-composer-wrap, .ck-thread-wrap, .ck-starters) button:focus-visible,
+:where(.ck-composer-wrap, .ck-thread-wrap, .ck-starters, .ck-replies) button:focus-visible,
 .ck-input:focus-visible {
   outline: 2px solid var(--ck-accent);
   outline-offset: 2px;
@@ -668,6 +670,38 @@
 .ck-starter:hover {
   border-color: var(--ck-accent);
   color: var(--ck-fg);
+}
+
+/* suggested replies — under the latest answer, one tap sends */
+.ck-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-top: 0.75rem;
+}
+.ck-reply {
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  max-width: 100%;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.ck-reply:hover {
+  border-color: var(--ck-accent);
+}
+.ck-reply:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .ck-spin {
