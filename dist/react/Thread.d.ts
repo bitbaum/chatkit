@@ -14,6 +14,12 @@ export type ChatMessageData = {
     citations?: CitationMap;
     /** The turn failed: shown as a failure with Retry, never as silence. */
     failed?: boolean;
+    /**
+     * What the person is likely to say next, as one-tap buttons under the
+     * latest answer. Leave it out and a `quick_replies` block in `content` is
+     * used instead (see `REPLIES_INSTRUCTION`).
+     */
+    replies?: readonly string[];
 };
 export type ThreadLabels = {
     copy: string;
@@ -25,6 +31,7 @@ export type ThreadLabels = {
     jump: string;
     failed: string;
     loading: string;
+    replies: string;
 };
 export declare const DEFAULT_THREAD_LABELS: ThreadLabels;
 /**
@@ -33,8 +40,10 @@ export declare const DEFAULT_THREAD_LABELS: ThreadLabels;
  * no box, because it is the thing being READ. Copy is on every answer; Retry
  * only on the last one (retrying an older turn would fork the thread).
  */
-export declare function ChatMessage({ message, onRetry, renderLink, showSpeaker, footer, last, labels, }: {
+export declare function ChatMessage({ message, onRetry, renderLink, showSpeaker, footer, last, onReply, labels, }: {
     message: ChatMessageData;
+    /** Send a suggested reply. Without it no reply buttons are shown. */
+    onReply?: (text: string) => void;
     /** The latest answer: its actions stay visible (they are what you want next). */
     last?: boolean;
     onRetry?: () => void;
@@ -45,6 +54,16 @@ export declare function ChatMessage({ message, onRetry, renderLink, showSpeaker,
     footer?: ReactNode;
     labels?: ThreadLabels;
 }): import("react").JSX.Element;
+/**
+ * The replies under an answer. Exported for apps that render their own
+ * thread, so the buttons look and behave the same in every product.
+ */
+export declare function ChatReplies({ replies, onPick, label, disabled, }: {
+    replies: readonly string[];
+    onPick: (text: string) => void;
+    label?: string;
+    disabled?: boolean;
+}): import("react").JSX.Element | null;
 export type LiveTurn = {
     /** What has streamed in so far. */
     text?: string;
@@ -57,7 +76,7 @@ export type LiveTurn = {
  * bottom, with a button back down once they are not; a turn in flight can be
  * stopped from where it is being written.
  */
-export declare function ChatThread({ messages, live, loading, stopped, onStop, onRetry, renderLink, renderFooter, showSpeakers, empty, children, labels: labelOverrides, }: {
+export declare function ChatThread({ messages, live, loading, stopped, onStop, onRetry, onReply, renderLink, renderFooter, showSpeakers, empty, children, labels: labelOverrides, }: {
     messages: ChatMessageData[];
     live?: LiveTurn | null;
     loading?: boolean;
@@ -66,6 +85,12 @@ export declare function ChatThread({ messages, live, loading, stopped, onStop, o
     onStop?: () => void;
     /** Retry the last answer (offered on it, and on a failed one). */
     onRetry?: () => void;
+    /**
+     * Send a suggested reply — usually the same function the Composer's
+     * `onSend` calls. Buttons appear under the latest answer only, and never
+     * while a turn is in flight.
+     */
+    onReply?: (text: string) => void;
     renderLink?: RenderLink;
     /** App-specific content under an answer (sources, an action card). */
     renderFooter?: (m: ChatMessageData) => ReactNode;

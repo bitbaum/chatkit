@@ -8,7 +8,7 @@
  * app's tokens through `--ck-*` variables (see styles.css).
  */
 export { Composer, DEFAULT_COMPOSER_LABELS } from "./Composer.js";
-export { ChatThread, ChatMessage, ChatStarters, DEFAULT_THREAD_LABELS } from "./Thread.js";
+export { ChatThread, ChatMessage, ChatReplies, ChatStarters, DEFAULT_THREAD_LABELS, } from "./Thread.js";
 export { Markdown, defaultRenderLink } from "./Markdown.js";
 export { useDictation } from "./use-dictation.js";
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";

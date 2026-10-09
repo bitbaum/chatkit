@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add @bitbaum/chatkit@^0.4.0
+pnpm add @bitbaum/chatkit@^0.6.0
 ```
 
 **Install releases from npm, never a commit or a branch.** A semver range is
@@ -67,6 +67,28 @@ press records immediately. Every failure is shown in words (blocked mic,
 nothing heard, not available), never as a button that does nothing.
 `prefer: "server"` skips the browser leg (one model everywhere, language
 detected by the model). `rememberKey: null` stores nothing on the device.
+
+### Suggested replies
+
+The two to four things the person is likely to say next, as buttons under the
+latest answer — one tap sends it. The model writes them in the same turn, so
+there is no second call and no wait:
+
+```ts
+import { REPLIES_INSTRUCTION } from "@bitbaum/chatkit";
+const system = `${yourPrompt}\n\n${REPLIES_INSTRUCTION}`; // server side
+```
+
+```tsx
+<ChatThread messages={messages} onReply={send} … />
+```
+
+That is the whole integration. `ChatThread` takes the `quick_replies` block out
+of every answer (and out of a streaming one before it has finished, so nobody
+watches JSON appear), and shows the buttons under the latest answer only, never
+while a turn runs. Pass `replies` on a message to supply your own instead.
+An app with its own thread uses `extractReplies(text)` and `<ChatReplies>`, so
+the buttons look and behave the same everywhere.
 
 ### The next message while a turn runs
 
@@ -174,8 +196,8 @@ on `Composer`, `labels` on `ChatThread`.
    jump-down button otherwise.
 7. Markdown rendered, never as HTML; `javascript:` links stay text; Copy on
    every answer.
-8. Starters in the empty state; the speaker's name on every answer once more
-   than one agent speaks.
+8. Starters in the empty state; suggested replies under the latest answer;
+   the speaker's name on every answer once more than one agent speaks.
 9. Nothing overflows at 320–390px.
 
 `pnpm run verify` proves all of it: unit and render tests, then
