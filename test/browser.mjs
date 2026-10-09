@@ -93,6 +93,27 @@ try {
     await page.close();
   }
 
+  // An empty box is one line, whatever width it was measured at. Chromium
+  // counts the placeholder in scrollHeight, so a composer cleared while it was
+  // narrow (a sheet still opening) used to lock at its maximum height with
+  // nothing typed — and stayed there once the layout settled.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(base);
+    const box = page.locator(".ck-composer").first();
+    const input = box.locator(".ck-input");
+    await input.waitFor();
+    const one = await input.evaluate((e) => e.getBoundingClientRect().height);
+    await box.evaluate((e) => (e.style.width = "60px"));
+    await input.fill("x");
+    await input.fill("");
+    await box.evaluate((e) => (e.style.width = ""));
+    await page.waitForTimeout(100);
+    const after = await input.evaluate((e) => e.getBoundingClientRect().height);
+    check(after <= one + 1, `an emptied composer is one line again (${after}px, was ${one}px)`);
+    await page.close();
+  }
+
   // An app's own variables win: a --ck-* set on :root must reach the chat
   // (the defaults are declared at zero specificity for exactly this).
   {

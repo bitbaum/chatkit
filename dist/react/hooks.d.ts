@@ -35,6 +35,13 @@ export declare function useStickToBottom(changes: DependencyList, grew: number):
  */
 export declare function useViewportHeight(target?: RefObject<HTMLElement | null>): void;
 /** Grow a textarea to its content up to `max` px, keyed on the VALUE so a
- *  prefill, a dictated transcript or the clear after send resize it too. */
+ *  prefill, a dictated transcript or the clear after send resize it too.
+ *
+ *  An EMPTY box is always one line. Chromium counts the placeholder in
+ *  `scrollHeight`, so a box measured while it was narrow — mid-transition,
+ *  inside a sheet still opening — read its wrapped placeholder as content and
+ *  locked at `max` with nothing typed: half a phone screen of blank composer
+ *  (Loki, 2026-10-09). And the box re-measures when its WIDTH changes, since a
+ *  width measured once is wrong after the layout settles or the phone turns. */
 export declare function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, value: string, max?: number): void;
 //# sourceMappingURL=hooks.d.ts.map

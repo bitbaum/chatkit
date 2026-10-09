@@ -86,14 +86,38 @@ export function useViewportHeight(target) {
     }, [target]);
 }
 /** Grow a textarea to its content up to `max` px, keyed on the VALUE so a
- *  prefill, a dictated transcript or the clear after send resize it too. */
+ *  prefill, a dictated transcript or the clear after send resize it too.
+ *
+ *  An EMPTY box is always one line. Chromium counts the placeholder in
+ *  `scrollHeight`, so a box measured while it was narrow — mid-transition,
+ *  inside a sheet still opening — read its wrapped placeholder as content and
+ *  locked at `max` with nothing typed: half a phone screen of blank composer
+ *  (Loki, 2026-10-09). And the box re-measures when its WIDTH changes, since a
+ *  width measured once is wrong after the layout settles or the phone turns. */
 export function useAutoGrow(ref, value, max = 240) {
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el)
             return;
-        el.style.height = "auto";
-        el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+        const fit = () => {
+            el.style.height = "auto";
+            if (!el.value)
+                return;
+            el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+        };
+        fit();
+        if (typeof ResizeObserver === "undefined")
+            return;
+        // Width only: fit() changes the height, and reacting to that would loop.
+        let width = el.clientWidth;
+        const observer = new ResizeObserver(() => {
+            if (el.clientWidth === width)
+                return;
+            width = el.clientWidth;
+            fit();
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
     }, [ref, value, max]);
 }
 //# sourceMappingURL=hooks.js.map
