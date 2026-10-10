@@ -38,6 +38,14 @@ export declare function problemFor(error: string | undefined): DictationProblem 
 /** getUserMedia / MediaRecorder failures → the same three words, so the UI
  *  never grows a second vocabulary for the same situations. */
 export declare function problemForRecording(error: unknown): DictationProblem;
+/**
+ * The words on screen while a take is live: everything the recogniser has
+ * settled on, then what it is still guessing at — one line, read as it is
+ * spoken. A preview only: when the server leg transcribes, ITS words are
+ * what lands in the box; these are what the person watches meanwhile, so a
+ * take is never a timer and a wave with nothing to show for twenty seconds.
+ */
+export declare function liveWords(finals: readonly string[], interim: string): string;
 /** A working recogniser fires `start` well inside this once the mic is allowed. */
 export declare const START_TIMEOUT_MS = 4000;
 /**

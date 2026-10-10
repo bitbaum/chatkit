@@ -196,6 +196,25 @@ function AttachmentStrip({
   );
 }
 
+/**
+ * The words as they are heard, one line, always showing its end: the
+ * newest words are what the person is checking. Scrolled by hand rather
+ * than laid out right-to-left, so punctuation stays where the language
+ * puts it.
+ */
+function LiveWords({ text, dim }: { text: string; dim?: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [text]);
+  return (
+    <span ref={ref} className={dim ? "ck-voice-live ck-voice-live-dim" : "ck-voice-live"}>
+      {text}
+    </span>
+  );
+}
+
 function Elapsed({ since }: { since: number | null }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -348,11 +367,15 @@ export function Composer({
             {listening ? (
               <>
                 <span className="ck-voice-dot" aria-hidden />
-                <span className="ck-voice-wave" aria-hidden>
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <span key={i} />
-                  ))}
-                </span>
+                {dictation.liveText ? (
+                  <LiveWords text={dictation.liveText} />
+                ) : (
+                  <span className="ck-voice-wave" aria-hidden>
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <span key={i} />
+                    ))}
+                  </span>
+                )}
                 <Elapsed since={dictation.startedAt} />
                 <button
                   type="button"
@@ -376,7 +399,11 @@ export function Composer({
             ) : (
               <>
                 <IconSpinner />
-                <span className="ck-voice-timer">{labels.transcribing}</span>
+                {dictation.liveText ? (
+                  <LiveWords text={dictation.liveText} dim />
+                ) : (
+                  <span className="ck-voice-timer">{labels.transcribing}</span>
+                )}
               </>
             )}
           </div>

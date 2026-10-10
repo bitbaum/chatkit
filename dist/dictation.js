@@ -52,6 +52,19 @@ export function problemForRecording(error) {
         return "mic";
     return "unavailable";
 }
+/**
+ * The words on screen while a take is live: everything the recogniser has
+ * settled on, then what it is still guessing at — one line, read as it is
+ * spoken. A preview only: when the server leg transcribes, ITS words are
+ * what lands in the box; these are what the person watches meanwhile, so a
+ * take is never a timer and a wave with nothing to show for twenty seconds.
+ */
+export function liveWords(finals, interim) {
+    return [...finals, interim]
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(" ");
+}
 /** A working recogniser fires `start` well inside this once the mic is allowed. */
 export const START_TIMEOUT_MS = 4000;
 /**
