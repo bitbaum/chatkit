@@ -9,6 +9,7 @@ import {
   deadRecogniserStillTrusted,
   fallbackCanRescue,
   formatElapsed,
+  liveWords,
   isFollowing,
   mayKeepWaitingForPermission,
   parseBlocks,
@@ -70,6 +71,17 @@ test("dictated words join the draft with one space", () => {
   assert.equal(appendTranscript("keep", "  "), "keep");
   assert.equal(formatElapsed(75.9), "1:15");
   assert.equal(formatElapsed(-3), "0:00");
+});
+
+test("mic: live words are the settled ones then the guess, trimmed, never a stray space", () => {
+  assert.equal(liveWords([], ""), "");
+  assert.equal(liveWords([], " hello "), "hello");
+  assert.equal(
+    liveWords(["hello there", " how are"], "you doing"),
+    "hello there how are you doing",
+  );
+  assert.equal(liveWords(["done."], ""), "done.");
+  assert.equal(liveWords(["", "  "], "  "), "");
 });
 
 test("mic: only 'unavailable' is rescued by recording; mic and silence are real answers", () => {

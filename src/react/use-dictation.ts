@@ -10,6 +10,7 @@ import {
   audioFileName,
   deadRecogniserStillTrusted,
   fallbackCanRescue,
+  liveWords,
   problemFor,
   problemForRecording,
   reasonFromBody,
@@ -87,6 +88,13 @@ export type DictationController = {
   status: DictationStatus;
   /** When the current take began (ms epoch), for the timer. */
   startedAt: number | null;
+  /**
+   * What has been heard so far, while the take is live — the browser
+   * recogniser's running transcript, finals then the current guess. Empty
+   * when nothing has been heard yet or no recogniser runs here. A preview:
+   * on the server leg the server's words are what is delivered.
+   */
+  liveText: string;
   problem: DictationProblem | null;
   /** The server's own words for a failed transcription ("busy, try again in a
    *  moment"), when it gave any. Shown beside the problem, never instead. */
@@ -183,6 +191,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
 
   const [status, setStatus] = useState<DictationStatus>("idle");
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [liveText, setLiveText] = useState("");
   const [problem, setProblemState] = useState<DictationProblem | null>(null);
   const [problemDetail, setProblemDetail] = useState<string | null>(null);
   // The last take the server failed on — kept so a retry costs a tap, not a
@@ -212,6 +221,8 @@ export function useDictation(opts: UseDictationOptions): DictationController {
   });
 
   const recRef = useRef<RecognitionLike | null>(null);
+  /** The recogniser that only PREVIEWS while the server leg records. */
+  const previewRef = useRef<RecognitionLike | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cancelledRef = useRef(false);
@@ -225,14 +236,71 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     return l || (typeof navigator !== "undefined" ? navigator.language : "en") || "en";
   }, []);
 
+  const stopPreview = useCallback(() => {
+    const p = previewRef.current;
+    previewRef.current = null;
+    try {
+      p?.abort();
+    } catch {
+      /* already gone */
+    }
+  }, []);
+
+  /**
+   * Live words beside a server-leg recording. Best effort and never load-
+   * bearing: a recogniser that is missing, refuses, or says nothing leaves
+   * the wave on screen, and the take — the recording — is untouched. Its
+   * failures are deliberately not fed to the problem line: the person is
+   * being recorded fine, and "mic" or "unavailable" would be a lie about that.
+   */
+  const startPreview = useCallback(() => {
+    const Ctor = recogniser();
+    if (!Ctor) return;
+    let rec: RecognitionLike;
+    try {
+      rec = new Ctor();
+      rec.lang = locale();
+      rec.continuous = true;
+      rec.interimResults = true;
+    } catch {
+      return;
+    }
+    const finals: string[] = [];
+    rec.onstart = null;
+    rec.onresult = (event) => {
+      if (previewRef.current !== rec) return;
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        const t = r?.[0]?.transcript ?? "";
+        if (r && r.isFinal) finals.push(t);
+        else interim += t;
+      }
+      setLiveText(liveWords(finals, interim));
+    };
+    rec.onerror = () => {
+      if (previewRef.current === rec) previewRef.current = null;
+    };
+    rec.onend = () => {
+      if (previewRef.current === rec) previewRef.current = null;
+    };
+    try {
+      rec.start();
+      previewRef.current = rec;
+    } catch {
+      /* no preview, still a take */
+    }
+  }, [locale]);
+
   const releaseMic = useCallback(() => {
+    stopPreview();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (capTimer.current) {
       clearTimeout(capTimer.current);
       capTimer.current = null;
     }
-  }, []);
+  }, [stopPreview]);
 
   const deliver = useCallback((said: string) => {
     const t = said.trim();
@@ -288,32 +356,39 @@ export function useDictation(opts: UseDictationOptions): DictationController {
       recorderRef.current = null;
       setStartedAt(null);
       if (cancelledRef.current) {
+        setLiveText("");
         setStatus("idle");
         return;
       }
       const audio = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
       if (audio.size === 0) {
+        setLiveText("");
         setProblem("silence");
         setStatus("idle");
         return;
       }
+      // The live words stay on screen, dimmed, while the server transcribes:
+      // the person keeps seeing what they said until the real words land.
       setStatus("transcribing");
       try {
         deliver(await transcribe(audio));
       } catch (e) {
         failTake(audio, e);
       } finally {
+        setLiveText("");
         setStatus("idle");
       }
     };
     recorderRef.current = rec;
     rec.start();
+    setLiveText("");
+    startPreview();
     setStatus("listening");
     setStartedAt(Date.now());
     capTimer.current = setTimeout(() => {
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     }, maxRecordingMs);
-  }, [deliver, failTake, maxRecordingMs, releaseMic, setProblem, transcribe]);
+  }, [deliver, failTake, maxRecordingMs, releaseMic, setProblem, startPreview, transcribe]);
 
   /** The browser leg, with the silent-recogniser watchdog. */
   const listen = useCallback(
@@ -325,7 +400,9 @@ export function useDictation(opts: UseDictationOptions): DictationController {
       // Whole thoughts, not one breath: a take ends when the person presses
       // confirm (or the cap), not at the first pause.
       rec.continuous = true;
-      rec.interimResults = false;
+      // Interim results are what make the words appear as they are spoken;
+      // only the final ones are delivered.
+      rec.interimResults = true;
       const current = () => recRef.current === rec;
       const heard: string[] = [];
       let started = false;
@@ -340,6 +417,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
         }
         setStatus("idle");
         setStartedAt(null);
+        setLiveText("");
         if (next) setProblem(next);
       };
 
@@ -361,10 +439,14 @@ export function useDictation(opts: UseDictationOptions): DictationController {
         started = true;
       };
       rec.onresult = (event) => {
+        let interim = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const r = event.results[i];
-          if (r && r.isFinal !== false) heard.push(r[0]?.transcript ?? "");
+          const t = r?.[0]?.transcript ?? "";
+          if (r && r.isFinal !== false) heard.push(t);
+          else interim += t;
         }
+        if (current()) setLiveText(liveWords(heard, interim));
       };
       rec.onerror = (event) => {
         const why = problemFor(event?.error);
@@ -389,6 +471,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
         else finish("unavailable");
         return;
       }
+      setLiveText("");
       setStatus("listening");
       setStartedAt(Date.now());
       capTimer.current = setTimeout(() => {
@@ -442,6 +525,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     const rc = recorderRef.current;
     if (rc && rc.state !== "inactive") rc.stop();
     releaseMic();
+    setLiveText("");
     setStatus("idle");
     setStartedAt(null);
   }, [releaseMic]);
@@ -507,6 +591,11 @@ export function useDictation(opts: UseDictationOptions): DictationController {
       } catch {
         /* gone */
       }
+      try {
+        previewRef.current?.abort();
+      } catch {
+        /* gone */
+      }
       const rc = recorderRef.current;
       if (rc && rc.state !== "inactive") rc.stop();
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -518,6 +607,7 @@ export function useDictation(opts: UseDictationOptions): DictationController {
     supported,
     status,
     startedAt,
+    liveText,
     problem,
     problemDetail,
     canRetry,

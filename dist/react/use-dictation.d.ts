@@ -27,6 +27,13 @@ export type DictationController = {
     status: DictationStatus;
     /** When the current take began (ms epoch), for the timer. */
     startedAt: number | null;
+    /**
+     * What has been heard so far, while the take is live — the browser
+     * recogniser's running transcript, finals then the current guess. Empty
+     * when nothing has been heard yet or no recogniser runs here. A preview:
+     * on the server leg the server's words are what is delivered.
+     */
+    liveText: string;
     problem: DictationProblem | null;
     /** The server's own words for a failed transcription ("busy, try again in a
      *  moment"), when it gave any. Shown beside the problem, never instead. */

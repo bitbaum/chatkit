@@ -277,6 +277,22 @@
 .ck-voice-wave > span:nth-child(5n) {
   animation-delay: -0.8s;
 }
+/* the words as they are heard: one line, its end always in view, the start
+   fading out — the person reads the newest words, not the oldest */
+.ck-voice-live {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--ck-fg);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 1.75rem);
+  mask-image: linear-gradient(to right, transparent, #000 1.75rem);
+}
+.ck-voice-live-dim {
+  color: var(--ck-fg-3);
+}
 .ck-voice-timer {
   flex-shrink: 0;
   font-size: 0.9375rem;
