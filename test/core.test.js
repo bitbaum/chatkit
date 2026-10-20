@@ -14,6 +14,9 @@ import {
   mayKeepWaitingForPermission,
   parseBlocks,
   parseInline,
+  listLead,
+  isCardList,
+  citedIds,
   problemFor,
   reasonFromBody,
   reasonOf,
@@ -132,6 +135,72 @@ test("markdown: no literal ** or > leaks; lists, code and headings parse", () =>
     ["strong", "em", "code", "link", "cite"],
   );
   assert.ok(!inline.some((s) => s.kind === "text" && s.text.includes("**")));
+});
+
+test("markdown: headings keep their level, quotes and lists keep their shape", () => {
+  const blocks = parseBlocks(
+    "## Two\n### Three\n#### Deep\n> a\n> b\n\n3. third\n4. fourth\n- [ ] todo\n- [x] done",
+  );
+  assert.deepEqual(
+    blocks.map((b) => (b.kind === "h" ? `h${b.level}` : b.kind)),
+    ["h2", "h3", "h3", "quote", "ol", "ul"],
+  );
+  assert.equal(blocks[3].text, "a\nb", "consecutive quoted lines are one quote");
+  assert.equal(blocks[4].start, 3, "a list that starts at 3 starts at 3");
+  assert.deepEqual(
+    blocks[5].items.map((i) => [i.text, i.task]),
+    [
+      ["todo", false],
+      ["done", true],
+    ],
+  );
+});
+
+test("markdown: a table is a table, a sentence with a pipe is not", () => {
+  const [table] = parseBlocks(
+    "| Who | Does |\n|---|---|\n| Loki | plans \\| builds |\nrow two | yes\n",
+  );
+  assert.equal(table.kind, "table");
+  assert.deepEqual(table.head, ["Who", "Does"]);
+  assert.deepEqual(table.rows, [
+    ["Loki", "plans | builds"],
+    ["row two", "yes"],
+  ]);
+  assert.equal(parseBlocks("a | b")[0].kind, "p");
+  assert.equal(parseBlocks("---")[0].kind, "hr");
+});
+
+test("markdown: one level of nesting under a list item", () => {
+  const [list] = parseBlocks("- top\n  - under\n  - also\n- next");
+  assert.deepEqual(
+    list.items.map((i) => [i.text, (i.children ?? []).map((c) => c.text)]),
+    [
+      ["top", ["under", "also"]],
+      ["next", []],
+    ],
+  );
+});
+
+test("markdown: a list of named things reads as cards", () => {
+  assert.deepEqual(listLead("**Loki: strategic intelligence.** Plans the work."), {
+    lead: "Loki: strategic intelligence",
+    rest: "Plans the work.",
+  });
+  assert.deepEqual(listLead("**Only a name**"), { lead: "Only a name", rest: "" });
+  assert.deepEqual(listLead("**🤖 Robot:** moves"), { lead: "Robot", rest: "moves", icon: "🤖" });
+  assert.equal(listLead("plain item"), null);
+  const [cards] = parseBlocks("1. **One.** first\n2. **Two** — second");
+  assert.equal(isCardList(cards.items), true);
+  const [plain] = parseBlocks("- **bold start** then\n- not bold");
+  assert.equal(isCardList(plain.items), false, "every item must be named, or it is a list");
+});
+
+test("markdown: images are web images only; citations are listed once, in order", () => {
+  const [img] = parseInline("![a cat](https://x.ch/cat.png)");
+  assert.deepEqual(img, { kind: "image", alt: "a cat", src: "https://x.ch/cat.png" });
+  const [notImg] = parseInline("![x](javascript:alert(1))");
+  assert.equal(notImg.kind, "text");
+  assert.deepEqual(citedIds("See [F2] and [F1, F2] then [D1]."), ["F2", "F1", "D1"]);
 });
 
 test("markdown: a streaming, unclosed code fence still renders as code", () => {

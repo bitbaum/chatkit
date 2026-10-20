@@ -23,8 +23,8 @@ export {
 } from "./Thread.js";
 export type { ChatMessageData, ChatSpeaker, LiveTurn, Starter, ThreadLabels } from "./Thread.js";
 export { ChatScreen } from "./Screen.js";
-export { Markdown, defaultRenderLink } from "./Markdown.js";
-export type { CitationMap, RenderLink } from "./Markdown.js";
+export { Markdown, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
+export type { CitationMap, RenderLink, RenderCitation, RenderSources } from "./Markdown.js";
 export { useDictation } from "./use-dictation.js";
 export type { DictationController, DictationStatus, UseDictationOptions } from "./use-dictation.js";
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";

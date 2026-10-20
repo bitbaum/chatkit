@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add @bitbaum/chatkit@^0.8.0
+pnpm add @bitbaum/chatkit@^0.9.0
 ```
 
 **Install releases from npm, never a commit or a branch.** A semver range is
@@ -199,6 +199,27 @@ leaves the device. Off by default (`0`).
 Every reason a file did not attach is a label — `labels={{ attachNotes: {
 imageTooLarge: (name, mb) => … } }}` — so it reaches the reader in their
 language.
+
+### The look of an answer
+
+`Markdown` renders what a model writes, never as HTML: paragraphs, headings
+with their level, bullet, numbered, nested and task lists, tables (they scroll
+sideways on a phone instead of breaking the page), rules, bold, italic, code,
+links, web images and `[F1]` citation handles. Three things make an answer
+read like the ChatGPT app's rather than a wall of text, and a model does all
+three unprompted:
+
+- **A list of named things becomes cards.** `1. **Option.** why` — every item
+  opening with a bold lead — renders as a badge (the number, or the emoji the
+  lead opens with: `**🤖 Robot.** …`), the name, and the body under it.
+- **A table is a table**, with the header row kept.
+- **Sources are listed once**, as chips under the answer, from the handles the
+  text cites and the `citations` map you pass (`{ F1: { label, detail, href? }
+  }`). `renderCitation` replaces the in-text superscript with your own
+  (a sheet, a dialog); `renderSources` replaces the chip row with your own;
+  `sources={false}` drops it.
+
+`demo/screen.html` shows all of it.
 
 ### Look
 

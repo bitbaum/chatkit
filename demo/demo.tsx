@@ -36,7 +36,22 @@ const LONG: ChatMessageData[] = [
     id: "l2",
     role: "assistant",
     content:
-      'Software and physical systems share the same high-level workflow, but their operating conditions are dramatically different.\n\nIn software, you can generate code, test it, discover errors, and roll back. In the physical world, a mistake might damage an expensive machine, injure someone, waste materials, or create an irreversible result.\n\nSo the architecture has **two levels of intelligence**:\n\n- **Loki: strategic intelligence.** "Move these 40 boxes from receiving to storage before 17:00, within budget and without interrupting people." Loki plans the work, chooses authorized resources, checks scheduling, monitors outcomes, and handles exceptions.\n- **Robot: local intelligence and physical control.** The robot navigates, identifies obstacles, estimates its position, plans safe motion, and reacts to events using onboard software and safety systems.\n\nLoki receives progress and verified results instead of controlling every motor movement remotely. That keeps network latency, dropped connections and unreliable model output out of the safety loop.',
+      'Software and physical systems share the same high-level workflow, but their operating conditions are dramatically different.\n\nIn software, you can generate code, test it, discover errors, and roll back. In the physical world, a mistake might damage an expensive machine, injure someone, waste materials, or create an irreversible result.\n\nSo the architecture has **two levels of intelligence**:\n\n- **🧭 Loki: strategic intelligence.** "Move these 40 boxes from receiving to storage before 17:00, within budget and without interrupting people." Loki plans the work, chooses authorized resources, checks scheduling, monitors outcomes, and handles exceptions.\n- **🤖 Robot: local intelligence and physical control.** The robot navigates, identifies obstacles, estimates its position, plans safe motion, and reacts to events using onboard software and safety systems.\n\nLoki receives progress and verified results instead of controlling every motor movement remotely. That keeps network latency, dropped connections and unreliable model output out of the safety loop.',
+  },
+  { id: "l2b", role: "user", content: "Which options do I have, and who owns what?" },
+  {
+    id: "l2c",
+    role: "assistant",
+    citations: {
+      F1: {
+        label: "fleet AGENTS.md",
+        detail: "Read today.",
+        href: "https://github.com/bitbaum/fleet",
+      },
+      F2: { label: "ISO 10218-1:2025", detail: "Safety requirements for industrial robots." },
+    },
+    content:
+      "## Three architectural options\n\n1. **Federated products, unified experience.** Keep Loki and OrangeCat independent, but integrate them through common identity, linked projects and shared capability contracts [F1]. The best balance of modularity and simplicity.\n2. **Merge everything into one application.** One database, one repository, one deployment. Removes integration, creates one very large application.\n3. **Loose coupling.** Occasional API hand-offs. Easy to maintain, but the person coordinates the projects themselves.\n\n## Who owns what\n\n| Domain | Canonical owner |\n|---|---|\n| Goals, plans, tasks, agent runs | Loki |\n| Robot control, telemetry | Loki plus the local robot gateway [F2] |\n| Public identities, offers, settlements | OrangeCat |\n| Shared UI and technical packages | The fleet's package register |\n\n- [x] Shared identity linking\n- [ ] A stable cross-product project reference\n- [ ] Durable events",
   },
   { id: "l3", role: "user", content: "And who decides when something goes wrong?" },
   {

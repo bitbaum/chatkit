@@ -139,3 +139,19 @@ test("attach entry: usable without the composer, sources can be narrowed", () =>
   assert.doesNotMatch(html, /data-ck-source="files"/, "an image uploader offers no Files");
   assert.match(html, /class="ck-attach-trigger"[^>]*>Add photo</);
 });
+
+test("markdown: cards, a table and the sources row render as such, never as HTML", () => {
+  const html = renderToStaticMarkup(
+    h(Markdown, {
+      text: "1. **Federated.** Keep them apart [F1].\n2. **Merge.** One app.\n\n| A | B |\n|---|---|\n| 1 | 2 |",
+      citations: { F1: { label: "Fleet AGENTS.md", detail: "read today", href: "https://x.ch" } },
+    }),
+  );
+  assert.match(html, /class="ck-cards ck-cards-numbered"/);
+  assert.match(html, /class="ck-card-title"><span>Federated</);
+  assert.match(html, /<table class="ck-table">/);
+  assert.match(html, /<th><span>A<\/span><\/th>/);
+  assert.match(html, /class="ck-sources"/);
+  assert.match(html, /href="https:\/\/x.ch"[^>]*class="ck-source"/);
+  assert.doesNotMatch(html, /\*\*/);
+});
