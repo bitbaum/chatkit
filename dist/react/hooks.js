@@ -51,6 +51,31 @@ export function useStickToBottom(changes, grew) {
         if (following)
             endRef.current?.scrollIntoView({ block: "end" });
     }, [following, ...changes]);
+    // Pinned through SIZE changes too, not only new tokens: a composer that
+    // grows (a long draft, a staged screenshot), ChatScreen measuring its insets
+    // after the first paint, a rotated phone — each moves the bottom away, and
+    // a reader who was at the bottom must still be there afterwards.
+    const followingRef = useRef(following);
+    followingRef.current = following;
+    const observed = useRef(null);
+    const observer = useRef(null);
+    useLayoutEffect(() => {
+        const el = scrollRef.current;
+        if (el === observed.current || typeof ResizeObserver === "undefined")
+            return;
+        observer.current?.disconnect();
+        observed.current = el;
+        if (!el)
+            return;
+        observer.current = new ResizeObserver(() => {
+            if (followingRef.current)
+                el.scrollTop = el.scrollHeight;
+        });
+        observer.current.observe(el);
+        if (el.firstElementChild)
+            observer.current.observe(el.firstElementChild);
+    });
+    useEffect(() => () => observer.current?.disconnect(), []);
     const previous = useRef(grew);
     useEffect(() => {
         if (grew > previous.current)
@@ -68,8 +93,10 @@ export function useStickToBottom(changes, grew) {
  * keyboard (orangecat `ViewportHeightSync`, #1094). Rounded down: sub-pixel
  * heights leave a 1px seam under the composer on some devices.
  */
-export function useViewportHeight(target) {
+export function useViewportHeight(target, enabled = true) {
     useEffect(() => {
+        if (!enabled)
+            return;
         const vv = window.visualViewport;
         const el = target?.current ?? document.documentElement;
         const sync = () => el.style.setProperty("--ck-viewport-height", `${Math.floor(vv?.height ?? window.innerHeight)}px`);
@@ -83,7 +110,7 @@ export function useViewportHeight(target) {
             window.removeEventListener("orientationchange", sync);
             el.style.removeProperty("--ck-viewport-height");
         };
-    }, [target]);
+    }, [target, enabled]);
 }
 /** Grow a textarea to its content up to `max` px, keyed on the VALUE so a
  *  prefill, a dictated transcript or the clear after send resize it too.

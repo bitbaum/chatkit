@@ -20,6 +20,7 @@
   /* Defaults at ZERO specificity on the root: an app's own :root (or any
      container) rule setting a --ck-* variable always wins. Declaring these on
      the chat's elements instead would silently override the app. */
+  --ck-page: hsl(var(--surface-page, 0 0% 99%));
   --ck-bg: hsl(var(--surface-base, 0 0% 100%));
   --ck-raised: hsl(var(--surface-raised, 0 0% 96%));
   --ck-overlay: hsl(var(--surface-overlay, 0 0% 98%));
@@ -43,8 +44,15 @@
   --ck-text: 1rem;
   --ck-leading: 1.6;
   --ck-target: 2.75rem;
+  /* ChatScreen: the reading column, and the margin it keeps from the edge. */
+  --ck-measure: 48rem;
+  --ck-gutter: 1rem;
+  /* The person's own words. Neutral, not the accent: the accent is for the
+     one thing to press, and a column of tinted pills spent it on every turn. */
+  --ck-bubble: var(--ck-raised);
 }
 
+.ck-screen,
 .ck-composer-wrap,
 .ck-thread-wrap,
 .ck-starters,
@@ -53,6 +61,7 @@
   color: var(--ck-fg);
 }
 
+.ck-screen *,
 .ck-composer-wrap *,
 .ck-thread-wrap *,
 .ck-starters *,
@@ -468,7 +477,7 @@
   max-width: min(85%, 42rem);
   padding: 0.625rem 1rem;
   border-radius: calc(var(--ck-radius) * 1.25);
-  background: var(--ck-accent-soft);
+  background: var(--ck-bubble);
   color: var(--ck-fg);
   font-size: var(--ck-text);
   line-height: var(--ck-leading);
@@ -588,6 +597,156 @@
   font-size: 1.125rem;
   cursor: pointer;
   box-shadow: 0 6px 20px -8px rgb(0 0 0 / 0.35);
+}
+
+/* ── screen ─────────────────────────────────────────────────────────────
+   The whole display is the conversation; header and composer float over it.
+   --ck-top-inset / --ck-bottom-inset are measured by ChatScreen. */
+.ck-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--ck-page);
+}
+.ck-screen-viewport {
+  height: var(--ck-viewport-height, 100dvh);
+}
+.ck-screen-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+/* Words pass under the header and fade as they do: the page colour at the
+   very top, nothing by the bottom of the row. No bar, no border. */
+.ck-screen-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  padding: env(safe-area-inset-top, 0px) var(--ck-gutter) 0;
+  background: linear-gradient(
+    to bottom,
+    var(--ck-page) 0%,
+    color-mix(in srgb, var(--ck-page) 75%, transparent) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.ck-screen-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 3.5rem;
+  padding-block: 0.375rem;
+}
+.ck-screen-header-row > * {
+  pointer-events: auto;
+}
+.ck-screen-dock {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
+  padding: 1.5rem var(--ck-gutter) calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--ck-page) 0%, var(--ck-page) 40%, transparent 100%);
+  pointer-events: none;
+}
+.ck-screen-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: var(--ck-measure);
+  margin-inline: auto;
+  pointer-events: auto;
+}
+.ck-screen-footnote {
+  margin: 0;
+  color: var(--ck-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+/* The composer as a floating pill: see-through enough to show the words
+   passing under it, solid enough to type on. */
+.ck-screen-dock .ck-composer {
+  border-color: color-mix(in srgb, var(--ck-line-2) 70%, transparent);
+  border-radius: 1.75rem;
+  background: color-mix(in srgb, var(--ck-bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: 0 6px 28px -12px rgb(0 0 0 / 0.28);
+}
+.ck-screen-dock .ck-voice-bar {
+  border-radius: 1.75rem;
+}
+/* The thread scrolls the full width (the scrollbar sits at the screen's
+   edge, and a swipe anywhere moves it); its column keeps a reading measure. */
+.ck-screen .ck-thread {
+  padding: var(--ck-top-inset, 0px) var(--ck-gutter) calc(var(--ck-bottom-inset, 0px) + 0.75rem);
+  scroll-padding-top: var(--ck-top-inset, 0px);
+  scroll-padding-bottom: var(--ck-bottom-inset, 0px);
+}
+.ck-screen .ck-thread-inner {
+  width: 100%;
+  max-width: var(--ck-measure);
+  margin-inline: auto;
+}
+.ck-screen .ck-jump {
+  bottom: calc(var(--ck-bottom-inset, 0px) + 0.5rem);
+  z-index: 4;
+}
+.ck-screen-body > .ck-starters,
+.ck-screen-body > .ck-thread-loading {
+  flex: 1;
+  justify-content: center;
+  width: 100%;
+  max-width: calc(var(--ck-measure) + 2 * var(--ck-gutter));
+  margin-inline: auto;
+  padding: var(--ck-top-inset, 0px) var(--ck-gutter) var(--ck-bottom-inset, 0px);
+  overflow-y: auto;
+}
+
+/* A control floating over the conversation: a frosted pill, the way the
+   header buttons sit over the words in the ChatGPT app. For an app's own
+   header buttons inside ChatScreen. */
+.ck-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ck-line-2) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ck-bg) 70%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 2px 10px -4px rgb(0 0 0 / 0.18);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.ck-glass:hover {
+  background: color-mix(in srgb, var(--ck-bg) 88%, transparent);
+}
+.ck-glass:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ck-glass,
+  .ck-screen-dock .ck-composer {
+    background: var(--ck-bg);
+  }
 }
 
 /* markdown: 16px, readable measure, no leaked ** or > */

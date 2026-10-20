@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add @bitbaum/chatkit@^0.6.0
+pnpm add @bitbaum/chatkit@^0.8.0
 ```
 
 **Install releases from npm, never a commit or a branch.** A semver range is
@@ -50,6 +50,37 @@ import "@bitbaum/chatkit/styles.css";
   attachmentOnlyText="See attached"  //   so a message of only those can still send
 />
 ```
+
+### The whole screen — `ChatScreen`
+
+A chat page is the conversation, edge to edge and top to bottom, as in the
+ChatGPT and Claude apps. The header and the composer float OVER it instead of
+each taking a strip of the screen: words scroll under both and fade as they
+pass, the header's buttons are frosted pills (`ck-glass`), and the composer is
+a see-through pill. The last line of an answer always rests above the
+composer — the scroller is padded by the measured height of each.
+
+```tsx
+<ChatScreen
+  fill="viewport"                    // or "parent": fill the box you give it
+  header={<>
+    <button className="ck-glass" aria-label="Chats"><IconMenu /></button>
+    <span style={{ flex: 1 }} />
+    <button className="ck-glass" aria-label="New chat"><IconPen /></button>
+  </>}
+  composer={<Composer … />}           // plus an error or a queue, if you have one
+  footnote="Answers can be wrong."
+>
+  <ChatThread … />
+</ChatScreen>
+```
+
+`fill="viewport"` follows the VISUAL viewport, so the composer rides above the
+phone keyboard. An app with its own thread pads its scroller with the two
+measured heights: `padding-block: var(--ck-top-inset) var(--ck-bottom-inset)`.
+The reading column is `--ck-measure` (48rem) wide with `--ck-gutter` (1rem)
+to the edge; the page behind it is `--ck-page`. `demo/screen.html` is the
+reference: look at it at 390px before changing any of this.
 
 ### The microphone
 
@@ -199,6 +230,8 @@ on `Composer`, `labels` on `ChatThread`.
 8. Starters in the empty state; suggested replies under the latest answer;
    the speaker's name on every answer once more than one agent speaks.
 9. Nothing overflows at 320–390px.
+10. In `ChatScreen`, the conversation fills the display and opens at the
+    latest message, with its end above the composer, not behind it.
 
 `pnpm run verify` proves all of it: unit and render tests, then
 `test/browser.mjs` drives Chromium through the demo at desktop and 390px, light

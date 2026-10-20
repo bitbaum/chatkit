@@ -68,6 +68,28 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
     if (following) endRef.current?.scrollIntoView({ block: "end" });
   }, [following, ...changes]);
 
+  // Pinned through SIZE changes too, not only new tokens: a composer that
+  // grows (a long draft, a staged screenshot), ChatScreen measuring its insets
+  // after the first paint, a rotated phone — each moves the bottom away, and
+  // a reader who was at the bottom must still be there afterwards.
+  const followingRef = useRef(following);
+  followingRef.current = following;
+  const observed = useRef<HTMLElement | null>(null);
+  const observer = useRef<ResizeObserver | null>(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el === observed.current || typeof ResizeObserver === "undefined") return;
+    observer.current?.disconnect();
+    observed.current = el;
+    if (!el) return;
+    observer.current = new ResizeObserver(() => {
+      if (followingRef.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.current.observe(el);
+    if (el.firstElementChild) observer.current.observe(el.firstElementChild);
+  });
+  useEffect(() => () => observer.current?.disconnect(), []);
+
   const previous = useRef(grew);
   useEffect(() => {
     if (grew > previous.current) setFollowing(true);
@@ -86,8 +108,9 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
  * keyboard (orangecat `ViewportHeightSync`, #1094). Rounded down: sub-pixel
  * heights leave a 1px seam under the composer on some devices.
  */
-export function useViewportHeight(target?: RefObject<HTMLElement | null>) {
+export function useViewportHeight(target?: RefObject<HTMLElement | null>, enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
     const vv = window.visualViewport;
     const el = target?.current ?? document.documentElement;
     const sync = () =>
@@ -105,7 +128,7 @@ export function useViewportHeight(target?: RefObject<HTMLElement | null>) {
       window.removeEventListener("orientationchange", sync);
       el.style.removeProperty("--ck-viewport-height");
     };
-  }, [target]);
+  }, [target, enabled]);
 }
 
 /** Grow a textarea to its content up to `max` px, keyed on the VALUE so a
