@@ -48,7 +48,7 @@ function Inline({ spans, citations, renderLink, renderCitation, }) {
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, sources = true, sourcesLabel = "Sources", className, }) {
+export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", className, }) {
     const inline = (t) => (_jsx(Inline, { spans: parseInline(t), citations: citations, renderLink: renderLink, renderCitation: renderCitation }));
     const items = (list, ordered, start = 1) => {
         const List = ordered ? "ol" : "ul";
@@ -82,7 +82,10 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
                     default:
                         return _jsx("p", { children: inline(b.text) }, i);
                 }
-            }), sources && cited.length > 0 && citations && (_jsxs("div", { className: "ck-sources", role: "list", "aria-label": sourcesLabel, children: [_jsx("span", { className: "ck-sources-label", children: sourcesLabel }), cited.map((id) => {
+            }), sources && cited.length > 0 && citations && renderSources ? (renderSources({
+                records: cited.map((id) => ({ id, ...citations[id] })),
+                label: sourcesLabel,
+            })) : sources && cited.length > 0 && citations ? (_jsxs("div", { className: "ck-sources", role: "list", "aria-label": sourcesLabel, children: [_jsx("span", { className: "ck-sources-label", children: sourcesLabel }), cited.map((id) => {
                         const c = citations[id];
                         const chip = (_jsxs(_Fragment, { children: [_jsx("span", { className: "ck-source-id", children: id }), _jsx("span", { className: "ck-source-label", children: c.label })] }));
                         return c.href ? (_jsx("span", { role: "listitem", children: renderLink({
@@ -91,6 +94,6 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
                                 className: "ck-source",
                                 children: chip,
                             }) }, id)) : (_jsx("span", { role: "listitem", className: "ck-source", title: c.detail, children: chip }, id));
-                    })] }))] }));
+                    })] })) : null] }));
 }
 //# sourceMappingURL=Markdown.js.map

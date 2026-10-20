@@ -21,6 +21,17 @@ export type RenderCitation = (cite: {
     citations: CitationMap;
     className: string;
 }) => ReactNode;
+/** The sources an answer cites, listed once under it. The default is the chip
+ *  row; an app with its own source sheet renders that here instead. */
+export type RenderSources = (sources: {
+    records: {
+        id: string;
+        label: string;
+        detail: string;
+        href?: string;
+    }[];
+    label: string;
+}) => ReactNode;
 /** A plain anchor: same-site paths in place, everything else in a new tab. */
 export declare const defaultRenderLink: RenderLink;
 export declare const defaultRenderCitation: RenderCitation;
@@ -34,12 +45,14 @@ export declare const defaultRenderCitation: RenderCitation;
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export declare function Markdown({ text, citations, renderLink, renderCitation, sources, sourcesLabel, className, }: {
+export declare function Markdown({ text, citations, renderLink, renderCitation, renderSources, sources, sourcesLabel, className, }: {
     text: string;
     citations?: CitationMap;
     renderLink?: RenderLink;
     renderCitation?: RenderCitation;
-    /** The chip row of cited sources under the answer (needs `citations`). */
+    /** Your own sources row (a button that opens a sheet) in place of the chips. */
+    renderSources?: RenderSources;
+    /** The row of cited sources under the answer (needs `citations`). */
     sources?: boolean;
     sourcesLabel?: string;
     className?: string;

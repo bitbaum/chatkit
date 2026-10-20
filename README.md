@@ -216,7 +216,8 @@ three unprompted:
 - **Sources are listed once**, as chips under the answer, from the handles the
   text cites and the `citations` map you pass (`{ F1: { label, detail, href? }
   }`). `renderCitation` replaces the in-text superscript with your own
-  (a sheet, a dialog); `sources={false}` drops the row.
+  (a sheet, a dialog); `renderSources` replaces the chip row with your own;
+  `sources={false}` drops it.
 
 `demo/screen.html` shows all of it.
 

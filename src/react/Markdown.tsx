@@ -31,6 +31,13 @@ export type RenderCitation = (cite: {
   className: string;
 }) => ReactNode;
 
+/** The sources an answer cites, listed once under it. The default is the chip
+ *  row; an app with its own source sheet renders that here instead. */
+export type RenderSources = (sources: {
+  records: { id: string; label: string; detail: string; href?: string }[];
+  label: string;
+}) => ReactNode;
+
 /** A plain anchor: same-site paths in place, everything else in a new tab. */
 export const defaultRenderLink: RenderLink = ({ href, internal, className, children }) =>
   internal ? (
@@ -139,6 +146,7 @@ export function Markdown({
   citations,
   renderLink = defaultRenderLink,
   renderCitation = defaultRenderCitation,
+  renderSources,
   sources = true,
   sourcesLabel = "Sources",
   className,
@@ -147,7 +155,9 @@ export function Markdown({
   citations?: CitationMap;
   renderLink?: RenderLink;
   renderCitation?: RenderCitation;
-  /** The chip row of cited sources under the answer (needs `citations`). */
+  /** Your own sources row (a button that opens a sheet) in place of the chips. */
+  renderSources?: RenderSources;
+  /** The row of cited sources under the answer (needs `citations`). */
   sources?: boolean;
   sourcesLabel?: string;
   className?: string;
@@ -269,7 +279,12 @@ export function Markdown({
             return <p key={i}>{inline(b.text)}</p>;
         }
       })}
-      {sources && cited.length > 0 && citations && (
+      {sources && cited.length > 0 && citations && renderSources ? (
+        renderSources({
+          records: cited.map((id) => ({ id, ...citations[id]! })),
+          label: sourcesLabel,
+        })
+      ) : sources && cited.length > 0 && citations ? (
         <div className="ck-sources" role="list" aria-label={sourcesLabel}>
           <span className="ck-sources-label">{sourcesLabel}</span>
           {cited.map((id) => {
@@ -296,7 +311,7 @@ export function Markdown({
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
