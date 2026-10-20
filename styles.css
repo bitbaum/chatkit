@@ -47,6 +47,11 @@
   /* ChatScreen: the reading column, and the margin it keeps from the edge. */
   --ck-measure: 48rem;
   --ck-gutter: 1rem;
+  /* ChatScreen measures the floating header and dock into these; with no
+     ChatScreen they are 0. --ck-viewport-height is set by useViewportHeight. */
+  --ck-top-inset: 0px;
+  --ck-bottom-inset: 0px;
+  --ck-viewport-height: 100dvh;
   /* The person's own words. Neutral, not the accent: the accent is for the
      one thing to press, and a column of tinted pills spent it on every turn. */
   --ck-bubble: var(--ck-raised);
