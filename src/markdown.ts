@@ -5,22 +5,52 @@
  *
  * From loki's `MarkdownText`, the one renderer in the fleet that four repos
  * did NOT have: those rendered model output with the literal `**` still in it.
- * Supports what answers use — paragraphs, bullet and numbered lists, headings,
- * **bold**, *italic*, `code`, fenced code, [links](url) and `[F1]` citation
- * handles — and deliberately nothing else.
+ * Supports what answers use — paragraphs, bullet, numbered, nested and task
+ * lists, headings with their level, tables, rules, **bold**, *italic*, `code`,
+ * fenced code, [links](url), ![images](url) and `[F1]` citation handles — and
+ * deliberately nothing else.
  */
+
+export type ListItem = {
+  text: string;
+  /** `- [ ]` / `- [x]`: a task, and whether it is done. */
+  task?: boolean;
+  /** One level of nesting: the items indented under this one. */
+  children?: ListItem[];
+};
 
 export type MarkdownBlock =
   | { kind: "p"; text: string }
-  | { kind: "h"; text: string }
-  | { kind: "ul"; items: string[] }
-  | { kind: "ol"; items: string[] }
+  | { kind: "h"; text: string; level: 1 | 2 | 3 }
+  | { kind: "ul"; items: ListItem[] }
+  | { kind: "ol"; items: ListItem[]; start: number }
   | { kind: "code"; lang: string; code: string }
-  | { kind: "quote"; text: string };
+  | { kind: "quote"; text: string }
+  | { kind: "table"; head: string[]; rows: string[][] }
+  | { kind: "hr" };
+
+const BULLET_RE = /^([-*•])\s+(.*)$/;
+const NUMBERED_RE = /^(\d+)[.)]\s+(.*)$/;
+const TASK_RE = /^\[([ xX])\]\s+(.*)$/;
+
+function listItem(text: string): ListItem {
+  const task = TASK_RE.exec(text);
+  if (task) return { text: task[2] ?? "", task: task[1] !== " " };
+  return { text };
+}
+
+/** `| a | b |` → ["a", "b"]; a row may omit its outer pipes. */
+function tableCells(line: string): string[] {
+  const inner = line.replace(/^\|/, "").replace(/\|$/, "");
+  return inner.split(/(?<!\\)\|/).map((c) => c.replace(/\\\|/g, "|").trim());
+}
+const TABLE_RULE_RE = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/;
 
 export function parseBlocks(text: string): MarkdownBlock[] {
   const blocks: MarkdownBlock[] = [];
-  let list: { kind: "ul" | "ol"; items: string[] } | null = null;
+  let list:
+    { kind: "ul"; items: ListItem[] } | { kind: "ol"; items: ListItem[]; start: number } | null =
+    null;
   const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i] ?? "";
@@ -43,23 +73,62 @@ export function parseBlocks(text: string): MarkdownBlock[] {
       list = null;
       continue;
     }
-    const bullet = /^[-*•]\s+(.*)$/.exec(line);
-    const numbered = /^\d+[.)]\s+(.*)$/.exec(line);
+    // A table: a header row, a rule of dashes, then rows. The rule is what
+    // tells a table from a sentence with a pipe in it.
+    if (line.includes("|") && TABLE_RULE_RE.test((lines[i + 1] ?? "").trim())) {
+      list = null;
+      const head = tableCells(line);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && (lines[i] ?? "").trim().includes("|")) {
+        rows.push(tableCells((lines[i] ?? "").trim()));
+        i++;
+      }
+      i--;
+      blocks.push({ kind: "table", head, rows });
+      continue;
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
+      list = null;
+      blocks.push({ kind: "hr" });
+      continue;
+    }
+    const bullet = BULLET_RE.exec(line);
+    const numbered = NUMBERED_RE.exec(line);
     if (bullet || numbered) {
       const kind = bullet ? "ul" : "ol";
+      const indent = raw.length - raw.trimStart().length;
+      const item = listItem((bullet ? bullet[2] : numbered![2]) ?? "");
+      // Indented under the previous item: one level of nesting, whichever
+      // marker it uses.
+      if (list && indent >= 2 && list.items.length > 0) {
+        const parent = list.items[list.items.length - 1]!;
+        (parent.children ??= []).push(item);
+        continue;
+      }
       if (!list || list.kind !== kind) {
-        list = { kind, items: [] };
+        list =
+          kind === "ol"
+            ? { kind: "ol", items: [], start: Number(numbered![1]) || 1 }
+            : { kind: "ul", items: [] };
         blocks.push(list);
       }
-      list.items.push((bullet ?? numbered)![1] ?? "");
+      list.items.push(item);
       continue;
     }
     list = null;
-    if (/^#{1,6}\s/.test(line)) {
-      blocks.push({ kind: "h", text: line.replace(/^#+\s+/, "") });
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      const level = Math.min(heading[1]!.length, 3) as 1 | 2 | 3;
+      blocks.push({ kind: "h", text: heading[2] ?? "", level });
     } else if (line.startsWith(">")) {
       // A model's `>` leaked into prose was one of orangecat's fixed bugs.
-      blocks.push({ kind: "quote", text: line.replace(/^>\s?/, "") });
+      // Consecutive quoted lines are one quote.
+      const prev = blocks[blocks.length - 1];
+      const quoted = line.replace(/^>\s?/, "");
+      if (prev && prev.kind === "quote" && (lines[i - 1] ?? "").trim().startsWith(">"))
+        prev.text += `\n${quoted}`;
+      else blocks.push({ kind: "quote", text: quoted });
     } else {
       const prev = blocks[blocks.length - 1];
       // A soft line break inside a paragraph continues it.
@@ -68,6 +137,27 @@ export function parseBlocks(text: string): MarkdownBlock[] {
     }
   }
   return blocks;
+}
+
+/**
+ * A list where every item opens with a bold lead — `**Title.** body` — is a
+ * list of named things, and reads as cards: a numbered or bulleted badge, the
+ * name, the body under it. That is how the ChatGPT app lays out "three
+ * options" or "two levels"; a model writes it that way unprompted.
+ */
+export function listLead(text: string): { lead: string; rest: string; icon?: string } | null {
+  const m = /^\*\*([^*]+?)\*\*\s*(?:[—–:-]\s*)?([\s\S]*)$/.exec(text);
+  if (!m) return null;
+  let lead = (m[1] ?? "").trim().replace(/[.:]$/, "");
+  // A lead that opens with an emoji — `**🤖 Robot.** …` — hands it to the
+  // badge: the icon tile the ChatGPT app draws, from the model's own choice.
+  const icon = /^(\p{Extended_Pictographic}\uFE0F?)\s+(.+)$/u.exec(lead);
+  if (icon) lead = icon[2] ?? lead;
+  return { lead, rest: (m[2] ?? "").trim(), ...(icon ? { icon: icon[1] } : {}) };
+}
+
+export function isCardList(items: ListItem[]): boolean {
+  return items.length >= 2 && items.every((it) => listLead(it.text) !== null);
 }
 
 export type InlineSpan =
@@ -79,10 +169,11 @@ export type InlineSpan =
   | { kind: "strong"; text: string; children: InlineSpan[] }
   | { kind: "em"; text: string; children: InlineSpan[] }
   | { kind: "link"; text: string; href: string }
+  | { kind: "image"; alt: string; src: string }
   | { kind: "cite"; ids: string[] };
 
 const INLINE_RE =
-  /(`[^`]+`|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)\s]+\)|\[[FD]\d+(?:,\s*[FD]\d+)*\]|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
+  /(`[^`]+`|!\[[^\]]*\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)\s]+\)|\[[FD]\d+(?:,\s*[FD]\d+)*\]|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 
 export function parseInline(text: string): InlineSpan[] {
   const out: InlineSpan[] = [];
@@ -99,6 +190,14 @@ export function parseInline(text: string): InlineSpan[] {
       const inner = part.slice(1, -1);
       out.push({ kind: "em", text: inner, children: parseInline(inner) });
     } else {
+      const image = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(part);
+      if (image) {
+        // Only a web image: a data: or javascript: "image" from a model is text.
+        const src = safeHref(image[2] ?? "");
+        if (src && /^https?:/.test(src)) out.push({ kind: "image", alt: image[1] ?? "", src });
+        else out.push({ kind: "text", text: image[1] ?? part });
+        continue;
+      }
       const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(part);
       const href = link
         ? safeHref(link[2] ?? "")
@@ -111,6 +210,15 @@ export function parseInline(text: string): InlineSpan[] {
     }
   }
   return out;
+}
+
+/** Every citation handle an answer uses, in order of first use. */
+export function citedIds(text: string): string[] {
+  const ids: string[] = [];
+  for (const m of text.matchAll(/\[([FD]\d+(?:,\s*[FD]\d+)*)\]/g)) {
+    for (const id of (m[1] ?? "").split(/,\s*/)) if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 /**
