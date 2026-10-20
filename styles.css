@@ -629,11 +629,15 @@
   position: absolute;
   inset: 0 0 auto;
   z-index: 3;
-  padding: env(safe-area-inset-top, 0px) var(--ck-gutter) 0;
+  /* Mostly page behind the row itself, so a title in it stays one line of
+     text and not two on top of each other; the words only show through
+     dimly, and the fade runs out in the strip below the row. */
+  padding: env(safe-area-inset-top, 0px) var(--ck-gutter) 0.75rem;
   background: linear-gradient(
     to bottom,
     var(--ck-page) 0%,
-    color-mix(in srgb, var(--ck-page) 75%, transparent) 55%,
+    color-mix(in srgb, var(--ck-page) 88%, transparent) 55%,
+    color-mix(in srgb, var(--ck-page) 55%, transparent) 80%,
     transparent 100%
   );
   pointer-events: none;
@@ -685,6 +689,12 @@
 }
 .ck-screen-dock .ck-voice-bar {
   border-radius: 1.75rem;
+}
+/* With no header, the words still fade at the top edge instead of being cut
+   off mid-line. */
+.ck-screen:not(:has(> .ck-screen-header)) .ck-thread {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.5rem);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 1.5rem);
 }
 /* The thread scrolls the full width (the scrollbar sits at the screen's
    edge, and a swipe anywhere moves it); its column keeps a reading measure. */
