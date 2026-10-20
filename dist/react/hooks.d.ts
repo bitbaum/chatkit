@@ -33,7 +33,7 @@ export declare function useStickToBottom(changes: DependencyList, grew: number):
  * keyboard (orangecat `ViewportHeightSync`, #1094). Rounded down: sub-pixel
  * heights leave a 1px seam under the composer on some devices.
  */
-export declare function useViewportHeight(target?: RefObject<HTMLElement | null>): void;
+export declare function useViewportHeight(target?: RefObject<HTMLElement | null>, enabled?: boolean): void;
 /** Grow a textarea to its content up to `max` px, keyed on the VALUE so a
  *  prefill, a dictated transcript or the clear after send resize it too.
  *

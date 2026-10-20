@@ -11,6 +11,7 @@ export { Composer, DEFAULT_COMPOSER_LABELS } from "./Composer.js";
 export type { ComposerProps, ComposerLabels, ComposerLabelOverrides, ComposerVoice, } from "./Composer.js";
 export { ChatThread, ChatMessage, ChatReplies, ChatStarters, DEFAULT_THREAD_LABELS, } from "./Thread.js";
 export type { ChatMessageData, ChatSpeaker, LiveTurn, Starter, ThreadLabels } from "./Thread.js";
+export { ChatScreen } from "./Screen.js";
 export { Markdown, defaultRenderLink } from "./Markdown.js";
 export type { CitationMap, RenderLink } from "./Markdown.js";
 export { useDictation } from "./use-dictation.js";

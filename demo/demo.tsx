@@ -3,7 +3,13 @@
 // 390px and at desktop width before calling a change to chatkit done.
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ChatStarters, ChatThread, Composer, type ChatMessageData } from "../src/react/index.js";
+import {
+  ChatScreen,
+  ChatStarters,
+  ChatThread,
+  Composer,
+  type ChatMessageData,
+} from "../src/react/index.js";
 
 const SEED: ChatMessageData[] = [
   { id: "1", role: "user", content: "I want to get paid in Bitcoin for my illustrations" },
@@ -23,13 +29,33 @@ const SEED: ChatMessageData[] = [
   },
 ];
 
-function Demo({ empty, failed }: { empty?: boolean; failed?: boolean }) {
+// A conversation long enough to scroll on any screen: what ChatScreen is for.
+const LONG: ChatMessageData[] = [
+  { id: "l1", role: "user", content: "How would Loki run robots in a warehouse?" },
+  {
+    id: "l2",
+    role: "assistant",
+    content:
+      'Software and physical systems share the same high-level workflow, but their operating conditions are dramatically different.\n\nIn software, you can generate code, test it, discover errors, and roll back. In the physical world, a mistake might damage an expensive machine, injure someone, waste materials, or create an irreversible result.\n\nSo the architecture has **two levels of intelligence**:\n\n- **Loki: strategic intelligence.** "Move these 40 boxes from receiving to storage before 17:00, within budget and without interrupting people." Loki plans the work, chooses authorized resources, checks scheduling, monitors outcomes, and handles exceptions.\n- **Robot: local intelligence and physical control.** The robot navigates, identifies obstacles, estimates its position, plans safe motion, and reacts to events using onboard software and safety systems.\n\nLoki receives progress and verified results instead of controlling every motor movement remotely. That keeps network latency, dropped connections and unreliable model output out of the safety loop.',
+  },
+  { id: "l3", role: "user", content: "And who decides when something goes wrong?" },
+  {
+    id: "l4",
+    role: "assistant",
+    content:
+      'The robot decides first, always: a stop is local and immediate. Loki decides second — whether to retry, reroute, or ask a person.\n\n1. The robot stops and reports what it saw.\n2. Loki compares it with the plan and the rules it was given.\n3. Anything irreversible waits for a human tap.\n\n```quick_replies\n["Show the rules", "What can a person override?", "Draw the flow"]\n```',
+  },
+];
+
+function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; screen?: boolean }) {
   const [messages, setMessages] = useState<ChatMessageData[]>(
-    empty
-      ? []
-      : failed
-        ? [SEED[0]!, { id: "f", role: "assistant", content: "", failed: true }]
-        : SEED,
+    screen
+      ? LONG
+      : empty
+        ? []
+        : failed
+          ? [SEED[0]!, { id: "f", role: "assistant", content: "", failed: true }]
+          : SEED,
   );
   const [sending, setSending] = useState(false);
   const send = (text: string) => {
@@ -48,6 +74,47 @@ function Demo({ empty, failed }: { empty?: boolean; failed?: boolean }) {
       setSending(false);
     }, 900);
   };
+  const thread = (
+    <ChatThread
+      messages={messages}
+      live={sending ? { status: "Reading the catalogue" } : null}
+      onStop={() => setSending(false)}
+      onRetry={() => {}}
+      onReply={send}
+    />
+  );
+  const composer = (
+    <Composer
+      onSend={(t) => send(t)}
+      placeholder="Ask Loki"
+      sending={sending}
+      onStop={() => setSending(false)}
+      attach
+      voice={{ transcribeUrl: "/api/transcribe" }}
+    />
+  );
+  if (screen) {
+    return (
+      <ChatScreen
+        fill="viewport"
+        header={
+          <>
+            <button type="button" className="ck-glass" aria-label="Chats">
+              ☰
+            </button>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="ck-glass" aria-label="New chat">
+              ✎
+            </button>
+          </>
+        }
+        composer={composer}
+        footnote="Loki can be wrong. Check what matters."
+      >
+        {thread}
+      </ChatScreen>
+    );
+  }
   return (
     <div className="demo-chat">
       <ChatThread
@@ -89,6 +156,7 @@ for (const [id, props] of [
   ["conversation", {}],
   ["empty", { empty: true }],
   ["failed", { failed: true }],
+  ["screen", { screen: true }],
 ] as const) {
   const el = document.getElementById(id);
   if (el) createRoot(el).render(<Demo {...props} />);

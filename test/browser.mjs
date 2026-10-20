@@ -93,6 +93,52 @@ try {
     await page.close();
   }
 
+  // ChatScreen: the conversation is the whole display. Its scroller runs from
+  // the top edge to the bottom edge (header and composer float over it), yet
+  // the end of the last answer rests ABOVE the composer, never behind it —
+  // on first load, before anyone scrolls.
+  for (const [name, width, height] of [
+    ["screen phone", 390, 844],
+    ["screen desktop", 1280, 800],
+  ]) {
+    const page = await browser.newPage({ viewport: { width, height } });
+    await page.goto(base.replace("index.html", "screen.html"));
+    await page.waitForSelector(".ck-screen .ck-input");
+    await page.waitForTimeout(200);
+    const s = await page.evaluate(() => {
+      const r = (sel) => document.querySelector(sel)?.getBoundingClientRect();
+      const thread = r(".ck-screen .ck-thread");
+      const composer = r(".ck-screen-dock .ck-composer");
+      const replies = [...document.querySelectorAll(".ck-screen .ck-reply")].map((e) =>
+        e.getBoundingClientRect(),
+      );
+      return {
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        top: thread.top,
+        bottom: Math.round(thread.bottom),
+        height: window.innerHeight,
+        lastEnd: Math.max(...replies.map((x) => x.bottom)),
+        composerTop: composer.top,
+        glassSmall: [...document.querySelectorAll(".ck-screen .ck-glass")]
+          .map((e) => e.getBoundingClientRect())
+          .filter((x) => x.width < 44 || x.height < 44).length,
+        jump: !!document.querySelector(".ck-screen .ck-jump"),
+      };
+    });
+    check(s.overflow <= 0, `${name}: no horizontal scroll (${s.overflow}px over)`);
+    check(
+      s.top === 0 && s.bottom === s.height,
+      `${name}: the conversation fills the display (${s.top}–${s.bottom} of ${s.height}px)`,
+    );
+    check(
+      s.lastEnd <= s.composerTop,
+      `${name}: the last answer ends above the composer (${s.lastEnd} <= ${s.composerTop})`,
+    );
+    check(!s.jump, `${name}: opens at the latest message (no jump button)`);
+    check(s.glassSmall === 0, `${name}: floating header buttons >= 44px`);
+    await page.close();
+  }
+
   // An empty box is one line, whatever width it was measured at. Chromium
   // counts the placeholder in scrollHeight, so a composer cleared while it was
   // narrow (a sheet still opening) used to lock at its maximum height with
