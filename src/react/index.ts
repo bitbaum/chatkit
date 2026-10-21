@@ -23,7 +23,12 @@ export {
 } from "./Thread.js";
 export type { ChatMessageData, ChatSpeaker, LiveTurn, Starter, ThreadLabels } from "./Thread.js";
 export { ChatScreen } from "./Screen.js";
-export { Markdown, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
+export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
+export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";
+export type { AnswerActionsLabels } from "./AnswerActions.js";
+export { useSpeech } from "./use-speech.js";
+export type { SpeechController } from "./use-speech.js";
+export { Sheet, prefersSheet } from "./Sheet.js";
 export type { CitationMap, RenderLink, RenderCitation, RenderSources } from "./Markdown.js";
 export { useDictation } from "./use-dictation.js";
 export type { DictationController, DictationStatus, UseDictationOptions } from "./use-dictation.js";

@@ -1,4 +1,8 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { IconBook } from "./icons.js";
+import { Sheet, prefersSheet } from "./Sheet.js";
 import {
   citedIds,
   isCardList,
@@ -49,6 +53,101 @@ export const defaultRenderLink: RenderLink = ({ href, internal, className, child
       {children}
     </a>
   );
+
+/**
+ * The sources an answer cites, listed once under it. On a mouse, a row of
+ * chips. On a touch screen, ONE "Sources" button that opens a sheet with every
+ * record — its label, what it is, and a link — the way the ChatGPT app lists
+ * them: a row of chips on a phone was a row of cut-off words.
+ */
+export function SourcesRow({
+  records,
+  label,
+  renderLink = defaultRenderLink,
+}: {
+  records: { id: string; label: string; detail: string; href?: string }[];
+  label: string;
+  renderLink?: RenderLink;
+}) {
+  const [open, setOpen] = useState(false);
+  const sheet = prefersSheet();
+  if (records.length === 0) return null;
+  if (!sheet) {
+    return (
+      <div className="ck-sources" role="list" aria-label={label}>
+        <span className="ck-sources-label">{label}</span>
+        {records.map((c) => {
+          const chip = (
+            <>
+              <span className="ck-source-id">{c.id}</span>
+              <span className="ck-source-label">{c.label}</span>
+            </>
+          );
+          return c.href ? (
+            <span key={c.id} role="listitem">
+              {renderLink({
+                href: c.href,
+                internal: isInternalHref(c.href),
+                className: "ck-source",
+                children: chip,
+              })}
+            </span>
+          ) : (
+            <span key={c.id} role="listitem" className="ck-source" title={c.detail}>
+              {chip}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
+  return (
+    <div className="ck-sources">
+      <button
+        type="button"
+        className="ck-source ck-sources-open"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+      >
+        <IconBook />
+        <span className="ck-source-label">
+          {label} · {records.length}
+        </span>
+      </button>
+      <Sheet open={open} onClose={() => setOpen(false)} title={label}>
+        <ol className="ck-source-list">
+          {records.map((c) => {
+            const body = (
+              <>
+                <span className="ck-source-id">{c.id}</span>
+                <span className="ck-source-body">
+                  <span className="ck-source-title">{c.label}</span>
+                  {c.detail && c.detail !== c.label && (
+                    <span className="ck-source-detail">{c.detail}</span>
+                  )}
+                </span>
+              </>
+            );
+            return (
+              <li key={c.id}>
+                {c.href ? (
+                  renderLink({
+                    href: c.href,
+                    internal: isInternalHref(c.href),
+                    className: "ck-source-row",
+                    children: body,
+                  })
+                ) : (
+                  <span className="ck-source-row">{body}</span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </Sheet>
+    </div>
+  );
+}
 
 export const defaultRenderCitation: RenderCitation = ({ ids, citations, className }) => (
   <sup
@@ -285,32 +384,11 @@ export function Markdown({
           label: sourcesLabel,
         })
       ) : sources && cited.length > 0 && citations ? (
-        <div className="ck-sources" role="list" aria-label={sourcesLabel}>
-          <span className="ck-sources-label">{sourcesLabel}</span>
-          {cited.map((id) => {
-            const c = citations[id]!;
-            const chip = (
-              <>
-                <span className="ck-source-id">{id}</span>
-                <span className="ck-source-label">{c.label}</span>
-              </>
-            );
-            return c.href ? (
-              <span key={id} role="listitem">
-                {renderLink({
-                  href: c.href,
-                  internal: isInternalHref(c.href),
-                  className: "ck-source",
-                  children: chip,
-                })}
-              </span>
-            ) : (
-              <span key={id} role="listitem" className="ck-source" title={c.detail}>
-                {chip}
-              </span>
-            );
-          })}
-        </div>
+        <SourcesRow
+          records={cited.map((id) => ({ id, ...citations[id]! }))}
+          label={sourcesLabel}
+          renderLink={renderLink}
+        />
       ) : null}
     </div>
   );

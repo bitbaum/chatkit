@@ -27,17 +27,20 @@ export type RepliesOptions = {
 };
 
 /**
- * Append to a system prompt. Written so a model leaves the block off when no
- * reply is likely — a button row on every answer is noise, and noise is what
- * makes people stop reading buttons.
+ * Append to a system prompt. The model leads: every answer ends with the two
+ * to four things the person is most likely to say next, the first being the
+ * recommended next step. That is what makes a chat on a phone usable with a
+ * thumb — the answer is read, the next move is one tap (owner, 2026-10-21:
+ * "AI helps us to answer and lead the conversation"). Only an answer that
+ * ends the conversation leaves the block off.
  */
 export const REPLIES_INSTRUCTION = [
   "## Suggested replies",
-  "When the person's next message is predictable — you asked a question, offered a choice, or there is an obvious next step — end your answer with a fenced block of 2–4 short replies they could tap instead of typing:",
+  "End every answer with a fenced block of 2–4 short replies the person could tap instead of typing. Put the most useful next step FIRST — the one you would recommend — then alternatives:",
   "```" + REPLIES_FENCE,
   '["Yes, do it", "Show me first", "Not now"]',
   "```",
-  "Rules: write them in the person's language, in their voice (what THEY would say, not what you would). Each under 40 characters. Each must make sense sent on its own. Never repeat what they already said. Put the block last, after everything else. Leave it out entirely when no reply is likely, or when the conversation is over.",
+  "Rules: write them in the person's language, in their voice (what THEY would say, not what you would). Each under 40 characters. Each must make sense sent on its own. Never repeat what they already said. Put the block last, after everything else. Leave it out only when the conversation is over (a goodbye, a thanks with nothing left to do).",
 ].join("\n");
 
 const COMPLETE = new RegExp("\\n?```" + REPLIES_FENCE + "\\s*([\\s\\S]*?)```", "i");

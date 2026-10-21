@@ -1,12 +1,15 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { Markdown, defaultRenderLink } from "./Markdown.js";
-import { useClipboard, useStickToBottom } from "./hooks.js";
+import { useStickToBottom } from "./hooks.js";
 import { extractReplies } from "../replies.js";
-import { IconArrowDown, IconCheck, IconCopy, IconRetry, IconStop } from "./icons.js";
+import { AnswerActions } from "./AnswerActions.js";
+import { IconArrowDown, IconRetry, IconStop } from "./icons.js";
 export const DEFAULT_THREAD_LABELS = {
     copy: "Copy",
     copied: "Copied",
+    listen: "Listen",
+    share: "Share",
     retry: "Try again",
     stop: "Stop",
     working: "Working on it",
@@ -22,8 +25,7 @@ export const DEFAULT_THREAD_LABELS = {
  * no box, because it is the thing being READ. Copy is on every answer; Retry
  * only on the last one (retrying an older turn would fork the thread).
  */
-export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, showSpeaker = true, footer, last = false, onReply, labels = DEFAULT_THREAD_LABELS, }) {
-    const { copied, copy } = useClipboard();
+export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, showSpeaker = true, footer, last = false, onReply, speaker, share, labels = DEFAULT_THREAD_LABELS, }) {
     if (message.role === "user") {
         return (_jsx("div", { className: "ck-turn ck-turn-user", children: _jsx("div", { className: "ck-bubble", children: message.content }) }));
     }
@@ -37,7 +39,7 @@ export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, 
     // a phone must not stand between them.
     if (last || message.failed)
         cls.push("ck-turn-pinned");
-    return (_jsxs("div", { className: cls.join(" "), children: [showSpeaker && message.speaker && _jsx("span", { className: "ck-speaker", children: message.speaker.name }), message.failed ? (_jsx("p", { className: "ck-failed", role: "status", children: message.content || labels.failed })) : (_jsx(Markdown, { text: parsed.text, citations: message.citations, renderLink: renderLink })), footer, _jsxs("div", { className: "ck-turn-actions", children: [!message.failed && (_jsxs("button", { type: "button", className: "ck-action", onClick: () => copy(parsed.text), "aria-label": copied ? labels.copied : labels.copy, children: [copied ? _jsx(IconCheck, {}) : _jsx(IconCopy, {}), _jsx("span", { children: copied ? labels.copied : labels.copy })] })), onRetry && (_jsxs("button", { type: "button", className: "ck-action", onClick: onRetry, children: [_jsx(IconRetry, {}), _jsx("span", { children: labels.retry })] }))] }), last && onReply && !message.failed && replies.length > 0 && (_jsx(ChatReplies, { replies: replies, onPick: onReply, label: labels.replies }))] }));
+    return (_jsxs("div", { className: cls.join(" "), children: [showSpeaker && message.speaker && _jsx("span", { className: "ck-speaker", children: message.speaker.name }), message.failed ? (_jsx("p", { className: "ck-failed", role: "status", children: message.content || labels.failed })) : (_jsx(Markdown, { text: parsed.text, citations: message.citations, renderLink: renderLink })), footer, message.failed ? (onRetry && (_jsx("div", { className: "ck-turn-actions", children: _jsxs("button", { type: "button", className: "ck-action", onClick: onRetry, children: [_jsx(IconRetry, {}), _jsx("span", { children: labels.retry })] }) }))) : (_jsx(AnswerActions, { text: parsed.text, onRetry: onRetry, speaker: speaker, share: share, labels: labels })), last && onReply && !message.failed && replies.length > 0 && (_jsx(ChatReplies, { replies: replies, onPick: onReply, label: labels.replies }))] }));
 }
 /**
  * The replies under an answer. Exported for apps that render their own
@@ -46,14 +48,14 @@ export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, 
 export function ChatReplies({ replies, onPick, label = DEFAULT_THREAD_LABELS.replies, disabled = false, }) {
     if (replies.length === 0)
         return null;
-    return (_jsx("div", { className: "ck-replies", role: "group", "aria-label": label, children: replies.map((r) => (_jsx("button", { type: "button", className: "ck-reply", disabled: disabled, onClick: () => onPick(r), children: r }, r))) }));
+    return (_jsx("div", { className: "ck-replies", role: "group", "aria-label": label, children: replies.map((r, i) => (_jsx("button", { type: "button", className: i === 0 ? "ck-reply ck-reply-lead" : "ck-reply", disabled: disabled, onClick: () => onPick(r), children: r }, r))) }));
 }
 /**
  * The conversation. Follows new tokens only while the reader is at the
  * bottom, with a button back down once they are not; a turn in flight can be
  * stopped from where it is being written.
  */
-export function ChatThread({ messages, live = null, loading = false, stopped = false, onStop, onRetry, onReply, renderLink = defaultRenderLink, renderFooter, showSpeakers, empty, children, labels: labelOverrides, }) {
+export function ChatThread({ messages, live = null, loading = false, stopped = false, onStop, onRetry, onReply, renderLink = defaultRenderLink, renderFooter, showSpeakers, speaker, share, empty, children, labels: labelOverrides, }) {
     const labels = { ...DEFAULT_THREAD_LABELS, ...labelOverrides };
     const { scrollRef, endRef, following, onScroll, jumpToBottom } = useStickToBottom([messages.length, live?.text, live?.status, stopped], messages.length);
     if (loading) {
@@ -64,7 +66,7 @@ export function ChatThread({ messages, live = null, loading = false, stopped = f
     const speakers = new Set([...messages.map((m) => m.speaker?.name), live?.speaker?.name].filter(Boolean));
     const named = showSpeakers ?? speakers.size > 1;
     const lastAnswer = [...messages].reverse().find((m) => m.role === "assistant");
-    return (_jsxs("div", { className: "ck-thread-wrap", children: [_jsx("div", { ref: scrollRef, className: "ck-thread", onScroll: onScroll, children: _jsxs("div", { className: "ck-thread-inner", children: [messages.map((m) => (_jsx(ChatMessage, { message: m, onRetry: onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined, renderLink: renderLink, showSpeaker: named, footer: renderFooter?.(m), last: m.id === lastAnswer?.id, onReply: live || stopped ? undefined : onReply, labels: labels }, m.id))), live && (_jsxs("div", { className: "ck-turn ck-turn-answer", children: [named && live.speaker && _jsx("span", { className: "ck-speaker", children: live.speaker.name }), live.text ? (_jsx(Markdown, { text: extractReplies(live.text).text, renderLink: renderLink })) : (_jsxs("p", { className: "ck-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), live.status ?? labels.working] })), onStop && (_jsxs("button", { type: "button", className: "ck-stop", onClick: onStop, children: [_jsx(IconStop, {}), labels.stop] }))] })), stopped && !live && (_jsx("p", { className: "ck-stopped", role: "status", children: labels.stopped })), children, _jsx("div", { ref: endRef })] }) }), !following && (_jsx("button", { type: "button", className: "ck-jump", onClick: jumpToBottom, "aria-label": labels.jump, title: labels.jump, children: _jsx(IconArrowDown, {}) }))] }));
+    return (_jsxs("div", { className: "ck-thread-wrap", children: [_jsx("div", { ref: scrollRef, className: "ck-thread", onScroll: onScroll, children: _jsxs("div", { className: "ck-thread-inner", children: [messages.map((m) => (_jsx(ChatMessage, { message: m, onRetry: onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined, renderLink: renderLink, showSpeaker: named, footer: renderFooter?.(m), last: m.id === lastAnswer?.id, onReply: live || stopped ? undefined : onReply, speaker: speaker, share: share, labels: labels }, m.id))), live && (_jsxs("div", { className: "ck-turn ck-turn-answer", children: [named && live.speaker && _jsx("span", { className: "ck-speaker", children: live.speaker.name }), live.text ? (_jsx(Markdown, { text: extractReplies(live.text).text, renderLink: renderLink })) : (_jsxs("p", { className: "ck-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), live.status ?? labels.working] })), onStop && (_jsxs("button", { type: "button", className: "ck-stop", onClick: onStop, children: [_jsx(IconStop, {}), labels.stop] }))] })), stopped && !live && (_jsx("p", { className: "ck-stopped", role: "status", children: labels.stopped })), children, _jsx("div", { ref: endRef })] }) }), !following && (_jsx("button", { type: "button", className: "ck-jump", onClick: jumpToBottom, "aria-label": labels.jump, title: labels.jump, children: _jsx(IconArrowDown, {}) }))] }));
 }
 /** The empty state that starts a conversation. It disappears once one has. */
 export function ChatStarters({ starters, onPick, title, }) {

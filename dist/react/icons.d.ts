@@ -12,4 +12,7 @@ export declare const IconFile: () => import("react").JSX.Element;
 export declare const IconCamera: () => import("react").JSX.Element;
 export declare const IconImage: () => import("react").JSX.Element;
 export declare const IconFileUp: () => import("react").JSX.Element;
+export declare const IconShare: () => import("react").JSX.Element;
+export declare const IconSpeaker: () => import("react").JSX.Element;
+export declare const IconBook: () => import("react").JSX.Element;
 //# sourceMappingURL=icons.d.ts.map

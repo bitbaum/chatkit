@@ -122,6 +122,15 @@
 }
 .ck-input::placeholder {
   color: var(--ck-muted);
+  /* One line, always: an empty box is one row high on every phone, and a
+     long placeholder is cut at the edge rather than wrapped into a second
+     line that the box then clips in half (320px, 2026-10-21). */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ck-input:placeholder-shown {
+  overflow: hidden;
 }
 .ck-actions {
   display: flex;
@@ -1057,6 +1066,13 @@ a.ck-source:hover {
 .ck-reply:hover {
   border-color: var(--ck-accent);
 }
+/* The first reply is the recommended next step: the same pill, drawn as the
+   lead — a firmer line and the reading colour — so the eye lands on it. */
+.ck-reply-lead {
+  border-color: var(--ck-line-2);
+  background: var(--ck-raised);
+  font-weight: 500;
+}
 .ck-reply:disabled {
   opacity: 0.5;
   cursor: default;
@@ -1194,6 +1210,110 @@ a.ck-source:hover {
   cursor: not-allowed;
   opacity: 0.45;
 }
+/* An app's own rows under Camera · Photos · Files in the attach sheet. */
+.ck-sheet-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--ck-line);
+}
+
+/* while an answer is read aloud: Stop, a quiet wave, the time so far */
+.ck-player {
+  align-items: center;
+}
+.ck-action-stop {
+  color: var(--ck-fg);
+}
+.ck-player-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 1rem;
+}
+.ck-player-wave > span {
+  display: block;
+  width: 2px;
+  height: 0.375rem;
+  border-radius: 1px;
+  background: var(--ck-fg-2);
+  animation: ck-wave 1s ease-in-out infinite;
+}
+.ck-player-wave > span:nth-child(2n) {
+  animation-delay: 0.15s;
+}
+.ck-player-wave > span:nth-child(3n) {
+  animation-delay: 0.3s;
+}
+@keyframes ck-wave {
+  50% {
+    height: 1rem;
+  }
+}
+.ck-player-time {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ck-fg-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-player-wave > span {
+    animation: none;
+    height: 0.75rem;
+  }
+}
+
+/* the sources sheet on a touch screen: one row per record */
+.ck-sources-open {
+  cursor: pointer;
+  font: inherit;
+}
+.ck-sources-open > svg {
+  font-size: 1rem;
+}
+.ck-source-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: var(--ck-target);
+  padding: 0.625rem 0.25rem;
+  border-top: 1px solid var(--ck-line);
+  color: var(--ck-fg);
+  text-decoration: none;
+}
+.ck-source-list > li:first-child .ck-source-row {
+  border-top: 0;
+}
+.ck-source-row .ck-source-id {
+  margin-top: 0.125rem;
+}
+.ck-source-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.ck-source-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ck-source-detail {
+  font-size: 0.8125rem;
+  color: var(--ck-fg-2);
+  overflow-wrap: anywhere;
+}
+a.ck-source-row:hover .ck-source-title {
+  text-decoration: underline;
+}
+
 @keyframes ck-rise {
   from {
     transform: translateY(1.5rem);

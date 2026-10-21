@@ -10,4 +10,5 @@ export * from "./scroll.js";
 export * from "./attachments.js";
 export * from "./image.js";
 export * from "./replies.js";
+export * from "./speech.js";
 //# sourceMappingURL=index.js.map

@@ -55,6 +55,11 @@ test("replies: malformed JSON yields no buttons and no raw text", () => {
   assert.deepEqual(replies, []);
 });
 
+test("replies: the instruction makes the model lead — every answer, best reply first", () => {
+  assert.match(REPLIES_INSTRUCTION, /End every answer/);
+  assert.match(REPLIES_INSTRUCTION, /FIRST/);
+});
+
 test("replies: the instruction teaches the same fence the parser reads", () => {
   assert.match(REPLIES_INSTRUCTION, new RegExp("```" + REPLIES_FENCE));
   const example = REPLIES_INSTRUCTION.slice(REPLIES_INSTRUCTION.indexOf("```"));
@@ -74,7 +79,12 @@ test("thread: replies show under the LATEST answer only, as buttons, with the bl
   );
   assert.doesNotMatch(html, /quick_replies/);
   assert.doesNotMatch(html, /Stale/, "an older answer's replies are gone");
-  assert.equal((html.match(/class="ck-reply"/g) ?? []).length, 3);
+  assert.equal((html.match(/class="ck-reply(?: ck-reply-lead)?"/g) ?? []).length, 3);
+  assert.equal(
+    (html.match(/class="ck-reply ck-reply-lead"/g) ?? []).length,
+    1,
+    "the first reply is the lead — the recommended next step",
+  );
   assert.match(html, /role="group" aria-label="Suggested replies"/);
 });
 

@@ -21,9 +21,13 @@ export declare const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels;
  * browser supplies Escape, the focus trap and focus restore.
  *
  * Every app that attaches anything gets this from the composer. An app with a
- * custom box renders `<AttachMenu>` itself rather than a bare file input.
+ * custom box renders `<AttachMenu>` itself rather than a bare file input, and
+ * an app with more to bring into a message than files — one of the person's
+ * own things, a note the model reads every time — puts those rows in `extra`:
+ * they sit under Camera · Photos · Files in the same sheet, on every pointer,
+ * since a mouse cannot reach them through a file dialog.
  */
-export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger, }: {
+export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger, extra, onOpenChange, }: {
     onFiles: (files: FileList | null) => void;
     disabled?: boolean;
     labels?: AttachMenuLabels;
@@ -33,5 +37,10 @@ export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger
     /** The button's content. Defaults to a paperclip icon; an uploader passes
      *  its own ("Add photo"). The button keeps chatkit's 44px target. */
     trigger?: ReactNode;
+    /** The app's own rows under the three sources (see above). With it the
+     *  sheet opens on every pointer. A row that should close the sheet calls
+     *  the `close` it is given. */
+    extra?: (close: () => void) => ReactNode;
+    onOpenChange?: (open: boolean) => void;
 }): import("react").JSX.Element;
 //# sourceMappingURL=AttachMenu.d.ts.map

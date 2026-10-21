@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Composer, ChatThread, ChatStarters, Markdown } from "../dist/react/index.js";
+import * as reactMod from "../dist/react/index.js";
+const { Composer, ChatThread, ChatStarters, Markdown } = reactMod;
 import { AttachMenu, ATTACH_SOURCE_INPUT, shrinkImage } from "../dist/react/attach.js";
 
 test("composer: textarea, send, and 16px guaranteed by the stylesheet", () => {
@@ -154,4 +155,44 @@ test("markdown: cards, a table and the sources row render as such, never as HTML
   assert.match(html, /class="ck-sources"/);
   assert.match(html, /href="https:\/\/x.ch"[^>]*class="ck-source"/);
   assert.doesNotMatch(html, /\*\*/);
+});
+
+test("answer actions: copy on every answer; listen and share only where they work", () => {
+  const { AnswerActions } = reactMod;
+  const html = renderToStaticMarkup(h(AnswerActions, { text: "Hello **there**" }));
+  assert.match(html, /aria-label="Copy"/);
+  // No voice and no share sheet on a server: neither button is rendered dead.
+  assert.doesNotMatch(html, /Listen/);
+  assert.doesNotMatch(html, /Share/);
+  const withVoice = renderToStaticMarkup(
+    h(AnswerActions, {
+      text: "Hello",
+      onRetry: () => {},
+      speaker: { speak: async () => {}, cancel() {} },
+    }),
+  );
+  assert.match(withVoice, /aria-label="Listen"/);
+  assert.match(withVoice, /Try again/);
+});
+
+test("markdown: sources are chips on a server render, and each record keeps its link", () => {
+  const html = renderToStaticMarkup(
+    h(Markdown, {
+      text: "Checked [F1] and [F2].",
+      citations: {
+        F1: { label: "Homepage", detail: "Fetched today", href: "https://x.y/" },
+        F2: { label: "Notes", detail: "A note" },
+      },
+    }),
+  );
+  assert.match(html, /class="ck-sources"/);
+  assert.match(html, /href="https:\/\/x.y\/"/);
+  assert.match(html, /Notes/);
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.ck-source-list/, "the sheet's list is styled");
+  assert.match(
+    css,
+    /\.ck-input::placeholder\s*\{[^}]*white-space:\s*nowrap/,
+    "one-line placeholder",
+  );
 });
