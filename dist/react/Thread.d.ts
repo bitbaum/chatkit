@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { type CitationMap, type RenderLink } from "./Markdown.js";
+import type { Speaker } from "../speech.js";
 export type ChatSpeaker = {
     /** Shown above the message when more than one agent can answer. */
     name: string;
@@ -24,6 +25,8 @@ export type ChatMessageData = {
 export type ThreadLabels = {
     copy: string;
     copied: string;
+    listen: string;
+    share: string;
     retry: string;
     stop: string;
     working: string;
@@ -40,8 +43,15 @@ export declare const DEFAULT_THREAD_LABELS: ThreadLabels;
  * no box, because it is the thing being READ. Copy is on every answer; Retry
  * only on the last one (retrying an older turn would fork the thread).
  */
-export declare function ChatMessage({ message, onRetry, renderLink, showSpeaker, footer, last, onReply, labels, }: {
+export declare function ChatMessage({ message, onRetry, renderLink, showSpeaker, footer, last, onReply, speaker, share, labels, }: {
     message: ChatMessageData;
+    /** The app's voice for Listen (the browser's without it). */
+    speaker?: Speaker | null;
+    /** What Share hands to the system sheet. `false` hides Share. */
+    share?: {
+        title?: string;
+        url?: string;
+    } | false;
     /** Send a suggested reply. Without it no reply buttons are shown. */
     onReply?: (text: string) => void;
     /** The latest answer: its actions stay visible (they are what you want next). */
@@ -76,8 +86,15 @@ export type LiveTurn = {
  * bottom, with a button back down once they are not; a turn in flight can be
  * stopped from where it is being written.
  */
-export declare function ChatThread({ messages, live, loading, stopped, onStop, onRetry, onReply, renderLink, renderFooter, showSpeakers, empty, children, labels: labelOverrides, }: {
+export declare function ChatThread({ messages, live, loading, stopped, onStop, onRetry, onReply, renderLink, renderFooter, showSpeakers, speaker, share, empty, children, labels: labelOverrides, }: {
     messages: ChatMessageData[];
+    /** The app's voice for Listen under every answer (the browser's without it). */
+    speaker?: Speaker | null;
+    /** What Share hands to the system sheet. `false` hides Share. */
+    share?: {
+        title?: string;
+        url?: string;
+    } | false;
     live?: LiveTurn | null;
     loading?: boolean;
     /** The person stopped the last turn themselves. */

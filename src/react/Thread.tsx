@@ -2,9 +2,11 @@
 
 import type { ReactNode } from "react";
 import { Markdown, defaultRenderLink, type CitationMap, type RenderLink } from "./Markdown.js";
-import { useClipboard, useStickToBottom } from "./hooks.js";
+import { useStickToBottom } from "./hooks.js";
 import { extractReplies } from "../replies.js";
-import { IconArrowDown, IconCheck, IconCopy, IconRetry, IconStop } from "./icons.js";
+import type { Speaker } from "../speech.js";
+import { AnswerActions } from "./AnswerActions.js";
+import { IconArrowDown, IconRetry, IconStop } from "./icons.js";
 
 export type ChatSpeaker = {
   /** Shown above the message when more than one agent can answer. */
@@ -32,6 +34,8 @@ export type ChatMessageData = {
 export type ThreadLabels = {
   copy: string;
   copied: string;
+  listen: string;
+  share: string;
   retry: string;
   stop: string;
   working: string;
@@ -45,6 +49,8 @@ export type ThreadLabels = {
 export const DEFAULT_THREAD_LABELS: ThreadLabels = {
   copy: "Copy",
   copied: "Copied",
+  listen: "Listen",
+  share: "Share",
   retry: "Try again",
   stop: "Stop",
   working: "Working on it",
@@ -69,9 +75,15 @@ export function ChatMessage({
   footer,
   last = false,
   onReply,
+  speaker,
+  share,
   labels = DEFAULT_THREAD_LABELS,
 }: {
   message: ChatMessageData;
+  /** The app's voice for Listen (the browser's without it). */
+  speaker?: Speaker | null;
+  /** What Share hands to the system sheet. `false` hides Share. */
+  share?: { title?: string; url?: string } | false;
   /** Send a suggested reply. Without it no reply buttons are shown. */
   onReply?: (text: string) => void;
   /** The latest answer: its actions stay visible (they are what you want next). */
@@ -84,8 +96,6 @@ export function ChatMessage({
   footer?: ReactNode;
   labels?: ThreadLabels;
 }) {
-  const { copied, copy } = useClipboard();
-
   if (message.role === "user") {
     return (
       <div className="ck-turn ck-turn-user">
@@ -113,25 +123,24 @@ export function ChatMessage({
         <Markdown text={parsed.text} citations={message.citations} renderLink={renderLink} />
       )}
       {footer}
-      <div className="ck-turn-actions">
-        {!message.failed && (
-          <button
-            type="button"
-            className="ck-action"
-            onClick={() => copy(parsed.text)}
-            aria-label={copied ? labels.copied : labels.copy}
-          >
-            {copied ? <IconCheck /> : <IconCopy />}
-            <span>{copied ? labels.copied : labels.copy}</span>
-          </button>
-        )}
-        {onRetry && (
-          <button type="button" className="ck-action" onClick={onRetry}>
-            <IconRetry />
-            <span>{labels.retry}</span>
-          </button>
-        )}
-      </div>
+      {message.failed ? (
+        onRetry && (
+          <div className="ck-turn-actions">
+            <button type="button" className="ck-action" onClick={onRetry}>
+              <IconRetry />
+              <span>{labels.retry}</span>
+            </button>
+          </div>
+        )
+      ) : (
+        <AnswerActions
+          text={parsed.text}
+          onRetry={onRetry}
+          speaker={speaker}
+          share={share}
+          labels={labels}
+        />
+      )}
       {last && onReply && !message.failed && replies.length > 0 && (
         <ChatReplies replies={replies} onPick={onReply} label={labels.replies} />
       )}
@@ -157,11 +166,14 @@ export function ChatReplies({
   if (replies.length === 0) return null;
   return (
     <div className="ck-replies" role="group" aria-label={label}>
-      {replies.map((r) => (
+      {replies.map((r, i) => (
+        // The first reply is the model's recommendation — what the person
+        // would most likely say next — and is drawn as the lead, so "what do
+        // I do now?" always has an answer under the answer.
         <button
           key={r}
           type="button"
-          className="ck-reply"
+          className={i === 0 ? "ck-reply ck-reply-lead" : "ck-reply"}
           disabled={disabled}
           onClick={() => onPick(r)}
         >
@@ -196,11 +208,17 @@ export function ChatThread({
   renderLink = defaultRenderLink,
   renderFooter,
   showSpeakers,
+  speaker,
+  share,
   empty,
   children,
   labels: labelOverrides,
 }: {
   messages: ChatMessageData[];
+  /** The app's voice for Listen under every answer (the browser's without it). */
+  speaker?: Speaker | null;
+  /** What Share hands to the system sheet. `false` hides Share. */
+  share?: { title?: string; url?: string } | false;
   live?: LiveTurn | null;
   loading?: boolean;
   /** The person stopped the last turn themselves. */
@@ -260,6 +278,8 @@ export function ChatThread({
               footer={renderFooter?.(m)}
               last={m.id === lastAnswer?.id}
               onReply={live || stopped ? undefined : onReply}
+              speaker={speaker}
+              share={share}
               labels={labels}
             />
           ))}

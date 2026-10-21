@@ -121,6 +121,31 @@ while a turn runs. Pass `replies` on a message to supply your own instead.
 An app with its own thread uses `extractReplies(text)` and `<ChatReplies>`, so
 the buttons look and behave the same everywhere.
 
+The model leads. The instruction asks for replies on EVERY answer, the
+recommended next step first, and the first button is drawn as the lead
+(`ck-reply-lead`): on a phone the answer is read and the next move is one
+tap, the way Grok does it. Only an answer that ends the conversation has no
+buttons.
+
+### Under every answer — Copy, Listen, Share
+
+`AnswerActions` is the row under an answer, the same in every product:
+
+```tsx
+<AnswerActions text={answer} onRetry={retry} speaker={studioVoice} share={{ url }}>
+  <YourOwnButton />
+</AnswerActions>
+```
+
+Copy copies the markdown. Listen reads the answer aloud as prose (headings,
+emphasis, citations and code fences stripped — `plainTextForSpeech`) with the
+browser's own voice, or with the `speaker` you pass (`{ speak(text), cancel() }`
+— loki hands in its studio voice); while it reads, the row becomes a small
+player: Stop and the time so far. Share opens the system share sheet with the
+answer's prose (or what you pass), only where one exists. A button that does
+nothing is never shown. `ChatThread` renders it under every answer; pass
+`speaker` and `share` through.
+
 ### The next message while a turn runs
 
 `queue` keeps Send live while `sending`, beside Stop, and the placeholder
@@ -154,7 +179,11 @@ Because Files takes anything, `isTextFile` decides afterwards what can be read
 inline; a PDF gets a sentence, not a prompt full of bytes. With a mouse the
 paperclip opens the file dialog directly — on a desktop all three are the
 same dialog. A box that is not chatkit's composer renders `<AttachMenu
-onFiles={…} />` rather than a bare `<input type="file">`. Labels:
+onFiles={…} />` rather than a bare `<input type="file">`. An app with more to
+bring into a message than files — one of the person's own things, a note the
+model reads every time — passes `extra={(close) => <YourRows />}`: the rows
+sit under the three sources in the same sheet, and the sheet then opens on a
+mouse too, since a file dialog cannot hold them. Labels:
 `labels={{ attachMenu: { title, close, sources: { camera, photos, files } } }}`.
 
 ### Picking files anywhere — `@bitbaum/chatkit/attach`
@@ -213,11 +242,14 @@ three unprompted:
   opening with a bold lead — renders as a badge (the number, or the emoji the
   lead opens with: `**🤖 Robot.** …`), the name, and the body under it.
 - **A table is a table**, with the header row kept.
-- **Sources are listed once**, as chips under the answer, from the handles the
-  text cites and the `citations` map you pass (`{ F1: { label, detail, href? }
-  }`). `renderCitation` replaces the in-text superscript with your own
-  (a sheet, a dialog); `renderSources` replaces the chip row with your own;
-  `sources={false}` drops it.
+- **Sources are listed once**, under the answer, from the handles the text
+  cites and the `citations` map you pass (`{ F1: { label, detail, href? } }`).
+  On a mouse they are a row of chips; on a touch screen ONE "Sources · n"
+  button opens a sheet with every record — label, detail, link — because a
+  row of chips on a phone was a row of cut-off words. `renderCitation`
+  replaces the in-text superscript with your own; `renderSources` replaces
+  the row with your own; `sources={false}` drops it. `SourcesRow` and `Sheet`
+  are exported for an app that lists sources from elsewhere.
 
 `demo/screen.html` shows all of it.
 

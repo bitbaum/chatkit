@@ -416,6 +416,106 @@ try {
   );
   check((await box.locator(".ck-problem").count()) === 0, "mic: the problem clears once it lands");
   await context.close();
+
+  // Under every answer: Copy, and Listen where the browser can speak. While it
+  // reads, the row is a player with Stop. Headless Chromium has no voices and
+  // ends an utterance at once, so the voice is a stand-in that reads until
+  // cancelled — the contract under test is the row, not the synthesiser.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.addInitScript(() => {
+      let current = null;
+      Object.defineProperty(window, "speechSynthesis", {
+        value: {
+          speak(u) {
+            current = u;
+          },
+          cancel() {
+            const u = current;
+            current = null;
+            u?.onend?.();
+          },
+        },
+      });
+    });
+    await page.goto(base);
+    await page.waitForSelector("#conversation .ck-turn-answer");
+    const listen = page.locator("#conversation .ck-action[aria-label='Listen']").first();
+    check(
+      (await listen.count()) > 0,
+      "answer actions: Listen under an answer where a voice exists",
+    );
+    check(
+      (await page.locator("#conversation .ck-action[aria-label='Copy']").count()) > 0,
+      "answer actions: Copy under every answer",
+    );
+    await listen.click();
+    await page.waitForTimeout(150);
+    check(
+      (await page.locator("#conversation .ck-player .ck-action-stop").count()) === 1,
+      "answer actions: a player with Stop while an answer is read",
+    );
+    await page.locator("#conversation .ck-player .ck-action-stop").click();
+    await page.waitForTimeout(100);
+    check(
+      (await page.locator("#conversation .ck-player").count()) === 0,
+      "answer actions: Stop ends the reading and the row returns",
+    );
+    await page.close();
+  }
+
+  // On a touch screen the sources of an answer are ONE button that opens a
+  // sheet with every record; on a mouse, chips.
+  {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    await page.goto(base.replace("index.html", "screen.html"));
+    await page.waitForSelector(".ck-screen .ck-sources");
+    const open = page.locator(".ck-sources-open").first();
+    check((await open.count()) === 1, "sources: one button on a touch screen, not a row of chips");
+    await open.click();
+    await page.waitForSelector(".ck-sheet[open] .ck-source-row");
+    const rows = await page.locator(".ck-sheet[open] .ck-source-row").count();
+    check(rows >= 2, `sources: the sheet lists every record (${rows})`);
+    const small = await page
+      .locator(".ck-sheet[open] .ck-source-row")
+      .evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 44).length);
+    check(small === 0, "sources: every row is a finger-sized target");
+    await context.close();
+    const desk = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await desk.goto(base.replace("index.html", "screen.html"));
+    await desk.waitForSelector(".ck-screen .ck-sources");
+    check(
+      (await desk.locator(".ck-sources-open").count()) === 0 &&
+        (await desk.locator(".ck-sources .ck-source").count()) >= 2,
+      "sources: chips on a mouse",
+    );
+    await desk.close();
+  }
+
+  // An empty box is ONE row on the narrowest phone, however long the
+  // placeholder: it is cut at the edge, never wrapped into a clipped second
+  // line (320px, 2026-10-21).
+  {
+    const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
+    await page.goto(base);
+    const input = page.locator("#empty .ck-input");
+    await input.waitFor();
+    const m = await input.evaluate((e) => {
+      e.placeholder = "Name a new project, or ask anything at all about it…";
+      const r = e.getBoundingClientRect();
+      return { height: r.height, line: parseFloat(getComputedStyle(e).lineHeight) };
+    });
+    check(
+      m.height < m.line * 2,
+      `an empty box with a long placeholder is one row at 320px (${m.height}px, line ${m.line}px)`,
+    );
+    await page.close();
+  }
 } finally {
   await browser.close();
   server.close();

@@ -1,7 +1,43 @@
+"use client";
 import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+import { useState } from "react";
+import { IconBook } from "./icons.js";
+import { Sheet, prefersSheet } from "./Sheet.js";
 import { citedIds, isCardList, isInternalHref, listLead, parseBlocks, parseInline, } from "../markdown.js";
 /** A plain anchor: same-site paths in place, everything else in a new tab. */
 export const defaultRenderLink = ({ href, internal, className, children }) => internal ? (_jsx("a", { href: href, className: className, children: children })) : (_jsx("a", { href: href, className: className, target: "_blank", rel: "noopener noreferrer", children: children }));
+/**
+ * The sources an answer cites, listed once under it. On a mouse, a row of
+ * chips. On a touch screen, ONE "Sources" button that opens a sheet with every
+ * record — its label, what it is, and a link — the way the ChatGPT app lists
+ * them: a row of chips on a phone was a row of cut-off words.
+ */
+export function SourcesRow({ records, label, renderLink = defaultRenderLink, }) {
+    const [open, setOpen] = useState(false);
+    const sheet = prefersSheet();
+    if (records.length === 0)
+        return null;
+    if (!sheet) {
+        return (_jsxs("div", { className: "ck-sources", role: "list", "aria-label": label, children: [_jsx("span", { className: "ck-sources-label", children: label }), records.map((c) => {
+                    const chip = (_jsxs(_Fragment, { children: [_jsx("span", { className: "ck-source-id", children: c.id }), _jsx("span", { className: "ck-source-label", children: c.label })] }));
+                    return c.href ? (_jsx("span", { role: "listitem", children: renderLink({
+                            href: c.href,
+                            internal: isInternalHref(c.href),
+                            className: "ck-source",
+                            children: chip,
+                        }) }, c.id)) : (_jsx("span", { role: "listitem", className: "ck-source", title: c.detail, children: chip }, c.id));
+                })] }));
+    }
+    return (_jsxs("div", { className: "ck-sources", children: [_jsxs("button", { type: "button", className: "ck-source ck-sources-open", onClick: () => setOpen(true), "aria-haspopup": "dialog", children: [_jsx(IconBook, {}), _jsxs("span", { className: "ck-source-label", children: [label, " \u00B7 ", records.length] })] }), _jsx(Sheet, { open: open, onClose: () => setOpen(false), title: label, children: _jsx("ol", { className: "ck-source-list", children: records.map((c) => {
+                        const body = (_jsxs(_Fragment, { children: [_jsx("span", { className: "ck-source-id", children: c.id }), _jsxs("span", { className: "ck-source-body", children: [_jsx("span", { className: "ck-source-title", children: c.label }), c.detail && c.detail !== c.label && (_jsx("span", { className: "ck-source-detail", children: c.detail }))] })] }));
+                        return (_jsx("li", { children: c.href ? (renderLink({
+                                href: c.href,
+                                internal: isInternalHref(c.href),
+                                className: "ck-source-row",
+                                children: body,
+                            })) : (_jsx("span", { className: "ck-source-row", children: body })) }, c.id));
+                    }) }) })] }));
+}
 export const defaultRenderCitation = ({ ids, citations, className }) => (_jsx("sup", { className: className, title: ids
         .map((id) => `${id} — ${citations[id].label}\n${citations[id].detail}`)
         .join("\n\n"), children: ids.join(" ") }));
@@ -85,15 +121,6 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
             }), sources && cited.length > 0 && citations && renderSources ? (renderSources({
                 records: cited.map((id) => ({ id, ...citations[id] })),
                 label: sourcesLabel,
-            })) : sources && cited.length > 0 && citations ? (_jsxs("div", { className: "ck-sources", role: "list", "aria-label": sourcesLabel, children: [_jsx("span", { className: "ck-sources-label", children: sourcesLabel }), cited.map((id) => {
-                        const c = citations[id];
-                        const chip = (_jsxs(_Fragment, { children: [_jsx("span", { className: "ck-source-id", children: id }), _jsx("span", { className: "ck-source-label", children: c.label })] }));
-                        return c.href ? (_jsx("span", { role: "listitem", children: renderLink({
-                                href: c.href,
-                                internal: isInternalHref(c.href),
-                                className: "ck-source",
-                                children: chip,
-                            }) }, id)) : (_jsx("span", { role: "listitem", className: "ck-source", title: c.detail, children: chip }, id));
-                    })] })) : null] }));
+            })) : sources && cited.length > 0 && citations ? (_jsx(SourcesRow, { records: cited.map((id) => ({ id, ...citations[id] })), label: sourcesLabel, renderLink: renderLink })) : null] }));
 }
 //# sourceMappingURL=Markdown.js.map

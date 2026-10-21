@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 /** What a grounded answer's `[F8]` / `[D1]` handle refers to. Unknown handles
  *  are dropped rather than shown bare: a dangling `[F8]` implies a source the
  *  reader cannot reach. */
@@ -34,6 +34,22 @@ export type RenderSources = (sources: {
 }) => ReactNode;
 /** A plain anchor: same-site paths in place, everything else in a new tab. */
 export declare const defaultRenderLink: RenderLink;
+/**
+ * The sources an answer cites, listed once under it. On a mouse, a row of
+ * chips. On a touch screen, ONE "Sources" button that opens a sheet with every
+ * record — its label, what it is, and a link — the way the ChatGPT app lists
+ * them: a row of chips on a phone was a row of cut-off words.
+ */
+export declare function SourcesRow({ records, label, renderLink, }: {
+    records: {
+        id: string;
+        label: string;
+        detail: string;
+        href?: string;
+    }[];
+    label: string;
+    renderLink?: RenderLink;
+}): import("react").JSX.Element | null;
 export declare const defaultRenderCitation: RenderCitation;
 /**
  * Model output as readable text: paragraphs, lists, headings, tables, bold,

@@ -349,3 +349,27 @@ test("a failed transcription keeps the server's reason", () => {
   );
   assert.equal(reasonOf(Object.assign(new Error("x"), { reason: "App says so" })), "App says so");
 });
+
+// Read aloud: an answer is prose, not markdown syntax.
+import { plainTextForSpeech, guessSpeechLang } from "../dist/index.js";
+
+test("speech: markdown is flattened to the words a voice should say", () => {
+  const spoken = plainTextForSpeech(
+    '## Summary\n\n- **Two runs** failed [F8] on `sink` [D1, D2].\n- [ ] See [the log](https://x.y/z).\n\n```sh\nls\n```\n\n> quoted\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n```quick_replies\n["Yes"]\n```',
+  );
+  for (const mark of ["#", "*", "[F8]", "https://", "`", "---", "quick_replies", "Yes"])
+    assert.equal(spoken.includes(mark), false, `no ${mark}`);
+  assert.match(spoken, /Two runs failed on sink/);
+  assert.match(spoken, /See the log/);
+  assert.match(spoken, /\(code\)/, "code is named, not read");
+  assert.equal(plainTextForSpeech("   "), "");
+});
+
+test("speech: the voice language follows the words", () => {
+  assert.equal(
+    guessSpeechLang("Die zwei Runs sind nicht mehr auf der Liste und das ist gut."),
+    "de",
+  );
+  assert.equal(guessSpeechLang("The two runs are not on the list and that is fine."), "en");
+  assert.equal(guessSpeechLang("ok", "fr"), "fr");
+});

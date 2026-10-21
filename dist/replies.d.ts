@@ -24,9 +24,12 @@ export type RepliesOptions = {
     maxLength?: number;
 };
 /**
- * Append to a system prompt. Written so a model leaves the block off when no
- * reply is likely — a button row on every answer is noise, and noise is what
- * makes people stop reading buttons.
+ * Append to a system prompt. The model leads: every answer ends with the two
+ * to four things the person is most likely to say next, the first being the
+ * recommended next step. That is what makes a chat on a phone usable with a
+ * thumb — the answer is read, the next move is one tap (owner, 2026-10-21:
+ * "AI helps us to answer and lead the conversation"). Only an answer that
+ * ends the conversation leaves the block off.
  */
 export declare const REPLIES_INSTRUCTION: string;
 /**
