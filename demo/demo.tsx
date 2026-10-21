@@ -109,6 +109,13 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
                     ],
                   }) +
                   visual({
+                    type: "audio",
+                    title: "An original morning sketch",
+                    src: "/demo/morning.wav",
+                    creator: "Studio example",
+                    caption: "A short synthesized instrumental, not a finished recording.",
+                  }) +
+                  visual({
                     type: "callout",
                     title: "A useful next step",
                     body: "Choose one part to explore. Your choice becomes the next message in this conversation.",

@@ -1,5 +1,11 @@
 /** Declarative answer blocks. Model output is data, never HTML or executable SVG. */
 export type RichBlock = {
+    type: "audio";
+    title: string;
+    src: string;
+    creator?: string;
+    caption?: string;
+} | {
     type: "gallery";
     title: string;
     images: {

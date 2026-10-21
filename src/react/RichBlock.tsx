@@ -15,6 +15,18 @@ export function RichAnswerBlock({
   const [selected, setSelected] = useState<number | null>(null);
   const [sent, setSent] = useState(false);
   const [photo, setPhoto] = useState<number | null>(null);
+  if (block.type === "audio")
+    return (
+      <figure className="ck-rich ck-audio">
+        <figcaption className="ck-rich-title">{block.title}</figcaption>
+        {block.creator && <p>{block.creator}</p>}
+        <audio controls preload="none" src={block.src} aria-label={block.title} />
+        {block.caption && <p>{block.caption}</p>}
+        <a href={block.src} target="_blank" rel="noopener noreferrer">
+          {block.title} ↗
+        </a>
+      </figure>
+    );
   if (block.type === "gallery") {
     const active = photo === null ? null : block.images[photo];
     return (

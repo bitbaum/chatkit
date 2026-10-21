@@ -20,6 +20,7 @@ import { chromium } from "playwright";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const types = {
   ".html": "text/html",
+  ".wav": "audio/wav",
   ".js": "text/javascript",
   ".css": "text/css",
   ".woff2": "font/woff2",
@@ -531,6 +532,17 @@ try {
       .locator("#conversation .ck-rich")
       .evaluateAll((es) => es.some((e) => e.scrollWidth > e.clientWidth + 1));
     check(!overflow, `visual blocks fit their containers at ${width}px`);
+    const audio = page.locator("#conversation .ck-audio audio");
+    check(
+      await audio.evaluate((a) => a.paused && !a.autoplay && a.preload === "none"),
+      `audio waits for explicit playback at ${width}px`,
+    );
+    await audio.evaluate((a) => a.play());
+    check(
+      await audio.evaluate((a) => !a.paused && a.duration > 10),
+      `the provided WAV plays at ${width}px`,
+    );
+    await audio.evaluate((a) => a.pause());
     const photo = page.locator("#conversation .ck-photo").first();
     await photo.click();
     check(

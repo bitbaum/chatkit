@@ -88,3 +88,29 @@ test("copy and speech describe visuals instead of reading JSON", () => {
   assert.match(plainTextForSpeech(text), /Dependency/);
   assert.doesNotMatch(plainTextForSpeech(text), /code|chat_ui/);
 });
+
+test("audio is a real provided asset with explicit playback and readable attribution", () => {
+  const block = {
+    type: "audio",
+    title: "Morning sketch",
+    src: "/morning.wav",
+    creator: "Studio",
+    caption: "An instrumental draft",
+  };
+  assert.deepEqual(parseRichBlock(JSON.stringify(block)), block);
+  const text = "```chat_ui\n" + JSON.stringify(block) + "\n```";
+  const html = renderToStaticMarkup(h(Markdown, { text }));
+  assert.match(html, /<audio[^>]*controls=""[^>]*preload="none"/);
+  assert.doesNotMatch(html, /autoplay|autoPlay/);
+  assert.match(html, /Studio/);
+  assert.match(richAnswerText(text), /Morning sketch — Studio/);
+  assert.doesNotMatch(plainTextForSpeech(text), /chat_ui/);
+  for (const src of [
+    "javascript:alert(1)",
+    "data:audio/wav;base64,AA==",
+    "//evil.test/x",
+    "https://u:p@evil.test/x",
+  ]) {
+    assert.equal(parseRichBlock(JSON.stringify({ ...block, src })), null);
+  }
+});
