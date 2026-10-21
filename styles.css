@@ -1518,3 +1518,20 @@ a.ck-source-row:hover .ck-source-title {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.ck-audio audio {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 12px 0;
+}
+.ck-audio p {
+  margin: 6px 0;
+  color: var(--ck-muted);
+}
+.ck-audio a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}

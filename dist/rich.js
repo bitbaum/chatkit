@@ -31,6 +31,12 @@ export function parseRichBlock(raw) {
     if (!record(b) || !str(b.title, 200))
         return null;
     switch (b.type) {
+        case "audio":
+            return safeImageSrc(b.src) &&
+                (b.creator === undefined || str(b.creator, 200)) &&
+                (b.caption === undefined || str(b.caption, 1000))
+                ? b
+                : null;
         case "callout":
             return str(b.body) ? { type: b.type, title: b.title, body: b.body } : null;
         case "gallery":
@@ -73,11 +79,12 @@ export const RICH_ANSWERS_INSTRUCTION = [
     "## Visual answers",
     "Lead with the answer. Use headings, short paragraphs, markdown tables for comparisons, and numbered steps when they help. Keep simple answers simple.",
     "When useful, insert a fenced chat_ui block containing ONE JSON object at the point it belongs. These are the supported shapes:",
+    '{"type":"audio","title":"Song sample","src":"/provided-sample.wav","creator":"Creator name","caption":"What to listen for"}',
     '{"type":"gallery","title":"Reference photos","images":[{"src":"/provided-image.jpg","alt":"Describe the image","caption":"What to notice"}]}',
     '{"type":"diagram","title":"How it connects","nodes":[{"id":"a","label":"Input","detail":"Optional explanation"},{"id":"b","label":"Result"}],"edges":[{"from":"a","to":"b","label":"leads to"}]}',
     '{"type":"callout","title":"Recommendation","body":"The useful takeaway."}',
     '{"type":"choices","title":"What would you like next?","options":[{"label":"Explain the first option","reply":"Explain the first option"},{"label":"Compare the alternatives","reply":"Compare the alternatives"}],"submit":"Continue"}',
-    "Use at most 6 images, 8 diagram nodes, 16 edges, or 6 choices per block. Translate titles, labels and submit into the reader's language. A choice sends its reply as a normal message; it never performs an action directly. Never invent image URLs, numbers, sources, tool results or product capabilities. Use only image URLs provided by the person, context or tools; otherwise use a diagram or plain text. Always explain the takeaway in prose too. No HTML, scripts, raw SVG, or decorative images. Preserve domain-specific evidence and authority rules. Put suggested replies last, outside chat_ui blocks.",
+    "Use at most 6 images, 8 diagram nodes, 16 edges, or 6 choices per block. Translate titles, labels and submit into the reader's language. A choice sends its reply as a normal message; it never performs an action directly. Audio uses explicit playback, never autoplay. Include audio only for URLs actually provided by a person, context or a completed tool result; a track title or a planned generation is not a playable file. Preserve creator attribution and distinguish previews, generated drafts and finished recordings. Never invent media URLs, numbers, sources, tool results or product capabilities. Use only image URLs provided by the person, context or tools; otherwise use a diagram or plain text. Always explain the takeaway in prose too. No HTML, scripts, raw SVG, or decorative images. Preserve domain-specific evidence and authority rules. Put suggested replies last, outside chat_ui blocks.",
 ].join("\n");
 /** Copy, share and voice keep the content of a visual, never its wire JSON. */
 export function richAnswerText(text) {
@@ -86,6 +93,8 @@ export function richAnswerText(text) {
         if (!b)
             return "";
         switch (b.type) {
+            case "audio":
+                return `${b.title}${b.creator ? ` — ${b.creator}` : ""}${b.caption ? `\n${b.caption}` : ""}\n${b.src}`;
             case "callout":
                 return `${b.title}\n${b.body}`;
             case "gallery":

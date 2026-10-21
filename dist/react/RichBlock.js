@@ -7,6 +7,8 @@ export function RichAnswerBlock({ block, onReply, }) {
     const [selected, setSelected] = useState(null);
     const [sent, setSent] = useState(false);
     const [photo, setPhoto] = useState(null);
+    if (block.type === "audio")
+        return (_jsxs("figure", { className: "ck-rich ck-audio", children: [_jsx("figcaption", { className: "ck-rich-title", children: block.title }), block.creator && _jsx("p", { children: block.creator }), _jsx("audio", { controls: true, preload: "none", src: block.src, "aria-label": block.title }), block.caption && _jsx("p", { children: block.caption }), _jsxs("a", { href: block.src, target: "_blank", rel: "noopener noreferrer", children: [block.title, " \u2197"] })] }));
     if (block.type === "gallery") {
         const active = photo === null ? null : block.images[photo];
         return (_jsxs("figure", { className: "ck-rich ck-gallery", children: [_jsx("figcaption", { className: "ck-rich-title", children: block.title }), _jsx("div", { className: "ck-gallery-grid", children: block.images.map((item, i) => (_jsxs("figure", { children: [_jsxs("button", { type: "button", className: "ck-photo", onClick: () => setPhoto(i), "aria-label": item.alt, "aria-haspopup": "dialog", children: [_jsx("img", { src: item.src, alt: item.alt, loading: "lazy", referrerPolicy: "no-referrer", onError: (e) => {

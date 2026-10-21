@@ -336,3 +336,18 @@ retain their direction and labels, including branches and cycles.
 Release this package before updating consumer lockfiles to `^0.11.0`.
 Run `pnpm run verify`; `demo/index.html` is the visual reference in light/dark
 and at phone width. The diagram and gallery artwork in the demo is a fixture.
+
+### Audio in answers
+
+A validated `chat_ui` block can attach a real audio asset:
+
+```json
+{"type":"audio","title":"Morning sketch","src":"/provided.wav","creator":"Studio","caption":"An original instrumental draft"}
+```
+
+The native player waits for explicit playback and does not preload the file.
+Only attach URLs supplied by a person or a completed tool. Generation and
+catalogue access belong to the app's media tools: this renderer does not
+create a song or grant rights to redistribute it. Copy and speech preserve the
+track's title, creator and caption. The demo WAV is an original synthesized
+fixture; it is not a commercial track or a model-generated recording.
