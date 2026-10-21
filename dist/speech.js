@@ -6,11 +6,12 @@
  * From loki's `speech-text`, where the play button under every answer first
  * lived. Pure, so it is tested without a voice.
  */
+import { richAnswerText } from "./rich.js";
 import { extractReplies } from "./replies.js";
 export function plainTextForSpeech(markdown) {
     // Suggested replies are buttons, never words: a quick_replies block is
     // dropped outright rather than announced as "(code)".
-    const prose = extractReplies(markdown).text;
+    const prose = richAnswerText(extractReplies(markdown).text);
     return (prose
         // Fenced code is not prose; say that it is there rather than reading it.
         .replace(/```[\s\S]*?```/g, " (code) ")

@@ -1,5 +1,6 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { richAnswerText } from "../rich.js";
 import { useSyncExternalStore } from "react";
 import { formatElapsed } from "../composer.js";
 import { plainTextForSpeech } from "../speech.js";
@@ -35,7 +36,7 @@ export function AnswerActions({ text, onRetry, speaker, share, labels: overrides
     if (speech.speaking) {
         return (_jsxs("div", { className: "ck-turn-actions ck-player", role: "status", "aria-live": "polite", children: [_jsxs("button", { type: "button", className: "ck-action ck-action-stop", onClick: speech.stop, "aria-label": labels.stop, children: [_jsx(IconStop, {}), _jsx("span", { children: labels.stop })] }), _jsx("span", { className: "ck-player-wave", "aria-hidden": true, children: Array.from({ length: 7 }).map((_, i) => (_jsx("span", {}, i))) }), _jsx("span", { className: "ck-player-time", children: formatElapsed(speech.elapsed) })] }));
     }
-    return (_jsxs("div", { className: "ck-turn-actions", children: [_jsxs("button", { type: "button", className: "ck-action", onClick: () => copy(text), "aria-label": copied ? labels.copied : labels.copy, children: [copied ? _jsx(IconCheck, {}) : _jsx(IconCopy, {}), _jsx("span", { children: copied ? labels.copied : labels.copy })] }), speech.supported && (_jsxs("button", { type: "button", className: "ck-action", onClick: () => speech.speak(text), "aria-label": labels.listen, children: [_jsx(IconSpeaker, {}), _jsx("span", { children: labels.listen })] })), canShare && share !== false && (_jsxs("button", { type: "button", className: "ck-action", 
+    return (_jsxs("div", { className: "ck-turn-actions", children: [_jsxs("button", { type: "button", className: "ck-action", onClick: () => copy(richAnswerText(text)), "aria-label": copied ? labels.copied : labels.copy, children: [copied ? _jsx(IconCheck, {}) : _jsx(IconCopy, {}), _jsx("span", { children: copied ? labels.copied : labels.copy })] }), speech.supported && (_jsxs("button", { type: "button", className: "ck-action", onClick: () => speech.speak(text), "aria-label": labels.listen, children: [_jsx(IconSpeaker, {}), _jsx("span", { children: labels.listen })] })), canShare && share !== false && (_jsxs("button", { type: "button", className: "ck-action", 
                 // A dismissed share sheet rejects; that is the person changing their
                 // mind, not an error to report.
                 onClick: () => void navigator

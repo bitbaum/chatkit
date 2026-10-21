@@ -18,4 +18,5 @@ export { useDictation } from "./use-dictation.js";
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
 export { useAttachments } from "./use-attachments.js";
 export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "./hooks.js";
+export { RichAnswerBlock } from "./RichBlock.js";
 //# sourceMappingURL=index.js.map

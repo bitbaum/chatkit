@@ -11,3 +11,4 @@ export * from "./attachments.js";
 export * from "./image.js";
 export * from "./replies.js";
 export * from "./speech.js";
+export * from "./rich.js";

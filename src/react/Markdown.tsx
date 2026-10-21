@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { parseRichBlock } from "../rich.js";
+import { RichAnswerBlock } from "./RichBlock.js";
 import { IconBook } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import {
@@ -249,8 +251,11 @@ export function Markdown({
   sources = true,
   sourcesLabel = "Sources",
   className,
+  onReply,
 }: {
   text: string;
+  /** A visual choice sends a normal conversation message. Omit while streaming. */
+  onReply?: (text: string) => void;
   citations?: CitationMap;
   renderLink?: RenderLink;
   renderCitation?: RenderCitation;
@@ -313,12 +318,19 @@ export function Markdown({
     <div className={className ? `ck-md ${className}` : "ck-md"}>
       {parseBlocks(text).map((b, i) => {
         switch (b.kind) {
-          case "code":
+          case "code": {
+            if (b.lang === "chat_ui") {
+              const block = parseRichBlock(b.code);
+              if (block) return <RichAnswerBlock key={i} block={block} onReply={onReply} />;
+              // A partial JSON block must not flash in the conversation.
+              return null;
+            }
             return (
               <pre key={i} className="ck-pre" data-lang={b.lang || undefined}>
                 <code>{b.code}</code>
               </pre>
             );
+          }
           case "ul":
             return (
               <div key={i}>

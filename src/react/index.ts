@@ -37,3 +37,4 @@ export type { AttachMenuLabels } from "./AttachMenu.js";
 export { useAttachments } from "./use-attachments.js";
 export type { AttachmentsController } from "./use-attachments.js";
 export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "./hooks.js";
+export { RichAnswerBlock } from "./RichBlock.js";

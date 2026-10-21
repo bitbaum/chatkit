@@ -120,7 +120,12 @@ export function ChatMessage({
           {message.content || labels.failed}
         </p>
       ) : (
-        <Markdown text={parsed.text} citations={message.citations} renderLink={renderLink} />
+        <Markdown
+          text={parsed.text}
+          citations={message.citations}
+          renderLink={renderLink}
+          onReply={last ? onReply : undefined}
+        />
       )}
       {footer}
       {message.failed ? (
