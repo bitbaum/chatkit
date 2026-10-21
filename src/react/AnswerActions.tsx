@@ -1,5 +1,6 @@
 "use client";
 
+import { richAnswerText } from "../rich.js";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { formatElapsed } from "../composer.js";
 import { plainTextForSpeech, type Speaker } from "../speech.js";
@@ -93,7 +94,7 @@ export function AnswerActions({
       <button
         type="button"
         className="ck-action"
-        onClick={() => copy(text)}
+        onClick={() => copy(richAnswerText(text))}
         aria-label={copied ? labels.copied : labels.copy}
       >
         {copied ? <IconCheck /> : <IconCopy />}

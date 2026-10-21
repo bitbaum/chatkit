@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add @bitbaum/chatkit@^0.9.0
+pnpm add @bitbaum/chatkit@^0.11.0
 ```
 
 **Install releases from npm, never a commit or a branch.** A semver range is
@@ -312,3 +312,27 @@ pnpm run verify      # everything CI runs
 ```
 
 MIT © Cato
+
+### Visual answers (0.11)
+
+Append `RICH_ANSWERS_INSTRUCTION` from `@bitbaum/chatkit` to a conversational
+system prompt, alongside `REPLIES_INSTRUCTION`. The model can place fenced
+`chat_ui` JSON blocks inline in its answer: galleries with captions and a
+full-size image sheet, dependency diagrams, recommendation callouts, and
+single-choice follow-ups. Markdown tables and step lists remain available.
+`Markdown` renders these automatically; pass `onReply={send}` for choice forms.
+`ChatThread` wires that callback only on the latest answer and disables it
+while another turn is running. Historical forms remain readable.
+
+Products keep their own model routing, tools, evidence rules, auth and `--ck-*`
+tokens. For a JSON-output assistant such as Heidi, ask for rich blocks only
+inside its free-text explanation string, never outside the answer envelope.
+Images must come from supplied context or tool results. No HTML or executable
+SVG is accepted. Images suppress referrers and broken thumbnails retain their
+text labels. Blocks are bounded and validated; incomplete/invalid blocks are
+hidden, so always include the takeaway in ordinary prose too. Diagram edges
+retain their direction and labels, including branches and cycles.
+
+Release this package before updating consumer lockfiles to `^0.11.0`.
+Run `pnpm run verify`; `demo/index.html` is the visual reference in light/dark
+and at phone width. The diagram and gallery artwork in the demo is a fixture.

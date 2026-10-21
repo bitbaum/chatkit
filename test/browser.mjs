@@ -516,6 +516,41 @@ try {
     );
     await page.close();
   }
+  // The visual-answer contract: genuine selection/submission, image dialog,
+  // and element bounds at the narrowest supported phone width.
+  for (const width of [320, 390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    await page.goto(base);
+    const form = page.locator("#conversation .ck-choice");
+    await form.waitFor();
+    check(
+      await form.locator('button[type="submit"]').isDisabled(),
+      `choices require selection at ${width}px`,
+    );
+    const overflow = await page
+      .locator("#conversation .ck-rich")
+      .evaluateAll((es) => es.some((e) => e.scrollWidth > e.clientWidth + 1));
+    check(!overflow, `visual blocks fit their containers at ${width}px`);
+    const photo = page.locator("#conversation .ck-photo").first();
+    await photo.click();
+    check(
+      (await page.locator("#conversation dialog[open]").count()) === 1,
+      `image opens in a dialog at ${width}px`,
+    );
+    await page.keyboard.press("Escape");
+    await form.getByText("Build the first version", { exact: true }).click();
+    check(
+      await form.locator('button[type="submit"]').isEnabled(),
+      `selecting enables continue at ${width}px`,
+    );
+    await form.locator('button[type="submit"]').click();
+    check(
+      (await page.locator("#conversation .ck-bubble").last().textContent()) ===
+        "Build the first version",
+      `continue sends the selected reply once at ${width}px`,
+    );
+    await page.close();
+  }
 } finally {
   await browser.close();
   server.close();

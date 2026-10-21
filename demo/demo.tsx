@@ -11,6 +11,7 @@ import {
   type ChatMessageData,
 } from "../src/react/index.js";
 
+const visual = (value: object) => "\n\n```chat_ui\n" + JSON.stringify(value) + "\n```";
 const SEED: ChatMessageData[] = [
   { id: "1", role: "user", content: "I want to get paid in Bitcoin for my illustrations" },
   {
@@ -70,7 +71,63 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
         ? []
         : failed
           ? [SEED[0]!, { id: "f", role: "assistant", content: "", failed: true }]
-          : SEED,
+          : [
+              ...SEED,
+              {
+                id: "visual",
+                role: "assistant",
+                replies: ["Set up the pay link", "Build the site too", "What does it cost?"],
+                content:
+                  "## One plan, three connected parts\n\nEach product keeps its own purpose. The shared experience makes the next step clear." +
+                  visual({
+                    type: "diagram",
+                    title: "From idea to decision",
+                    nodes: [
+                      { id: "cat", label: "Cat", detail: "Find support and fund the work." },
+                      { id: "loki", label: "Loki", detail: "Build, check and deliver." },
+                      { id: "solon", label: "Solon", detail: "Bring the decision to members." },
+                    ],
+                    edges: [
+                      { from: "cat", to: "loki", label: "Funded work becomes an actionable brief" },
+                      { from: "loki", to: "solon", label: "Members review the result and decide" },
+                    ],
+                  }) +
+                  visual({
+                    type: "gallery",
+                    title: "Look closer",
+                    images: [
+                      {
+                        src: "/demo/reference.svg",
+                        alt: "A connected workflow",
+                        caption: "Images stay beside their explanation.",
+                      },
+                      {
+                        src: "/demo/reference.svg",
+                        alt: "The decision path",
+                        caption: "Open either image to inspect it.",
+                      },
+                    ],
+                  }) +
+                  visual({
+                    type: "callout",
+                    title: "A useful next step",
+                    body: "Choose one part to explore. Your choice becomes the next message in this conversation.",
+                  }) +
+                  visual({
+                    type: "choices",
+                    title: "Where would you like to start?",
+                    options: [
+                      {
+                        label: "Explore the funding options",
+                        reply: "Explore the funding options",
+                      },
+                      { label: "Build the first version", reply: "Build the first version" },
+                      { label: "Understand who decides", reply: "Understand who decides" },
+                    ],
+                    submit: "Continue",
+                  }),
+              },
+            ],
   );
   const [sending, setSending] = useState(false);
   const send = (text: string) => {

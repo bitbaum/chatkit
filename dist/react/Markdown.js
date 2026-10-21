@@ -1,6 +1,8 @@
 "use client";
 import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from "react";
+import { parseRichBlock } from "../rich.js";
+import { RichAnswerBlock } from "./RichBlock.js";
 import { IconBook } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import { citedIds, isCardList, isInternalHref, listLead, parseBlocks, parseInline, } from "../markdown.js";
@@ -84,7 +86,7 @@ function Inline({ spans, citations, renderLink, renderCitation, }) {
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", className, }) {
+export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", className, onReply, }) {
     const inline = (t) => (_jsx(Inline, { spans: parseInline(t), citations: citations, renderLink: renderLink, renderCitation: renderCitation }));
     const items = (list, ordered, start = 1) => {
         const List = ordered ? "ol" : "ul";
@@ -97,8 +99,16 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
     const cited = citations ? citedIds(text).filter((id) => citations[id]) : [];
     return (_jsxs("div", { className: className ? `ck-md ${className}` : "ck-md", children: [parseBlocks(text).map((b, i) => {
                 switch (b.kind) {
-                    case "code":
+                    case "code": {
+                        if (b.lang === "chat_ui") {
+                            const block = parseRichBlock(b.code);
+                            if (block)
+                                return _jsx(RichAnswerBlock, { block: block, onReply: onReply }, i);
+                            // A partial JSON block must not flash in the conversation.
+                            return null;
+                        }
                         return (_jsx("pre", { className: "ck-pre", "data-lang": b.lang || undefined, children: _jsx("code", { children: b.code }) }, i));
+                    }
                     case "ul":
                         return (_jsx("div", { children: isCardList(b.items) ? cards(b.items, false) : items(b.items, false) }, i));
                     case "ol":

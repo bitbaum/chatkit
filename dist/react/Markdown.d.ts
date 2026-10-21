@@ -61,8 +61,10 @@ export declare const defaultRenderCitation: RenderCitation;
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export declare function Markdown({ text, citations, renderLink, renderCitation, renderSources, sources, sourcesLabel, className, }: {
+export declare function Markdown({ text, citations, renderLink, renderCitation, renderSources, sources, sourcesLabel, className, onReply, }: {
     text: string;
+    /** A visual choice sends a normal conversation message. Omit while streaming. */
+    onReply?: (text: string) => void;
     citations?: CitationMap;
     renderLink?: RenderLink;
     renderCitation?: RenderCitation;
