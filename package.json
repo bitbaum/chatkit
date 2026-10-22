@@ -51,6 +51,10 @@
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
     },
+    "./audit": {
+      "types": "./dist/audit.d.ts",
+      "default": "./dist/audit.js"
+    },
     "./attach": {
       "types": "./dist/react/attach.d.ts",
       "default": "./dist/react/attach.js"

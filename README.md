@@ -163,11 +163,20 @@ sideways with a shadow on the edge that has more. The stack figure's tiles
 wrap too: three across becomes two and one, or one under the other, rather
 than cut "Manufacture".
 
-`test/browser.mjs` measures it rather than reading the CSS: every word of every
-answer is laid out in a `Range` at 320, 390 and 1280px and must sit on one line
+`test/browser.mjs` measures it rather than reading the CSS: every word on the
+page is laid out in a `Range` at 320, 390 and 1280px and must sit on one line
 (a word beside a hyphen, slash or dot, and anything over 24 characters, is
 exempt: a URL has to break somewhere). The demo thread carries the table from
 the screenshot, so the check fails on the old stylesheet.
+
+The check is exported so any product can run it against its own pages, from a
+Playwright script (never from app code):
+
+```js
+import { BROKEN_WORDS_SOURCE } from "@bitbaum/chatkit/audit";
+const broken = await page.evaluate(`(${BROKEN_WORDS_SOURCE})(document.body)`);
+if (broken.length) throw new Error(`words cut across lines: ${broken}`);
+```
 
 ### The feedback loop (0.14)
 
