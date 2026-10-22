@@ -151,6 +151,24 @@ answer's prose (or what you pass), only where one exists. A button that does
 nothing is never shown. `ChatThread` renders it under every answer; pass
 `speaker` and `share` through.
 
+### Words are never cut (0.14.1)
+
+A word may wrap onto the next line; it may never be cut in two. `.ck-md` sets
+`overflow-wrap: anywhere` so a long URL cannot push the thread wider, but
+`anywhere` also lowers a table cell's minimum width to one letter, and
+Substrata's three-column answer at 390px read "Te / rm" and "Di / re / ct /
+or / y" (2026-10-22). Tables now keep every word whole: columns share the width
+by wrapping at spaces, and when even the words do not fit the table scrolls
+sideways with a shadow on the edge that has more. The stack figure's tiles
+wrap too: three across becomes two and one, or one under the other, rather
+than cut "Manufacture".
+
+`test/browser.mjs` measures it rather than reading the CSS: every word of every
+answer is laid out in a `Range` at 320, 390 and 1280px and must sit on one line
+(a word beside a hyphen, slash or dot, and anything over 24 characters, is
+exempt: a URL has to break somewhere). The demo thread carries the table from
+the screenshot, so the check fails on the old stylesheet.
+
 ### The feedback loop (0.14)
 
 Two halves, one shape, so a bad answer is found by the product, not by the
