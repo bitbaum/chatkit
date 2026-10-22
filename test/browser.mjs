@@ -74,7 +74,7 @@ try {
         mics: document.querySelectorAll(".ck-composer .ck-mic").length,
         small: [
           ...document.querySelectorAll(
-            ".ck-icon-btn, .ck-send, .ck-starter, .ck-reply, .ck-voice-confirm",
+            ".ck-icon-btn, .ck-send, .ck-starter, .ck-reply, .ck-voice-confirm, .ck-action",
           ),
         ]
           .map((e) => e.getBoundingClientRect())
