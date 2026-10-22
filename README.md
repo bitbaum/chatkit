@@ -151,6 +151,27 @@ answer's prose (or what you pass), only where one exists. A button that does
 nothing is never shown. `ChatThread` renders it under every answer; pass
 `speaker` and `share` through.
 
+### The feedback loop (0.14)
+
+Two halves, one shape, so a bad answer is found by the product, not by the
+owner tripping over it.
+
+- **Under every answer, a thumb up and a thumb down** — pass `onFeedback` to
+  `ChatThread` (or `messageId` + `onFeedback` to `AnswerActions`). A thumb
+  down opens a sheet: one tap on why (`FEEDBACK_REASONS`: wrong, gave up
+  instead of looking, vague, misread, too long, hard to read, other), words
+  optional, then Send. The app gets `{ messageId, verdict, reason?, text? }`
+  and keeps it with the conversation.
+- **A nightly judge.** A product exports a day of conversations as
+  `ChatTranscript[]` (turns with the steps the assistant took, plus the
+  thumbs); a reviewer asks a model, with `CHAT_REVIEW_INSTRUCTION` and
+  `reviewPrompt(scope, transcript)`, what the person most likely wanted, what
+  the product could have given with the tools it has, and what it gave, and
+  reads the verdicts back with `parseChatReview` (`score` 1–5, `gaps` from
+  `REVIEW_GAPS`: dead_end, wrong_tool, no_web, misread, vague, no_next_step…,
+  and one concrete `fix`). In the fleet, Loki runs the judge and files each
+  gap into its feedback inbox, where fixes are built.
+
 ### The next message while a turn runs
 
 `queue` keeps Send live while `sending`, beside Stop, and the placeholder

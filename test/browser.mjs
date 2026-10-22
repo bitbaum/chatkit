@@ -183,6 +183,37 @@ try {
     await page.close();
   }
 
+  // A thumb down asks why: a sheet with one tap per reason, each a 44px
+  // target, and the verdict reaches the app only when it is sent.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const got = [];
+    page.on("console", (m) => m.text().startsWith("feedback") && got.push(m.text()));
+    await page.goto(base);
+    await page.waitForSelector("#conversation .ck-turn-answer");
+    const bad = page
+      .locator("#conversation .ck-turn-answer")
+      .last()
+      .locator('button[aria-label="Bad answer"]');
+    await bad.click();
+    await page.waitForSelector(".ck-sheet[open] .ck-feedback-reason");
+    const reasons = await page.evaluate(() =>
+      [...document.querySelectorAll(".ck-sheet[open] .ck-feedback-reason")].map(
+        (b) => b.getBoundingClientRect().height,
+      ),
+    );
+    check(
+      reasons.length === 7 && reasons.every((h) => h >= 44),
+      `thumb down asks why: ${reasons.length} reasons, each >= 44px`,
+    );
+    check(got.length === 0, "nothing is sent before the person sends it");
+    await page.locator(".ck-sheet[open] .ck-feedback-reason").nth(1).click();
+    await page.locator(".ck-sheet[open] .ck-feedback-send").click();
+    await page.waitForTimeout(100);
+    check(got.length === 1 && /dead_end/.test(got[0]), `the reason reaches the app (${got[0]})`);
+    await page.close();
+  }
+
   // An app's own variables win: a --ck-* set on :root must reach the chat
   // (the defaults are declared at zero specificity for exactly this).
   {

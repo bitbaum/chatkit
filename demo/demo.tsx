@@ -212,6 +212,7 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
   };
   const thread = (
     <ChatThread
+      onFeedback={(f) => console.log("feedback", f)}
       messages={messages}
       live={sending ? { status: "Reading the catalogue" } : null}
       onStop={() => setSending(false)}
@@ -254,6 +255,7 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
   return (
     <div className="demo-chat">
       <ChatThread
+        onFeedback={(f) => console.log("feedback", f)}
         messages={messages}
         live={sending ? { status: "Reading the catalogue" } : null}
         onStop={() => setSending(false)}

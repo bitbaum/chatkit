@@ -20,4 +20,6 @@ export declare const StackIconSvg: ({ name }: {
     name: string;
 }) => import("react").JSX.Element | null;
 export declare const IconChevron: () => import("react").JSX.Element;
+export declare const IconThumbUp: () => import("react").JSX.Element;
+export declare const IconThumbDown: () => import("react").JSX.Element;
 //# sourceMappingURL=icons.d.ts.map

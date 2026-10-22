@@ -6,7 +6,19 @@ import { formatElapsed } from "../composer.js";
 import { plainTextForSpeech, type Speaker } from "../speech.js";
 import { useClipboard } from "./hooks.js";
 import { useSpeech } from "./use-speech.js";
-import { IconCheck, IconCopy, IconRetry, IconShare, IconSpeaker, IconStop } from "./icons.js";
+import {
+  IconCheck,
+  IconCopy,
+  IconRetry,
+  IconShare,
+  IconSpeaker,
+  IconStop,
+  IconThumbDown,
+  IconThumbUp,
+} from "./icons.js";
+import { Sheet } from "./Sheet.js";
+import { FEEDBACK_REASONS, type AnswerFeedback, type FeedbackReason } from "../review.js";
+import { useState } from "react";
 
 const noSubscribe = () => () => {};
 
@@ -17,6 +29,14 @@ export type AnswerActionsLabels = {
   stop: string;
   share: string;
   retry: string;
+  good: string;
+  bad: string;
+  /** The sheet after a thumb down: its title, the reasons, the box, the button. */
+  feedbackTitle: string;
+  feedbackReasons: Record<FeedbackReason, string>;
+  feedbackMore: string;
+  feedbackSend: string;
+  feedbackThanks: string;
 };
 
 export const DEFAULT_ANSWER_ACTIONS_LABELS: AnswerActionsLabels = {
@@ -26,6 +46,21 @@ export const DEFAULT_ANSWER_ACTIONS_LABELS: AnswerActionsLabels = {
   stop: "Stop",
   share: "Share",
   retry: "Try again",
+  good: "Good answer",
+  bad: "Bad answer",
+  feedbackTitle: "What went wrong?",
+  feedbackReasons: {
+    wrong: "It is wrong",
+    dead_end: "It gave up instead of looking",
+    vague: "Too vague",
+    misread: "It misread my question",
+    too_long: "Too long",
+    format: "Hard to read",
+    other: "Something else",
+  },
+  feedbackMore: "Anything to add?",
+  feedbackSend: "Send",
+  feedbackThanks: "Thanks, noted.",
 };
 
 /**
@@ -47,10 +82,17 @@ export function AnswerActions({
   share,
   labels: overrides,
   children,
+  messageId,
+  onFeedback,
 }: {
   /** The answer's markdown. Copied as written; read as prose. */
   text: string;
   onRetry?: () => void;
+  /** With `onFeedback`: a thumb up and a thumb down after the row. A thumb
+   *  down opens a sheet asking why - one tap on a reason, words optional -
+   *  so the product learns what the person wanted, not only that it failed. */
+  messageId?: string;
+  onFeedback?: (feedback: AnswerFeedback) => void;
   /** The app's voice. Without it, the browser's; without either, no Listen. */
   speaker?: Speaker | null;
   /** What the share sheet gets. Defaults to the answer's prose. `false` hides Share. */
@@ -60,6 +102,22 @@ export function AnswerActions({
 }) {
   const labels = { ...DEFAULT_ANSWER_ACTIONS_LABELS, ...overrides };
   const { copied, copy } = useClipboard();
+  const [verdict, setVerdict] = useState<"up" | "down" | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState<FeedbackReason | null>(null);
+  const [more, setMore] = useState("");
+  const feedbackOn = Boolean(onFeedback && messageId);
+  const sendDown = () => {
+    if (!onFeedback || !messageId) return;
+    onFeedback({
+      messageId,
+      verdict: "down",
+      ...(reason ? { reason } : {}),
+      ...(more.trim() ? { text: more.trim().slice(0, 1000) } : {}),
+    });
+    setVerdict("down");
+    setAsking(false);
+  };
   const speech = useSpeech(speaker);
   const canShare = useSyncExternalStore(
     noSubscribe,
@@ -137,6 +195,67 @@ export function AnswerActions({
           <IconRetry />
           <span>{labels.retry}</span>
         </button>
+      )}
+      {feedbackOn && (
+        <>
+          <button
+            type="button"
+            className={verdict === "up" ? "ck-action ck-action-on" : "ck-action"}
+            aria-label={labels.good}
+            aria-pressed={verdict === "up"}
+            title={labels.good}
+            onClick={() => {
+              if (verdict === "up") return;
+              onFeedback!({ messageId: messageId!, verdict: "up" });
+              setVerdict("up");
+            }}
+          >
+            <IconThumbUp />
+          </button>
+          <button
+            type="button"
+            className={verdict === "down" ? "ck-action ck-action-on" : "ck-action"}
+            aria-label={labels.bad}
+            aria-pressed={verdict === "down"}
+            title={labels.bad}
+            onClick={() => setAsking(true)}
+          >
+            <IconThumbDown />
+          </button>
+          {verdict === "down" && !asking && (
+            <span className="ck-feedback-thanks" role="status">
+              {labels.feedbackThanks}
+            </span>
+          )}
+          <Sheet open={asking} onClose={() => setAsking(false)} title={labels.feedbackTitle}>
+            <div className="ck-feedback" role="group" aria-label={labels.feedbackTitle}>
+              {FEEDBACK_REASONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={
+                    reason === r ? "ck-feedback-reason ck-feedback-reason-on" : "ck-feedback-reason"
+                  }
+                  aria-pressed={reason === r}
+                  onClick={() => setReason(r)}
+                >
+                  {labels.feedbackReasons[r]}
+                </button>
+              ))}
+              <textarea
+                className="ck-feedback-more"
+                rows={2}
+                placeholder={labels.feedbackMore}
+                value={more}
+                onChange={(e) => setMore(e.target.value)}
+                maxLength={1000}
+              />
+              <button type="button" className="ck-feedback-send" onClick={sendDown}>
+                {labels.feedbackSend}
+              </button>
+            </div>
+          </Sheet>
+        </>
       )}
       {children}
     </div>

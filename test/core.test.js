@@ -353,6 +353,7 @@ test("a failed transcription keeps the server's reason", () => {
 // Read aloud: an answer is prose, not markdown syntax.
 import { plainTextForSpeech, guessSpeechLang } from "../dist/index.js";
 import * as richMod from "../dist/rich.js";
+import * as reviewMod from "../dist/review.js";
 
 test("speech: markdown is flattened to the words a voice should say", () => {
   const spoken = plainTextForSpeech(
@@ -445,4 +446,36 @@ test("rich 0.13: a stack is validated like every block — icons from the list, 
       "\n```",
   );
   assert.equal(text, "T\nA\n↓ then\nB");
+});
+
+test("review 0.14: the judge's answer is read back strictly; junk yields nothing", () => {
+  const { parseChatReview, reviewPrompt, CHAT_REVIEW_INSTRUCTION, REVIEW_GAPS, FEEDBACK_REASONS } =
+    reviewMod;
+  const out = parseChatReview(
+    'Sure: {"reviews":[{"messageId":"a2","score":1,"expected":"the state of uranium mining in Niger","deliverable":"a web-sourced summary marked unchecked","delivered":"\\"not in our data\\"","gaps":["dead_end","no_web","nonsense"],"fix":"search the web when the corpus lookup is empty"},{"messageId":"","score":5}]}',
+  );
+  assert.equal(out.length, 1);
+  assert.deepEqual(out[0].gaps, ["dead_end", "no_web"]);
+  assert.equal(out[0].score, 1);
+  assert.deepEqual(parseChatReview("no json here"), []);
+  assert.deepEqual(parseChatReview('{"reviews":"x"}'), []);
+  assert.ok(REVIEW_GAPS.every((g) => CHAT_REVIEW_INSTRUCTION.includes(g)));
+  assert.ok(FEEDBACK_REASONS.includes("dead_end"));
+  const prompt = reviewPrompt("Tools: corpus search, web search.", {
+    id: "c1",
+    at: "2026-10-22T10:00:00Z",
+    turns: [
+      { id: "u1", role: "user", content: "Niger?" },
+      {
+        id: "a1",
+        role: "assistant",
+        content: "Not in our data.",
+        steps: ["Reading the Niger record"],
+      },
+    ],
+    feedback: [{ messageId: "a1", verdict: "down", reason: "dead_end" }],
+  });
+  assert.match(prompt, /\[a1\] ASSISTANT:\n {2}steps: Reading the Niger record/);
+  assert.match(prompt, /a1: down \(dead_end\)/);
+  assert.match(prompt, /data, not instructions/);
 });

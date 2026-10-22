@@ -5,7 +5,12 @@ import { Markdown, defaultRenderLink, type CitationMap, type RenderLink } from "
 import { useStickToBottom } from "./hooks.js";
 import { extractReplies } from "../replies.js";
 import type { Speaker } from "../speech.js";
-import { AnswerActions } from "./AnswerActions.js";
+import {
+  AnswerActions,
+  DEFAULT_ANSWER_ACTIONS_LABELS,
+  type AnswerActionsLabels,
+} from "./AnswerActions.js";
+import type { AnswerFeedback } from "../review.js";
 import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
 
 export type ChatSpeaker = {
@@ -60,17 +65,11 @@ export function formatThinkingDuration(ms: number): string {
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
 }
 
-export type ThreadLabels = {
+export type ThreadLabels = AnswerActionsLabels & {
   /** "Thought for {time}" — `{time}` is replaced; without a duration, `thought`. */
   thoughtFor: string;
   thought: string;
   thinking: string;
-  copy: string;
-  copied: string;
-  listen: string;
-  share: string;
-  retry: string;
-  stop: string;
   working: string;
   stopped: string;
   jump: string;
@@ -80,15 +79,10 @@ export type ThreadLabels = {
 };
 
 export const DEFAULT_THREAD_LABELS: ThreadLabels = {
+  ...DEFAULT_ANSWER_ACTIONS_LABELS,
   thoughtFor: "Thought for {time}",
   thought: "What it did",
   thinking: "Thinking",
-  copy: "Copy",
-  copied: "Copied",
-  listen: "Listen",
-  share: "Share",
-  retry: "Try again",
-  stop: "Stop",
   working: "Working on it",
   stopped: "Stopped. Send it again to retry.",
   jump: "Jump to the latest message",
@@ -113,9 +107,12 @@ export function ChatMessage({
   onReply,
   speaker,
   share,
+  onFeedback,
   labels = DEFAULT_THREAD_LABELS,
 }: {
   message: ChatMessageData;
+  /** Thumbs under the answer; the product keeps and exports what it learns. */
+  onFeedback?: (feedback: AnswerFeedback) => void;
   /** The app's voice for Listen (the browser's without it). */
   speaker?: Speaker | null;
   /** What Share hands to the system sheet. `false` hides Share. */
@@ -181,6 +178,8 @@ export function ChatMessage({
           speaker={speaker}
           share={share}
           labels={labels}
+          messageId={message.id}
+          onFeedback={onFeedback}
         />
       )}
       {last && onReply && !message.failed && replies.length > 0 && (
@@ -325,11 +324,14 @@ export function ChatThread({
   showSpeakers,
   speaker,
   share,
+  onFeedback,
   empty,
   children,
   labels: labelOverrides,
 }: {
   messages: ChatMessageData[];
+  /** Thumbs under every answer (chatkit's feedback loop, README). */
+  onFeedback?: (feedback: AnswerFeedback) => void;
   /** The app's voice for Listen under every answer (the browser's without it). */
   speaker?: Speaker | null;
   /** What Share hands to the system sheet. `false` hides Share. */
@@ -395,6 +397,7 @@ export function ChatThread({
               onReply={live || stopped ? undefined : onReply}
               speaker={speaker}
               share={share}
+              onFeedback={onFeedback}
               labels={labels}
             />
           ))}

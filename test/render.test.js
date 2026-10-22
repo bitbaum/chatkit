@@ -261,3 +261,20 @@ test("0.13: thought line, option tag, citation chip, stack figure and external l
   assert.match(live, /ck-thinking-live/);
   assert.match(live, /class="ck-thinking-now"><span>Reading</);
 });
+
+test("0.14: thumbs render only with onFeedback, and every label is translatable", () => {
+  const withIt = renderToStaticMarkup(
+    h(ChatThread, {
+      messages: [{ id: "a", role: "assistant", content: "Hi" }],
+      onFeedback: () => {},
+      labels: { good: "Gut", bad: "Schlecht" },
+    }),
+  );
+  assert.match(withIt, /aria-label="Gut"/);
+  assert.match(withIt, /aria-label="Schlecht"/);
+  assert.match(withIt, /class="ck-feedback-reason"[^>]*>It gave up instead of looking</);
+  const without = renderToStaticMarkup(
+    h(ChatThread, { messages: [{ id: "a", role: "assistant", content: "Hi" }] }),
+  );
+  assert.doesNotMatch(without, /ck-feedback/);
+});
