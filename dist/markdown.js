@@ -165,6 +165,11 @@ export function parseInline(text) {
         const m = /^([.,;:!?]+)([\s\S]*)$/.exec(next.text);
         if (!m)
             continue;
+        // `contracts [F1].` — the space the model put before the handle would
+        // otherwise sit before the full stop.
+        const before = i > 0 ? out[i - 1] : null;
+        if (before && before.kind === "text")
+            before.text = before.text.replace(/\s+$/, "");
         out.splice(i, 2, { kind: "text", text: m[1] }, cite);
         if (m[2])
             out.splice(i + 2, 0, { kind: "text", text: m[2] });

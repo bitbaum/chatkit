@@ -243,7 +243,7 @@ test("0.13: thought line, option tag, citation chip, stack figure and external l
   );
   assert.match(
     html,
-    /Apart <\/span><span>\.<\/span><span><a class="ck-cite"/,
+    /Apart<\/span><span>\.<\/span><span><a class="ck-cite"/,
     "the chip follows the full stop",
   );
   assert.match(html, /class="ck-link ck-link-out"[^>]*target="_blank"/);
