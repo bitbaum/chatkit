@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import type { RichBlock } from "../rich.js";
 import { Sheet } from "./Sheet.js";
 import { StackIconSvg } from "./icons.js";
@@ -114,7 +114,8 @@ export function RichAnswerBlock({
             <div key={i} className="ck-stack-layer">
               <div
                 className="ck-stack-row"
-                style={{ gridTemplateColumns: `repeat(${layer.nodes.length}, minmax(0, 1fr))` }}
+                data-n={layer.nodes.length}
+                style={{ "--ck-n": layer.nodes.length } as CSSProperties}
               >
                 {layer.nodes.map((n, j) => (
                   <div

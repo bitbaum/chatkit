@@ -931,20 +931,48 @@
   margin-top: 0.375em;
 }
 
-/* A table that scrolls sideways on a phone instead of breaking the page. */
+/* A table that scrolls sideways on a phone instead of breaking the page, and
+   never breaks a word to fit. `.ck-md` sets overflow-wrap: anywhere so a long
+   URL cannot push the thread wider, but `anywhere` also lowers a cell's
+   minimum width to ONE LETTER, so a three-column answer squeezed its first
+   column into "Di / re / ct / or / y" (Substrata at 390px, 2026-10-22).
+   Inside a table a word is the smallest thing a column can be: columns share
+   the width by wrapping at spaces, and when even the words do not fit the
+   wrapper scrolls, with a shadow on the edge that has more. */
 .ck-table-wrap {
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, var(--ck-bg) 30%, transparent) left center / 1.5rem 100% no-repeat
+      local,
+    linear-gradient(to left, var(--ck-bg) 30%, transparent) right center / 1.5rem 100% no-repeat
+      local,
+    radial-gradient(
+        farthest-side at 0 50%,
+        color-mix(in srgb, var(--ck-fg) 14%, transparent),
+        transparent
+      )
+      left center / 0.625rem 100% no-repeat scroll,
+    radial-gradient(
+        farthest-side at 100% 50%,
+        color-mix(in srgb, var(--ck-fg) 14%, transparent),
+        transparent
+      )
+      right center / 0.625rem 100% no-repeat scroll;
 }
 .ck-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9375em;
   line-height: 1.45;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
 }
 .ck-table th,
 .ck-table td {
+  min-width: 4.5rem;
   padding: 0.5em 0.75em 0.5em 0;
   border-bottom: 1px solid var(--ck-line);
   text-align: left;
@@ -1615,22 +1643,30 @@ a.ck-source-row:hover .ck-source-title {
   display: flex;
   flex-direction: column;
 }
+/* Tiles share a row, and a row wraps rather than cut a word: each tile asks
+   for its share of the width (--ck-n tiles) but never less than its longest
+   word, so on a narrow screen "3 across" becomes "2 and 1" or one under the
+   other. The old grid forced N equal columns and cut "Manufacture" into
+   pieces at 320px (2026-10-22). */
 .ck-stack-row {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.625rem;
 }
 .ck-stack-node {
   display: flex;
+  flex: 1 1 calc((100% - (var(--ck-n, 1) - 1) * 0.625rem) / var(--ck-n, 1));
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  min-width: 0;
+  min-width: min-content;
   padding: 1rem 0.75rem;
   border: 1px solid var(--ck-line);
   border-radius: calc(var(--ck-radius) * 0.75);
   background: var(--ck-raised);
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .ck-stack-accent {
   border-color: color-mix(in srgb, var(--ck-accent) 35%, var(--ck-line));
@@ -1656,13 +1692,13 @@ a.ck-source-row:hover .ck-source-title {
 }
 /* Tiles in a row share the width: tighter padding and smaller words, so
    "Manufacture, move, inspect" fits three across on a 390px phone. */
-.ck-stack-row:not([style*="repeat(1,"]) .ck-stack-node {
+.ck-stack-row:not([data-n="1"]) .ck-stack-node {
   padding: 0.875rem 0.5rem;
 }
-.ck-stack-row:not([style*="repeat(1,"]) .ck-stack-label {
+.ck-stack-row:not([data-n="1"]) .ck-stack-label {
   font-size: 1em;
 }
-.ck-stack-row:not([style*="repeat(1,"]) .ck-stack-detail {
+.ck-stack-row:not([data-n="1"]) .ck-stack-detail {
   font-size: 0.8125em;
 }
 .ck-stack-detail {
@@ -1761,6 +1797,7 @@ a.ck-source-row:hover .ck-source-title {
   list-style: none;
 }
 details.ck-thinking > summary {
+  min-height: var(--ck-target);
   cursor: pointer;
 }
 details.ck-thinking > summary::-webkit-details-marker {

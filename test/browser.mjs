@@ -94,6 +94,56 @@ try {
     await page.close();
   }
 
+  // Words are never broken mid-letter. Substrata's answer table at 390px read
+  // "Te / rm" and "Di / re / ct / or / y" (2026-10-22): `overflow-wrap:
+  // anywhere` on the markdown lowers every table cell's minimum width to one
+  // letter, so a three-column table squeezed its first column to nothing. A
+  // word may wrap onto the next line; it may never be cut. Measured, not read
+  // from the CSS: every word of every answer is laid out in a Range and must
+  // sit on one line. (Words with a hyphen, slash or dot beside them, and
+  // anything over 24 characters, are exempt: a URL has to break somewhere.)
+  for (const width of [320, 390, 1280]) {
+    for (const file of ["index.html", "screen.html"]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      await page.goto(base.replace("index.html", file));
+      await page.waitForSelector(".ck-md");
+      await page.waitForTimeout(200);
+      const broken = await page.evaluate(() => {
+        const found = [];
+        for (const el of document.querySelectorAll(".ck-md, .ck-bubble")) {
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let n; (n = walker.nextNode());) {
+            const text = n.nodeValue ?? "";
+            const re = /[\p{L}\p{N}']+/gu;
+            for (let m; (m = re.exec(text));) {
+              const word = m[0];
+              if (word.length > 24) continue;
+              const near = /[-\u2010\u2011\u2013\u2014/_.@:]/;
+              if (
+                near.test(text[m.index - 1] ?? "") ||
+                near.test(text[m.index + word.length] ?? "")
+              )
+                continue;
+              const r = document.createRange();
+              r.setStart(n, m.index);
+              r.setEnd(n, m.index + word.length);
+              const tops = [...r.getClientRects()]
+                .filter((x) => x.width > 0)
+                .map((x) => Math.round(x.top));
+              if (tops.length > 1 && Math.max(...tops) - Math.min(...tops) > 6) found.push(word);
+            }
+          }
+        }
+        return found;
+      });
+      check(
+        broken.length === 0,
+        `${file} at ${width}px: no word is cut across lines (${broken.slice(0, 8).join(", ")})`,
+      );
+      await page.close();
+    }
+  }
+
   // ChatScreen: the conversation is the whole display. Its scroller runs from
   // the top edge to the bottom edge (header and composer float over it), yet
   // the end of the last answer rests ABOVE the composer, never behind it —
@@ -197,6 +247,9 @@ try {
       .locator('button[aria-label="Bad answer"]');
     await bad.click();
     await page.waitForSelector(".ck-sheet[open] .ck-feedback-reason");
+    // Measured at rest: mid-way through the sheet's opening animation a button
+    // is 43.9px, which is not what a thumb meets.
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
     const reasons = await page.evaluate(() =>
       [...document.querySelectorAll(".ck-sheet[open] .ck-feedback-reason")].map(
         (b) => b.getBoundingClientRect().height,
