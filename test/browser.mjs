@@ -124,9 +124,31 @@ try {
           .map((e) => e.getBoundingClientRect())
           .filter((x) => x.width < 44 || x.height < 44).length,
         jump: !!document.querySelector(".ck-screen .ck-jump"),
+        stack: (() => {
+          const el = document.querySelector(".ck-screen .ck-stack");
+          if (!el) return null;
+          const tiles = [...el.querySelectorAll(".ck-stack-node")].map((n) =>
+            n.getBoundingClientRect(),
+          );
+          return {
+            fits: el.scrollWidth <= el.clientWidth + 1,
+            tiles: tiles.length,
+            narrowest: Math.round(Math.min(...tiles.map((t) => t.width))),
+          };
+        })(),
+        thought:
+          document.querySelector(".ck-screen details.ck-thinking > summary")?.textContent ?? "",
       };
     });
     check(s.overflow <= 0, `${name}: no horizontal scroll (${s.overflow}px over)`);
+    check(
+      !!s.stack && s.stack.fits && s.stack.tiles === 6 && s.stack.narrowest >= 90,
+      `${name}: the stack figure fits, six tiles, narrowest ${s.stack?.narrowest}px`,
+    );
+    check(
+      /^Thought for 3m 38s/.test(s.thought),
+      `${name}: "Thought for 3m 38s" above the answer (${s.thought})`,
+    );
     check(
       s.top === 0 && s.bottom === s.height,
       `${name}: the conversation fills the display (${s.top}–${s.bottom} of ${s.height}px)`,

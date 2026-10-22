@@ -50,6 +50,16 @@ export const defaultRenderLink: RenderLink = ({ href, internal, className, child
     <a href={href} className={className}>
       {children}
     </a>
+  ) : className === "ck-link" ? (
+    // A link in the words that leaves the site says so, the way the ChatGPT
+    // app marks one: a dotted underline and a small arrow after the words. A
+    // source chip is already a link by shape and carries no arrow.
+    <a href={href} className="ck-link ck-link-out" target="_blank" rel="noopener noreferrer">
+      {children}
+      <span className="ck-link-arrow" aria-hidden>
+        ↗
+      </span>
+    </a>
   ) : (
     <a href={href} className={className} target="_blank" rel="noopener noreferrer">
       {children}
@@ -151,16 +161,36 @@ export function SourcesRow({
   );
 }
 
-export const defaultRenderCitation: RenderCitation = ({ ids, citations, className }) => (
-  <sup
-    className={className}
-    title={ids
-      .map((id) => `${id} — ${citations[id]!.label}\n${citations[id]!.detail}`)
-      .join("\n\n")}
-  >
-    {ids.join(" ")}
-  </sup>
-);
+/** The in-text citation as a chip: the first source's name, and how many
+ *  more stand behind the sentence — the ChatGPT app's "NVIDIA De… +3". The
+ *  full list stays in the sources row under the answer. */
+export const defaultRenderCitation: RenderCitation = ({ ids, citations, className }) => {
+  const first = citations[ids[0]!]!;
+  const title = ids
+    .map((id) => `${id} — ${citations[id]!.label}\n${citations[id]!.detail}`)
+    .join("\n\n");
+  const chip = (
+    <>
+      <span className="ck-cite-label">{first.label}</span>
+      {ids.length > 1 && <span className="ck-cite-more">+{ids.length - 1}</span>}
+    </>
+  );
+  return first.href ? (
+    <a
+      className={className}
+      href={first.href}
+      title={title}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {chip}
+    </a>
+  ) : (
+    <span className={className} title={title}>
+      {chip}
+    </span>
+  );
+};
 
 function Inline({
   spans,
@@ -304,6 +334,7 @@ export function Markdown({
             </span>
             <div className="ck-card-body">
               <div className="ck-card-title">{inline(lead.lead)}</div>
+              {lead.tag && <span className="ck-card-tag">{lead.tag}</span>}
               {lead.rest && <div className="ck-card-text">{inline(lead.rest)}</div>}
               {item.children && items(item.children, false)}
             </div>

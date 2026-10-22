@@ -6,7 +6,7 @@ import { useStickToBottom } from "./hooks.js";
 import { extractReplies } from "../replies.js";
 import type { Speaker } from "../speech.js";
 import { AnswerActions } from "./AnswerActions.js";
-import { IconArrowDown, IconRetry, IconStop } from "./icons.js";
+import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
 
 export type ChatSpeaker = {
   /** Shown above the message when more than one agent can answer. */
@@ -29,9 +29,42 @@ export type ChatMessageData = {
    * used instead (see `REPLIES_INSTRUCTION`).
    */
   replies?: readonly string[];
+  /**
+   * What the model did before answering — "Thought for 3m 38s ›" with the
+   * steps under it, the way the ChatGPT and Claude apps show it. Closed by
+   * default; the answer is what the reader came for.
+   */
+  thinking?: Thinking;
 };
 
+export type ThinkingStep = {
+  label: string;
+  detail?: string;
+};
+export type Thinking = {
+  /** How long it took, in milliseconds. */
+  durationMs?: number;
+  /** The steps, in order: searches, tool calls, reasoning in one line each. */
+  steps?: readonly ThinkingStep[];
+  /** A short summary of the reasoning, if the model gives one. */
+  summary?: string;
+};
+
+/** "3m 38s", "42s", "1h 02m" — the ChatGPT app's unit words, so a product
+ *  translating the labels still gets one shape. */
+export function formatThinkingDuration(ms: number): string {
+  const s = Math.max(1, Math.round(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+
 export type ThreadLabels = {
+  /** "Thought for {time}" — `{time}` is replaced; without a duration, `thought`. */
+  thoughtFor: string;
+  thought: string;
+  thinking: string;
   copy: string;
   copied: string;
   listen: string;
@@ -47,6 +80,9 @@ export type ThreadLabels = {
 };
 
 export const DEFAULT_THREAD_LABELS: ThreadLabels = {
+  thoughtFor: "Thought for {time}",
+  thought: "What it did",
+  thinking: "Thinking",
   copy: "Copy",
   copied: "Copied",
   listen: "Listen",
@@ -115,6 +151,7 @@ export function ChatMessage({
   return (
     <div className={cls.join(" ")}>
       {showSpeaker && message.speaker && <span className="ck-speaker">{message.speaker.name}</span>}
+      {message.thinking && <ThinkingRow thinking={message.thinking} labels={labels} />}
       {message.failed ? (
         <p className="ck-failed" role="status">
           {message.content || labels.failed}
@@ -194,8 +231,81 @@ export type LiveTurn = {
   text?: string;
   /** What it is doing before the first word ("Reading the fleet map"). */
   status?: string;
+  /** The steps so far, newest last; shown open while the turn runs. */
+  steps?: readonly ThinkingStep[];
   speaker?: ChatSpeaker;
 };
+
+/**
+ * "Thought for 3m 38s ›" above an answer, opening to the steps; while a turn
+ * runs, the same row open with the steps arriving and the newest one marked.
+ */
+export function ThinkingRow({
+  thinking,
+  live = false,
+  labels = DEFAULT_THREAD_LABELS,
+}: {
+  thinking: Thinking;
+  live?: boolean;
+  labels?: ThreadLabels;
+}) {
+  const steps = thinking.steps ?? [];
+  if (!live && steps.length === 0 && !thinking.summary && thinking.durationMs === undefined)
+    return null;
+  const title = live
+    ? labels.thinking
+    : thinking.durationMs !== undefined
+      ? labels.thoughtFor.replace("{time}", formatThinkingDuration(thinking.durationMs))
+      : labels.thought;
+  const body =
+    steps.length > 0 || thinking.summary ? (
+      <div className="ck-thinking-body">
+        {thinking.summary && <p>{thinking.summary}</p>}
+        {steps.length > 0 && (
+          <ol className="ck-thinking-steps">
+            {steps.map((step, i) => (
+              <li
+                key={i}
+                className={live && i === steps.length - 1 ? "ck-thinking-now" : undefined}
+              >
+                <span>{step.label}</span>
+                {step.detail && <small>{step.detail}</small>}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    ) : null;
+  if (live)
+    return (
+      <div className="ck-thinking ck-thinking-live" role="status" aria-live="polite">
+        <span className="ck-thinking-title">
+          <span className="ck-dots" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </span>
+          {title}
+        </span>
+        {body}
+      </div>
+    );
+  if (!body)
+    return (
+      <p className="ck-thinking">
+        <span className="ck-thinking-title">{title}</span>
+      </p>
+    );
+  return (
+    <details className="ck-thinking">
+      <summary className="ck-thinking-title">
+        {title}
+        <IconChevron />
+      </summary>
+      {body}
+    </details>
+  );
+}
 
 /**
  * The conversation. Follows new tokens only while the reader is at the
@@ -250,7 +360,7 @@ export function ChatThread({
 }) {
   const labels = { ...DEFAULT_THREAD_LABELS, ...labelOverrides };
   const { scrollRef, endRef, following, onScroll, jumpToBottom } = useStickToBottom(
-    [messages.length, live?.text, live?.status, stopped],
+    [messages.length, live?.text, live?.status, live?.steps?.length, stopped],
     messages.length,
   );
 
@@ -291,9 +401,12 @@ export function ChatThread({
           {live && (
             <div className="ck-turn ck-turn-answer">
               {named && live.speaker && <span className="ck-speaker">{live.speaker.name}</span>}
+              {live.steps && live.steps.length > 0 && (
+                <ThinkingRow thinking={{ steps: live.steps }} live labels={labels} />
+              )}
               {live.text ? (
                 <Markdown text={extractReplies(live.text).text} renderLink={renderLink} />
-              ) : (
+              ) : live.steps && live.steps.length > 0 ? null : (
                 <p className="ck-live" role="status" aria-live="polite">
                   <span className="ck-dots" aria-hidden>
                     <span />

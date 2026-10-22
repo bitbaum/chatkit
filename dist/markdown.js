@@ -136,13 +136,48 @@ export function listLead(text) {
     const icon = /^(\p{Extended_Pictographic}\uFE0F?)\s+(.+)$/u.exec(lead);
     if (icon)
         lead = icon[2] ?? lead;
-    return { lead, rest: (m[2] ?? "").trim(), ...(icon ? { icon: icon[1] } : {}) };
+    let rest = (m[2] ?? "").trim();
+    // `**Option.** [Recommended] why` — a short tag in brackets right after the
+    // name becomes a pill under it, the way the ChatGPT app marks the option it
+    // recommends. Only a short word or two; a citation handle is not a tag.
+    let tag;
+    const tagged = /^\[(?![FD]\d)([^\]\n]{1,24})\]\s*([\s\S]*)$/.exec(rest);
+    if (tagged) {
+        tag = tagged[1].trim();
+        rest = (tagged[2] ?? "").trim();
+    }
+    return { lead, rest, ...(icon ? { icon: icon[1] } : {}), ...(tag ? { tag } : {}) };
 }
 export function isCardList(items) {
     return items.length >= 2 && items.every((it) => listLead(it.text) !== null);
 }
 const INLINE_RE = /(`[^`]+`|!\[[^\]]*\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)\s]+\)|\[[FD]\d+(?:,\s*[FD]\d+)*\]|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 export function parseInline(text) {
+    const out = parseInlineRaw(text);
+    // A citation a model writes before the full stop (`… tools [F2].`) is
+    // drawn as a chip AFTER it, where the ChatGPT app puts its source chips:
+    // the sentence ends, then its evidence.
+    for (let i = 0; i + 1 < out.length; i++) {
+        const cite = out[i];
+        const next = out[i + 1];
+        if (cite.kind !== "cite" || next.kind !== "text")
+            continue;
+        const m = /^([.,;:!?]+)([\s\S]*)$/.exec(next.text);
+        if (!m)
+            continue;
+        // `contracts [F1].` — the space the model put before the handle would
+        // otherwise sit before the full stop.
+        const before = i > 0 ? out[i - 1] : null;
+        if (before && before.kind === "text")
+            before.text = before.text.replace(/\s+$/, "");
+        out.splice(i, 2, { kind: "text", text: m[1] }, cite);
+        if (m[2])
+            out.splice(i + 2, 0, { kind: "text", text: m[2] });
+        i += 1;
+    }
+    return out;
+}
+function parseInlineRaw(text) {
     const out = [];
     for (const part of text.split(INLINE_RE)) {
         if (!part)

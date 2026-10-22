@@ -1,5 +1,5 @@
 "use client";
-import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState } from "react";
 import { parseRichBlock } from "../rich.js";
 import { RichAnswerBlock } from "./RichBlock.js";
@@ -7,7 +7,7 @@ import { IconBook } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import { citedIds, isCardList, isInternalHref, listLead, parseBlocks, parseInline, } from "../markdown.js";
 /** A plain anchor: same-site paths in place, everything else in a new tab. */
-export const defaultRenderLink = ({ href, internal, className, children }) => internal ? (_jsx("a", { href: href, className: className, children: children })) : (_jsx("a", { href: href, className: className, target: "_blank", rel: "noopener noreferrer", children: children }));
+export const defaultRenderLink = ({ href, internal, className, children }) => internal ? (_jsx("a", { href: href, className: className, children: children })) : className === "ck-link" ? (_jsxs("a", { href: href, className: "ck-link ck-link-out", target: "_blank", rel: "noopener noreferrer", children: [children, _jsx("span", { className: "ck-link-arrow", "aria-hidden": true, children: "\u2197" })] })) : (_jsx("a", { href: href, className: className, target: "_blank", rel: "noopener noreferrer", children: children }));
 /**
  * The sources an answer cites, listed once under it. On a mouse, a row of
  * chips. On a touch screen, ONE "Sources" button that opens a sheet with every
@@ -40,9 +40,17 @@ export function SourcesRow({ records, label, renderLink = defaultRenderLink, }) 
                             })) : (_jsx("span", { className: "ck-source-row", children: body })) }, c.id));
                     }) }) })] }));
 }
-export const defaultRenderCitation = ({ ids, citations, className }) => (_jsx("sup", { className: className, title: ids
+/** The in-text citation as a chip: the first source's name, and how many
+ *  more stand behind the sentence — the ChatGPT app's "NVIDIA De… +3". The
+ *  full list stays in the sources row under the answer. */
+export const defaultRenderCitation = ({ ids, citations, className }) => {
+    const first = citations[ids[0]];
+    const title = ids
         .map((id) => `${id} — ${citations[id].label}\n${citations[id].detail}`)
-        .join("\n\n"), children: ids.join(" ") }));
+        .join("\n\n");
+    const chip = (_jsxs(_Fragment, { children: [_jsx("span", { className: "ck-cite-label", children: first.label }), ids.length > 1 && _jsxs("span", { className: "ck-cite-more", children: ["+", ids.length - 1] })] }));
+    return first.href ? (_jsx("a", { className: className, href: first.href, title: title, target: "_blank", rel: "noopener noreferrer", children: chip })) : (_jsx("span", { className: className, title: title, children: chip }));
+};
 function Inline({ spans, citations, renderLink, renderCitation, }) {
     return (_jsx(_Fragment, { children: spans.map((s, i) => {
             switch (s.kind) {
@@ -94,7 +102,7 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
     };
     const cards = (list, ordered, start = 1) => (_jsx("ol", { className: ordered ? "ck-cards ck-cards-numbered" : "ck-cards", children: list.map((item, j) => {
             const lead = listLead(item.text);
-            return (_jsxs("li", { className: "ck-card", children: [_jsx("span", { className: lead.icon ? "ck-card-badge ck-card-icon" : "ck-card-badge", "aria-hidden": true, children: lead.icon ?? (ordered ? start + j : "•") }), _jsxs("div", { className: "ck-card-body", children: [_jsx("div", { className: "ck-card-title", children: inline(lead.lead) }), lead.rest && _jsx("div", { className: "ck-card-text", children: inline(lead.rest) }), item.children && items(item.children, false)] })] }, j));
+            return (_jsxs("li", { className: "ck-card", children: [_jsx("span", { className: lead.icon ? "ck-card-badge ck-card-icon" : "ck-card-badge", "aria-hidden": true, children: lead.icon ?? (ordered ? start + j : "•") }), _jsxs("div", { className: "ck-card-body", children: [_jsx("div", { className: "ck-card-title", children: inline(lead.lead) }), lead.tag && _jsx("span", { className: "ck-card-tag", children: lead.tag }), lead.rest && _jsx("div", { className: "ck-card-text", children: inline(lead.rest) }), item.children && items(item.children, false)] })] }, j));
         }) }));
     const cited = citations ? citedIds(text).filter((id) => citations[id]) : [];
     return (_jsxs("div", { className: className ? `ck-md ${className}` : "ck-md", children: [parseBlocks(text).map((b, i) => {

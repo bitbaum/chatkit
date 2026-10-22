@@ -9,8 +9,8 @@
  */
 export { Composer, DEFAULT_COMPOSER_LABELS } from "./Composer.js";
 export type { ComposerProps, ComposerLabels, ComposerLabelOverrides, ComposerVoice, } from "./Composer.js";
-export { ChatThread, ChatMessage, ChatReplies, ChatStarters, DEFAULT_THREAD_LABELS, } from "./Thread.js";
-export type { ChatMessageData, ChatSpeaker, LiveTurn, Starter, ThreadLabels } from "./Thread.js";
+export { ChatThread, ChatMessage, ChatReplies, ChatStarters, ThinkingRow, formatThinkingDuration, DEFAULT_THREAD_LABELS, } from "./Thread.js";
+export type { ChatMessageData, ChatSpeaker, LiveTurn, Starter, Thinking, ThinkingStep, ThreadLabels, } from "./Thread.js";
 export { ChatScreen } from "./Screen.js";
 export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
 export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";

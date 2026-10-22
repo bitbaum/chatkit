@@ -196,3 +196,68 @@ test("markdown: sources are chips on a server render, and each record keeps its 
     "one-line placeholder",
   );
 });
+
+test("0.13: thought line, option tag, citation chip, stack figure and external links render", () => {
+  const { ThinkingRow } = reactMod;
+  const html = renderToStaticMarkup(
+    h(ChatThread, {
+      messages: [
+        { id: "u", role: "user", content: "Options?" },
+        {
+          id: "a",
+          role: "assistant",
+          thinking: { durationMs: 218_000, steps: [{ label: "Read the map" }] },
+          citations: {
+            F1: { label: "Fleet AGENTS.md", detail: "x", href: "https://x.ch" },
+            F2: { label: "ISO", detail: "y" },
+          },
+          content:
+            "1. **Federated.** [Recommended] Apart [F1, F2].\n2. **Merge.** One app.\n\nSee [NVIDIA](https://developer.nvidia.com).\n\n```chat_ui\n" +
+            JSON.stringify({
+              type: "stack",
+              title: "Who",
+              layers: [
+                { nodes: [{ kicker: "USER", label: "Build" }], link: "goal", both: true },
+                {
+                  nodes: [
+                    { icon: "agent", label: "Agents" },
+                    { icon: "robot", label: "Robots" },
+                  ],
+                },
+              ],
+              caption: "Proposed.",
+            }) +
+            "\n```",
+        },
+      ],
+    }),
+  );
+  assert.match(
+    html,
+    /<details class="ck-thinking"><summary class="ck-thinking-title">Thought for 3m 38s/,
+  );
+  assert.match(html, /class="ck-card-tag">Recommended</);
+  assert.match(
+    html,
+    /class="ck-cite"[^>]*href="https:\/\/x.ch"[^>]*><span class="ck-cite-label">Fleet AGENTS.md<\/span><span class="ck-cite-more">\+1</,
+  );
+  assert.match(
+    html,
+    /Apart<\/span><span>\.<\/span><span><a class="ck-cite"/,
+    "the chip follows the full stop",
+  );
+  assert.match(html, /class="ck-link ck-link-out"[^>]*target="_blank"/);
+  assert.match(html, /class="ck-stack-kicker">USER</);
+  assert.match(html, /class="ck-stack-icon"/);
+  assert.match(html, /class="ck-stack-arrow"[^>]*>⇅</);
+  assert.match(html, /class="ck-stack-caption">Proposed\.</);
+  assert.doesNotMatch(html, /<svg>/, "the icon name never becomes markup");
+  const live = renderToStaticMarkup(
+    h(ThinkingRow, {
+      thinking: { steps: [{ label: "Searching" }, { label: "Reading" }] },
+      live: true,
+    }),
+  );
+  assert.match(live, /ck-thinking-live/);
+  assert.match(live, /class="ck-thinking-now"><span>Reading</);
+});

@@ -352,6 +352,7 @@ test("a failed transcription keeps the server's reason", () => {
 
 // Read aloud: an answer is prose, not markdown syntax.
 import { plainTextForSpeech, guessSpeechLang } from "../dist/index.js";
+import * as richMod from "../dist/rich.js";
 
 test("speech: markdown is flattened to the words a voice should say", () => {
   const spoken = plainTextForSpeech(
@@ -372,4 +373,76 @@ test("speech: the voice language follows the words", () => {
   );
   assert.equal(guessSpeechLang("The two runs are not on the list and that is fine."), "en");
   assert.equal(guessSpeechLang("ok", "fr"), "fr");
+});
+
+test("markdown 0.13: a tag after the name becomes a pill, never a citation handle", () => {
+  assert.deepEqual(listLead("**Federated.** [Recommended] Keep them apart."), {
+    lead: "Federated",
+    rest: "Keep them apart.",
+    tag: "Recommended",
+  });
+  assert.deepEqual(listLead("**Merge.** [F1] one app"), { lead: "Merge", rest: "[F1] one app" });
+});
+
+test("markdown 0.13: a citation written before the full stop is drawn after it", () => {
+  const spans = parseInline("The tools help [F2, F1]. Next");
+  assert.deepEqual(
+    spans.map((s) => s.kind),
+    ["text", "text", "cite", "text"],
+  );
+  assert.equal(spans[1].text, ".");
+  assert.equal(spans[3].text, " Next");
+});
+
+test("rich 0.13: a stack is validated like every block — icons from the list, bounded", () => {
+  const { parseRichBlock, richAnswerText, STACK_ICONS } = richMod;
+  const ok = parseRichBlock(
+    JSON.stringify({
+      type: "stack",
+      title: "Who does what",
+      layers: [
+        { nodes: [{ kicker: "USER", label: "Build this" }], link: "the goal" },
+        {
+          nodes: [
+            { icon: "agent", label: "Agents" },
+            { icon: "robot", label: "Robots" },
+          ],
+        },
+      ],
+      caption: "Proposed.",
+    }),
+  );
+  assert.equal(ok.type, "stack");
+  assert.equal(
+    parseRichBlock(
+      JSON.stringify({
+        type: "stack",
+        title: "x",
+        layers: [{ nodes: [{ icon: "<svg>", label: "a" }] }],
+      }),
+    ),
+    null,
+    "an unknown icon name is rejected",
+  );
+  assert.equal(
+    parseRichBlock(
+      JSON.stringify({
+        type: "stack",
+        title: "x",
+        layers: [{ nodes: [{ label: "a", tone: "red" }] }],
+      }),
+    ),
+    null,
+  );
+  assert.ok(STACK_ICONS.includes("people"));
+  const text = richAnswerText(
+    "```chat_ui\n" +
+      JSON.stringify({
+        type: "stack",
+        title: "T",
+        layers: [{ nodes: [{ label: "A" }], link: "then" }, { nodes: [{ label: "B" }] }],
+      }) +
+      "\n```",
+  );
+  assert.equal(text, "T\nA\n↓ then\nB");
 });

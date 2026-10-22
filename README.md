@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add @bitbaum/chatkit@^0.11.0
+pnpm add @bitbaum/chatkit@^0.13.0
 ```
 
 **Install releases from npm, never a commit or a branch.** A semver range is
@@ -255,6 +255,32 @@ three unprompted:
   replaces the in-text superscript with your own; `renderSources` replaces
   the row with your own; `sources={false}` drops it. `SourcesRow` and `Sheet`
   are exported for an app that lists sources from elsewhere.
+
+**0.13 — answers that read like the ChatGPT app's**, measured against it
+screen by screen on a phone:
+
+- **Headings are signposts**: a size up, with air above them, so a long
+  answer can be scanned and found again.
+- **Options are cards**: a numbered list whose items open with a bold name
+  gets a tile badge, the name a size up, a hairline between cards, and a pill
+  for a short tag written right after the name — `1. **Federated.**
+  [Recommended] …`. The instruction asks the model to mark the one it
+  recommends exactly that way.
+- **Sources are chips**: a `[F2, F1]` handle is drawn after the sentence as
+  "Fleet AGENTS.md +1", linked when the record has a link, and moved after
+  the full stop when the model wrote it before. `renderCitation` still
+  replaces it.
+- **Links that leave the site say so**: a dotted underline and a small arrow.
+- **A layered figure** — `{"type":"stack", …}` — for an architecture, a
+  pipeline or layers of responsibility: full-width boxes top to bottom, a row
+  of tiles where a layer has parts (with an icon from a closed list), the
+  words that cross each arrow, an accent tone for the layer that matters, and
+  a caption that says what the figure claims. `diagram` stays for an
+  arbitrary graph.
+- **"Thought for 3m 38s ›"** above an answer, from `message.thinking`
+  (`{ durationMs?, steps?: [{ label, detail? }], summary? }`), closed by
+  default; while a turn runs, `live.steps` shows the same row open with the
+  newest step marked. `ThinkingRow` is exported for an app's own thread.
 
 `demo/screen.html` shows all of it.
 

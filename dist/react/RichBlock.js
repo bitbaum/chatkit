@@ -2,6 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useId, useState } from "react";
 import { Sheet } from "./Sheet.js";
+import { StackIconSvg } from "./icons.js";
 export function RichAnswerBlock({ block, onReply, }) {
     const id = useId();
     const [selected, setSelected] = useState(null);
@@ -17,6 +18,8 @@ export function RichAnswerBlock({ block, onReply, }) {
     }
     if (block.type === "diagram")
         return (_jsxs("figure", { className: "ck-rich ck-diagram", children: [_jsx("figcaption", { className: "ck-rich-title", children: block.title }), _jsx("ol", { className: "ck-diagram-nodes", children: block.nodes.map((n, i) => (_jsxs("li", { children: [_jsx("span", { className: "ck-diagram-number", "aria-hidden": true, children: i + 1 }), _jsxs("div", { children: [_jsx("strong", { children: n.label }), n.detail && _jsx("p", { children: n.detail })] })] }, n.id))) }), block.edges.length > 0 && (_jsx("ul", { className: "ck-diagram-edges", children: block.edges.map((e, i) => (_jsxs("li", { children: [_jsx("span", { children: block.nodes.find((n) => n.id === e.from).label }), _jsx("span", { className: "ck-diagram-arrow", "aria-hidden": true, children: "\u2192" }), _jsx("span", { children: block.nodes.find((n) => n.id === e.to).label }), e.label && _jsx("small", { children: e.label })] }, i))) }))] }));
+    if (block.type === "stack")
+        return (_jsxs("figure", { className: "ck-rich ck-stack", children: [_jsx("figcaption", { className: "ck-rich-title", children: block.title }), _jsx("div", { className: "ck-stack-layers", children: block.layers.map((layer, i) => (_jsxs("div", { className: "ck-stack-layer", children: [_jsx("div", { className: "ck-stack-row", style: { gridTemplateColumns: `repeat(${layer.nodes.length}, minmax(0, 1fr))` }, children: layer.nodes.map((n, j) => (_jsxs("div", { className: n.tone === "accent" ? "ck-stack-node ck-stack-accent" : "ck-stack-node", children: [n.icon && _jsx(StackIconSvg, { name: n.icon }), n.kicker && _jsx("span", { className: "ck-stack-kicker", children: n.kicker }), _jsx("strong", { className: "ck-stack-label", children: n.label }), n.detail && _jsx("span", { className: "ck-stack-detail", children: n.detail })] }, j))) }), i < block.layers.length - 1 && (_jsxs("div", { className: "ck-stack-link", children: [_jsx("span", { className: "ck-stack-arrow", "aria-hidden": true, children: layer.both ? "⇅" : "↓" }), layer.link && _jsx("span", { children: layer.link })] }))] }, i))) }), block.caption && _jsx("p", { className: "ck-stack-caption", children: block.caption })] }));
     if (block.type === "callout")
         return (_jsxs("aside", { className: "ck-rich ck-callout", children: [_jsx("strong", { className: "ck-rich-title", children: block.title }), _jsx("p", { children: block.body })] }));
     return (_jsx("form", { className: "ck-rich ck-choice", onSubmit: (e) => {
