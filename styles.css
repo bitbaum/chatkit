@@ -1797,6 +1797,7 @@ a.ck-source-row:hover .ck-source-title {
   list-style: none;
 }
 details.ck-thinking > summary {
+  min-height: var(--ck-target);
   cursor: pointer;
 }
 details.ck-thinking > summary::-webkit-details-marker {
