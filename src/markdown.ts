@@ -145,7 +145,9 @@ export function parseBlocks(text: string): MarkdownBlock[] {
  * name, the body under it. That is how the ChatGPT app lays out "three
  * options" or "two levels"; a model writes it that way unprompted.
  */
-export function listLead(text: string): { lead: string; rest: string; icon?: string } | null {
+export function listLead(
+  text: string,
+): { lead: string; rest: string; icon?: string; tag?: string } | null {
   const m = /^\*\*([^*]+?)\*\*\s*(?:[—–:-]\s*)?([\s\S]*)$/.exec(text);
   if (!m) return null;
   let lead = (m[1] ?? "").trim().replace(/[.:]$/, "");
@@ -153,7 +155,17 @@ export function listLead(text: string): { lead: string; rest: string; icon?: str
   // badge: the icon tile the ChatGPT app draws, from the model's own choice.
   const icon = /^(\p{Extended_Pictographic}\uFE0F?)\s+(.+)$/u.exec(lead);
   if (icon) lead = icon[2] ?? lead;
-  return { lead, rest: (m[2] ?? "").trim(), ...(icon ? { icon: icon[1] } : {}) };
+  let rest = (m[2] ?? "").trim();
+  // `**Option.** [Recommended] why` — a short tag in brackets right after the
+  // name becomes a pill under it, the way the ChatGPT app marks the option it
+  // recommends. Only a short word or two; a citation handle is not a tag.
+  let tag: string | undefined;
+  const tagged = /^\[(?![FD]\d)([^\]\n]{1,24})\]\s*([\s\S]*)$/.exec(rest);
+  if (tagged) {
+    tag = tagged[1]!.trim();
+    rest = (tagged[2] ?? "").trim();
+  }
+  return { lead, rest, ...(icon ? { icon: icon[1] } : {}), ...(tag ? { tag } : {}) };
 }
 
 export function isCardList(items: ListItem[]): boolean {
@@ -176,6 +188,24 @@ const INLINE_RE =
   /(`[^`]+`|!\[[^\]]*\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)\s]+\)|\[[FD]\d+(?:,\s*[FD]\d+)*\]|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 
 export function parseInline(text: string): InlineSpan[] {
+  const out = parseInlineRaw(text);
+  // A citation a model writes before the full stop (`… tools [F2].`) is
+  // drawn as a chip AFTER it, where the ChatGPT app puts its source chips:
+  // the sentence ends, then its evidence.
+  for (let i = 0; i + 1 < out.length; i++) {
+    const cite = out[i]!;
+    const next = out[i + 1]!;
+    if (cite.kind !== "cite" || next.kind !== "text") continue;
+    const m = /^([.,;:!?]+)([\s\S]*)$/.exec(next.text);
+    if (!m) continue;
+    out.splice(i, 2, { kind: "text", text: m[1]! }, cite);
+    if (m[2]) out.splice(i + 2, 0, { kind: "text", text: m[2] });
+    i += 1;
+  }
+  return out;
+}
+
+function parseInlineRaw(text: string): InlineSpan[] {
   const out: InlineSpan[] = [];
   for (const part of text.split(INLINE_RE)) {
     if (!part) continue;

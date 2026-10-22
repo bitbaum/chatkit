@@ -807,17 +807,25 @@
 .ck-md > .ck-md-h + * {
   margin-top: 0.5em;
 }
+/* Headings with air above them, large enough to be the signposts of a long
+   answer — the ChatGPT app's "4. The complete architecture" is a heading you
+   can find again while scrolling, not a bold line. */
 .ck-md > * + .ck-md-h {
-  margin-top: 1.25em;
+  margin-top: 1.75em;
 }
 .ck-md-h1 {
-  font-size: 1.375em;
+  font-size: 1.5em;
+  letter-spacing: -0.01em;
 }
 .ck-md-h2 {
-  font-size: 1.1875em;
+  font-size: 1.375em;
+  letter-spacing: -0.01em;
 }
 .ck-md-h3 {
-  font-size: 1.0625em;
+  font-size: 1.125em;
+}
+.ck-md > p + p {
+  margin-top: 0.9em;
 }
 .ck-md ul ul,
 .ck-md ol ul {
@@ -853,29 +861,49 @@
 .ck-cards {
   display: flex;
   flex-direction: column;
-  gap: 0.875em;
   margin: 0;
   padding: 0;
   list-style: none;
 }
+/* Each option is its own card: a hairline between them, room around each,
+   the badge the size of a tile and the name a size up — the ChatGPT app's
+   option list, which reads as three things to choose from, not a list. */
 .ck-card {
   display: grid;
-  grid-template-columns: 2.5em minmax(0, 1fr);
-  gap: 0.75em;
+  grid-template-columns: 2.75em minmax(0, 1fr);
+  gap: 0.875em;
   align-items: start;
+  padding: 1em 0;
+}
+.ck-card + .ck-card {
+  border-top: 1px solid var(--ck-line);
+}
+.ck-cards > .ck-card:first-child {
+  padding-top: 0.25em;
 }
 .ck-card-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5em;
-  height: 2.5em;
+  width: 2.75em;
+  height: 2.75em;
   border-radius: 0.75em;
   background: var(--ck-raised);
-  color: var(--ck-fg-2);
+  color: var(--ck-fg);
   font-size: 1em;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.ck-card-tag {
+  display: inline-block;
+  margin-top: 0.4em;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ck-accent) 14%, transparent);
+  color: var(--ck-fg);
+  font-size: 0.8125em;
+  font-weight: 550;
+  line-height: 1.5;
 }
 .ck-cards:not(.ck-cards-numbered) .ck-card-badge:not(.ck-card-icon) {
   font-size: 1.5em;
@@ -889,11 +917,13 @@
   padding-top: 0.2em;
 }
 .ck-card-title {
+  font-size: 1.125em;
   font-weight: 650;
+  line-height: 1.3;
 }
 .ck-card-text {
-  margin-top: 0.25em;
-  color: var(--ck-fg-2);
+  margin-top: 0.4em;
+  color: var(--ck-fg);
 }
 .ck-card-body > ul {
   margin-top: 0.375em;
@@ -1004,11 +1034,43 @@ a.ck-source:hover {
   text-decoration-color: var(--ck-accent);
   text-underline-offset: 0.18em;
 }
-.ck-cite {
+.ck-link-out {
+  text-decoration-style: dotted;
+}
+.ck-link-arrow {
   margin-left: 0.15em;
-  color: var(--ck-muted);
-  font-size: 0.7em;
+  font-size: 0.8em;
+  color: var(--ck-fg-3);
+}
+/* The citation as a chip after the sentence: the first source's name and how
+   many more stand behind it ("NVIDIA De… +3"). */
+.ck-cite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 11em;
+  margin-left: 0.3em;
+  padding: 0.1em 0.55em;
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-size: 0.8125em;
+  line-height: 1.5;
+  text-decoration: none;
+  vertical-align: 0.1em;
   cursor: help;
+}
+a.ck-cite:hover {
+  color: var(--ck-fg);
+}
+.ck-cite-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ck-cite-more {
+  flex: none;
+  color: var(--ck-fg-3);
 }
 
 /* starters */
@@ -1539,6 +1601,149 @@ a.ck-source-row:hover .ck-source-title {
   opacity: 0.45;
   cursor: default;
 }
+/* A layered figure: boxes stacked top to bottom in one bordered card, a
+   row of tiles where a layer has parts, and the words that cross each arrow. */
+.ck-stack {
+  padding: 1rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-bg);
+}
+.ck-stack-layers {
+  display: flex;
+  flex-direction: column;
+}
+.ck-stack-row {
+  display: grid;
+  gap: 0.625rem;
+}
+.ck-stack-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 1rem 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: calc(var(--ck-radius) * 0.75);
+  background: var(--ck-raised);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ck-stack-accent {
+  border-color: color-mix(in srgb, var(--ck-accent) 35%, var(--ck-line));
+  background: color-mix(in srgb, var(--ck-accent) 9%, var(--ck-bg));
+}
+.ck-stack-icon {
+  width: 1.5em;
+  height: 1.5em;
+  margin-bottom: 0.25rem;
+  color: var(--ck-fg);
+}
+.ck-stack-kicker {
+  color: var(--ck-fg-2);
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ck-stack-label {
+  font-size: 1.0625em;
+  font-weight: 650;
+  line-height: 1.3;
+}
+/* Tiles in a row share the width: tighter padding and smaller words, so
+   "Manufacture, move, inspect" fits three across on a 390px phone. */
+.ck-stack-row:not([style*="repeat(1,"]) .ck-stack-node {
+  padding: 0.875rem 0.5rem;
+}
+.ck-stack-row:not([style*="repeat(1,"]) .ck-stack-label {
+  font-size: 1em;
+}
+.ck-stack-row:not([style*="repeat(1,"]) .ck-stack-detail {
+  font-size: 0.8125em;
+}
+.ck-stack-detail {
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  line-height: 1.4;
+}
+.ck-stack-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  text-align: center;
+}
+.ck-stack-arrow {
+  font-size: 1.25em;
+  line-height: 1;
+  color: var(--ck-fg-3);
+}
+.ck-stack-caption {
+  margin: 0.875rem 0 0;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  text-align: center;
+}
+
+/* "Thought for 3m 38s ›": one quiet line above the answer, opening to the
+   steps; open and ticking while the turn runs. */
+.ck-thinking {
+  margin: 0 0 0.75em;
+  color: var(--ck-fg-2);
+  font-size: 0.9375em;
+}
+.ck-thinking-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 2rem;
+  cursor: default;
+  list-style: none;
+}
+details.ck-thinking > summary {
+  cursor: pointer;
+}
+details.ck-thinking > summary::-webkit-details-marker {
+  display: none;
+}
+details.ck-thinking > summary svg {
+  transition: transform 0.15s ease;
+}
+details.ck-thinking[open] > summary svg {
+  transform: rotate(90deg);
+}
+.ck-thinking-body {
+  padding: 0.25em 0 0.5em 0.75em;
+  border-left: 2px solid var(--ck-line);
+}
+.ck-thinking-body p {
+  margin: 0 0 0.5em;
+}
+.ck-thinking-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-thinking-steps li {
+  display: flex;
+  flex-direction: column;
+  padding: 0.2em 0;
+}
+.ck-thinking-steps small {
+  color: var(--ck-fg-3);
+}
+.ck-thinking-now {
+  color: var(--ck-fg);
+}
+.ck-thinking-live .ck-dots {
+  margin-right: 0.25em;
+}
+
 .ck-rich button:focus-visible,
 .ck-rich input:focus-visible {
   outline: 2px solid var(--ck-fg);

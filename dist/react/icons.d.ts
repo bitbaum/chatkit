@@ -15,4 +15,9 @@ export declare const IconFileUp: () => import("react").JSX.Element;
 export declare const IconShare: () => import("react").JSX.Element;
 export declare const IconSpeaker: () => import("react").JSX.Element;
 export declare const IconBook: () => import("react").JSX.Element;
+export declare const STACK_ICON_PATHS: Record<string, string[]>;
+export declare const StackIconSvg: ({ name }: {
+    name: string;
+}) => import("react").JSX.Element | null;
+export declare const IconChevron: () => import("react").JSX.Element;
 //# sourceMappingURL=icons.d.ts.map

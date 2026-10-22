@@ -50,6 +50,9 @@ export declare function SourcesRow({ records, label, renderLink, }: {
     label: string;
     renderLink?: RenderLink;
 }): import("react").JSX.Element | null;
+/** The in-text citation as a chip: the first source's name, and how many
+ *  more stand behind the sentence — the ChatGPT app's "NVIDIA De… +3". The
+ *  full list stays in the sources row under the answer. */
 export declare const defaultRenderCitation: RenderCitation;
 /**
  * Model output as readable text: paragraphs, lists, headings, tables, bold,

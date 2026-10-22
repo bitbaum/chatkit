@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import type { RichBlock } from "../rich.js";
 import { Sheet } from "./Sheet.js";
+import { StackIconSvg } from "./icons.js";
 
 export function RichAnswerBlock({
   block,
@@ -102,6 +103,45 @@ export function RichAnswerBlock({
             ))}
           </ul>
         )}
+      </figure>
+    );
+  if (block.type === "stack")
+    return (
+      <figure className="ck-rich ck-stack">
+        <figcaption className="ck-rich-title">{block.title}</figcaption>
+        <div className="ck-stack-layers">
+          {block.layers.map((layer, i) => (
+            <div key={i} className="ck-stack-layer">
+              <div
+                className="ck-stack-row"
+                style={{ gridTemplateColumns: `repeat(${layer.nodes.length}, minmax(0, 1fr))` }}
+              >
+                {layer.nodes.map((n, j) => (
+                  <div
+                    key={j}
+                    className={
+                      n.tone === "accent" ? "ck-stack-node ck-stack-accent" : "ck-stack-node"
+                    }
+                  >
+                    {n.icon && <StackIconSvg name={n.icon} />}
+                    {n.kicker && <span className="ck-stack-kicker">{n.kicker}</span>}
+                    <strong className="ck-stack-label">{n.label}</strong>
+                    {n.detail && <span className="ck-stack-detail">{n.detail}</span>}
+                  </div>
+                ))}
+              </div>
+              {i < block.layers.length - 1 && (
+                <div className="ck-stack-link">
+                  <span className="ck-stack-arrow" aria-hidden>
+                    {layer.both ? "⇅" : "↓"}
+                  </span>
+                  {layer.link && <span>{layer.link}</span>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {block.caption && <p className="ck-stack-caption">{block.caption}</p>}
       </figure>
     );
   if (block.type === "callout")

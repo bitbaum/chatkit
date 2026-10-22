@@ -43,6 +43,14 @@ const LONG: ChatMessageData[] = [
   {
     id: "l2c",
     role: "assistant",
+    thinking: {
+      durationMs: 218_000,
+      steps: [
+        { label: "Read the fleet's AGENTS.md", detail: "Packages, names, the identity contract" },
+        { label: "Compared Loki's actor model with OrangeCat's entity registry" },
+        { label: "Checked ISO 10218-1:2025 for the robot cell rules" },
+      ],
+    },
     citations: {
       F1: {
         label: "fleet AGENTS.md",
@@ -52,7 +60,56 @@ const LONG: ChatMessageData[] = [
       F2: { label: "ISO 10218-1:2025", detail: "Safety requirements for industrial robots." },
     },
     content:
-      "## Three architectural options\n\n1. **Federated products, unified experience.** Keep Loki and OrangeCat independent, but integrate them through common identity, linked projects and shared capability contracts [F1]. The best balance of modularity and simplicity.\n2. **Merge everything into one application.** One database, one repository, one deployment. Removes integration, creates one very large application.\n3. **Loose coupling.** Occasional API hand-offs. Easy to maintain, but the person coordinates the projects themselves.\n\n## Who owns what\n\n| Domain | Canonical owner |\n|---|---|\n| Goals, plans, tasks, agent runs | Loki |\n| Robot control, telemetry | Loki plus the local robot gateway [F2] |\n| Public identities, offers, settlements | OrangeCat |\n| Shared UI and technical packages | The fleet's package register |\n\n- [x] Shared identity linking\n- [ ] A stable cross-product project reference\n- [ ] Durable events",
+      "## Three architectural options\n\n1. **Federated products, unified experience.** [Recommended] Keep Loki and OrangeCat independent, but integrate them through common identity, linked projects and shared capability contracts [F1]. The best balance of modularity and simplicity.\n2. **Merge everything into one application.** One database, one repository, one deployment. Removes integration, creates one very large application.\n3. **Loose coupling.** Occasional API hand-offs. Easy to maintain, but the person coordinates the projects themselves.\n\n## Who owns what\n\n| Domain | Canonical owner |\n|---|---|\n| Goals, plans, tasks, agent runs | Loki |\n| Robot control, telemetry | Loki plus the local robot gateway [F2] |\n| Public identities, offers, settlements | OrangeCat |\n| Shared UI and technical packages | The fleet's package register |\n\n- [x] Shared identity linking\n- [ ] A stable cross-product project reference\n- [ ] Durable events\n\nThese are existing building blocks, not things to invent: ROS 2 and MoveIt 2 already provide the robotics middleware, and [NVIDIA's simulation tools](https://developer.nvidia.com/isaac) reduce the expensive real-world experiments [F2, F1].\n\n## The complete architecture" +
+      visual({
+        type: "stack",
+        title: "Who does what",
+        layers: [
+          {
+            nodes: [
+              {
+                kicker: "User",
+                label: "\u201cBuild this game / robot / business\u201d",
+                detail: "One conversation, one goal, one project view",
+              },
+            ],
+          },
+          {
+            nodes: [
+              {
+                kicker: "Loki",
+                label: "Goal and execution control plane",
+                detail:
+                  "Plan \u00b7 Schedule \u00b7 Dispatch \u00b7 Observe \u00b7 Verify \u00b7 Retry",
+                tone: "accent",
+              },
+            ],
+            link: "Work orders, evidence",
+            both: true,
+          },
+          {
+            nodes: [
+              { icon: "agent", label: "AI agents", detail: "Code, research, design" },
+              { icon: "people", label: "Humans", detail: "Engineers, specialists" },
+              { icon: "robot", label: "Robots", detail: "Manufacture, move, inspect" },
+            ],
+            link: "Offers, resources, payments, identities",
+            both: true,
+          },
+          {
+            nodes: [
+              {
+                kicker: "OrangeCat",
+                label: "Economic coordination and marketplace",
+                detail: "Discover \u00b7 Offer \u00b7 Contract \u00b7 Fund \u00b7 Settle",
+              },
+            ],
+          },
+        ],
+        caption:
+          "Proposed logical architecture \u2014 not a claim that every connection is implemented today.",
+      }) +
+      "\n\nThe figure separates three questions. **What needs to happen?** Loki answers this. **Who can do it, and under what terms?** OrangeCat. **Did it actually happen correctly?** Loki owns the evidence; a person accepts the result.",
   },
   { id: "l3", role: "user", content: "And who decides when something goes wrong?" },
   {

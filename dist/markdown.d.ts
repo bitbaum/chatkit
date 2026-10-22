@@ -56,6 +56,7 @@ export declare function listLead(text: string): {
     lead: string;
     rest: string;
     icon?: string;
+    tag?: string;
 } | null;
 export declare function isCardList(items: ListItem[]): boolean;
 export type InlineSpan = {

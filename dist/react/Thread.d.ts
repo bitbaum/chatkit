@@ -21,8 +21,33 @@ export type ChatMessageData = {
      * used instead (see `REPLIES_INSTRUCTION`).
      */
     replies?: readonly string[];
+    /**
+     * What the model did before answering — "Thought for 3m 38s ›" with the
+     * steps under it, the way the ChatGPT and Claude apps show it. Closed by
+     * default; the answer is what the reader came for.
+     */
+    thinking?: Thinking;
 };
+export type ThinkingStep = {
+    label: string;
+    detail?: string;
+};
+export type Thinking = {
+    /** How long it took, in milliseconds. */
+    durationMs?: number;
+    /** The steps, in order: searches, tool calls, reasoning in one line each. */
+    steps?: readonly ThinkingStep[];
+    /** A short summary of the reasoning, if the model gives one. */
+    summary?: string;
+};
+/** "3m 38s", "42s", "1h 02m" — the ChatGPT app's unit words, so a product
+ *  translating the labels still gets one shape. */
+export declare function formatThinkingDuration(ms: number): string;
 export type ThreadLabels = {
+    /** "Thought for {time}" — `{time}` is replaced; without a duration, `thought`. */
+    thoughtFor: string;
+    thought: string;
+    thinking: string;
     copy: string;
     copied: string;
     listen: string;
@@ -79,8 +104,19 @@ export type LiveTurn = {
     text?: string;
     /** What it is doing before the first word ("Reading the fleet map"). */
     status?: string;
+    /** The steps so far, newest last; shown open while the turn runs. */
+    steps?: readonly ThinkingStep[];
     speaker?: ChatSpeaker;
 };
+/**
+ * "Thought for 3m 38s ›" above an answer, opening to the steps; while a turn
+ * runs, the same row open with the steps arriving and the newest one marked.
+ */
+export declare function ThinkingRow({ thinking, live, labels, }: {
+    thinking: Thinking;
+    live?: boolean;
+    labels?: ThreadLabels;
+}): import("react").JSX.Element | null;
 /**
  * The conversation. Follows new tokens only while the reader is at the
  * bottom, with a button back down once they are not; a turn in flight can be

@@ -4,8 +4,22 @@ import { Markdown, defaultRenderLink } from "./Markdown.js";
 import { useStickToBottom } from "./hooks.js";
 import { extractReplies } from "../replies.js";
 import { AnswerActions } from "./AnswerActions.js";
-import { IconArrowDown, IconRetry, IconStop } from "./icons.js";
+import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
+/** "3m 38s", "42s", "1h 02m" — the ChatGPT app's unit words, so a product
+ *  translating the labels still gets one shape. */
+export function formatThinkingDuration(ms) {
+    const s = Math.max(1, Math.round(ms / 1000));
+    if (s < 60)
+        return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60)
+        return `${m}m ${String(s % 60).padStart(2, "0")}s`;
+    return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
 export const DEFAULT_THREAD_LABELS = {
+    thoughtFor: "Thought for {time}",
+    thought: "What it did",
+    thinking: "Thinking",
     copy: "Copy",
     copied: "Copied",
     listen: "Listen",
@@ -39,7 +53,7 @@ export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, 
     // a phone must not stand between them.
     if (last || message.failed)
         cls.push("ck-turn-pinned");
-    return (_jsxs("div", { className: cls.join(" "), children: [showSpeaker && message.speaker && _jsx("span", { className: "ck-speaker", children: message.speaker.name }), message.failed ? (_jsx("p", { className: "ck-failed", role: "status", children: message.content || labels.failed })) : (_jsx(Markdown, { text: parsed.text, citations: message.citations, renderLink: renderLink, onReply: last ? onReply : undefined })), footer, message.failed ? (onRetry && (_jsx("div", { className: "ck-turn-actions", children: _jsxs("button", { type: "button", className: "ck-action", onClick: onRetry, children: [_jsx(IconRetry, {}), _jsx("span", { children: labels.retry })] }) }))) : (_jsx(AnswerActions, { text: parsed.text, onRetry: onRetry, speaker: speaker, share: share, labels: labels })), last && onReply && !message.failed && replies.length > 0 && (_jsx(ChatReplies, { replies: replies, onPick: onReply, label: labels.replies }))] }));
+    return (_jsxs("div", { className: cls.join(" "), children: [showSpeaker && message.speaker && _jsx("span", { className: "ck-speaker", children: message.speaker.name }), message.thinking && _jsx(ThinkingRow, { thinking: message.thinking, labels: labels }), message.failed ? (_jsx("p", { className: "ck-failed", role: "status", children: message.content || labels.failed })) : (_jsx(Markdown, { text: parsed.text, citations: message.citations, renderLink: renderLink, onReply: last ? onReply : undefined })), footer, message.failed ? (onRetry && (_jsx("div", { className: "ck-turn-actions", children: _jsxs("button", { type: "button", className: "ck-action", onClick: onRetry, children: [_jsx(IconRetry, {}), _jsx("span", { children: labels.retry })] }) }))) : (_jsx(AnswerActions, { text: parsed.text, onRetry: onRetry, speaker: speaker, share: share, labels: labels })), last && onReply && !message.failed && replies.length > 0 && (_jsx(ChatReplies, { replies: replies, onPick: onReply, label: labels.replies }))] }));
 }
 /**
  * The replies under an answer. Exported for apps that render their own
@@ -51,13 +65,33 @@ export function ChatReplies({ replies, onPick, label = DEFAULT_THREAD_LABELS.rep
     return (_jsx("div", { className: "ck-replies", role: "group", "aria-label": label, children: replies.map((r, i) => (_jsx("button", { type: "button", className: i === 0 ? "ck-reply ck-reply-lead" : "ck-reply", disabled: disabled, onClick: () => onPick(r), children: r }, r))) }));
 }
 /**
+ * "Thought for 3m 38s ›" above an answer, opening to the steps; while a turn
+ * runs, the same row open with the steps arriving and the newest one marked.
+ */
+export function ThinkingRow({ thinking, live = false, labels = DEFAULT_THREAD_LABELS, }) {
+    const steps = thinking.steps ?? [];
+    if (!live && steps.length === 0 && !thinking.summary && thinking.durationMs === undefined)
+        return null;
+    const title = live
+        ? labels.thinking
+        : thinking.durationMs !== undefined
+            ? labels.thoughtFor.replace("{time}", formatThinkingDuration(thinking.durationMs))
+            : labels.thought;
+    const body = steps.length > 0 || thinking.summary ? (_jsxs("div", { className: "ck-thinking-body", children: [thinking.summary && _jsx("p", { children: thinking.summary }), steps.length > 0 && (_jsx("ol", { className: "ck-thinking-steps", children: steps.map((step, i) => (_jsxs("li", { className: live && i === steps.length - 1 ? "ck-thinking-now" : undefined, children: [_jsx("span", { children: step.label }), step.detail && _jsx("small", { children: step.detail })] }, i))) }))] })) : null;
+    if (live)
+        return (_jsxs("div", { className: "ck-thinking ck-thinking-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-thinking-title", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), title] }), body] }));
+    if (!body)
+        return (_jsx("p", { className: "ck-thinking", children: _jsx("span", { className: "ck-thinking-title", children: title }) }));
+    return (_jsxs("details", { className: "ck-thinking", children: [_jsxs("summary", { className: "ck-thinking-title", children: [title, _jsx(IconChevron, {})] }), body] }));
+}
+/**
  * The conversation. Follows new tokens only while the reader is at the
  * bottom, with a button back down once they are not; a turn in flight can be
  * stopped from where it is being written.
  */
 export function ChatThread({ messages, live = null, loading = false, stopped = false, onStop, onRetry, onReply, renderLink = defaultRenderLink, renderFooter, showSpeakers, speaker, share, empty, children, labels: labelOverrides, }) {
     const labels = { ...DEFAULT_THREAD_LABELS, ...labelOverrides };
-    const { scrollRef, endRef, following, onScroll, jumpToBottom } = useStickToBottom([messages.length, live?.text, live?.status, stopped], messages.length);
+    const { scrollRef, endRef, following, onScroll, jumpToBottom } = useStickToBottom([messages.length, live?.text, live?.status, live?.steps?.length, stopped], messages.length);
     if (loading) {
         return (_jsx("div", { className: "ck-thread-loading", role: "status", children: labels.loading }));
     }
@@ -66,7 +100,7 @@ export function ChatThread({ messages, live = null, loading = false, stopped = f
     const speakers = new Set([...messages.map((m) => m.speaker?.name), live?.speaker?.name].filter(Boolean));
     const named = showSpeakers ?? speakers.size > 1;
     const lastAnswer = [...messages].reverse().find((m) => m.role === "assistant");
-    return (_jsxs("div", { className: "ck-thread-wrap", children: [_jsx("div", { ref: scrollRef, className: "ck-thread", onScroll: onScroll, children: _jsxs("div", { className: "ck-thread-inner", children: [messages.map((m) => (_jsx(ChatMessage, { message: m, onRetry: onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined, renderLink: renderLink, showSpeaker: named, footer: renderFooter?.(m), last: m.id === lastAnswer?.id, onReply: live || stopped ? undefined : onReply, speaker: speaker, share: share, labels: labels }, m.id))), live && (_jsxs("div", { className: "ck-turn ck-turn-answer", children: [named && live.speaker && _jsx("span", { className: "ck-speaker", children: live.speaker.name }), live.text ? (_jsx(Markdown, { text: extractReplies(live.text).text, renderLink: renderLink })) : (_jsxs("p", { className: "ck-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), live.status ?? labels.working] })), onStop && (_jsxs("button", { type: "button", className: "ck-stop", onClick: onStop, children: [_jsx(IconStop, {}), labels.stop] }))] })), stopped && !live && (_jsx("p", { className: "ck-stopped", role: "status", children: labels.stopped })), children, _jsx("div", { ref: endRef })] }) }), !following && (_jsx("button", { type: "button", className: "ck-jump", onClick: jumpToBottom, "aria-label": labels.jump, title: labels.jump, children: _jsx(IconArrowDown, {}) }))] }));
+    return (_jsxs("div", { className: "ck-thread-wrap", children: [_jsx("div", { ref: scrollRef, className: "ck-thread", onScroll: onScroll, children: _jsxs("div", { className: "ck-thread-inner", children: [messages.map((m) => (_jsx(ChatMessage, { message: m, onRetry: onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined, renderLink: renderLink, showSpeaker: named, footer: renderFooter?.(m), last: m.id === lastAnswer?.id, onReply: live || stopped ? undefined : onReply, speaker: speaker, share: share, labels: labels }, m.id))), live && (_jsxs("div", { className: "ck-turn ck-turn-answer", children: [named && live.speaker && _jsx("span", { className: "ck-speaker", children: live.speaker.name }), live.steps && live.steps.length > 0 && (_jsx(ThinkingRow, { thinking: { steps: live.steps }, live: true, labels: labels })), live.text ? (_jsx(Markdown, { text: extractReplies(live.text).text, renderLink: renderLink })) : live.steps && live.steps.length > 0 ? null : (_jsxs("p", { className: "ck-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), live.status ?? labels.working] })), onStop && (_jsxs("button", { type: "button", className: "ck-stop", onClick: onStop, children: [_jsx(IconStop, {}), labels.stop] }))] })), stopped && !live && (_jsx("p", { className: "ck-stopped", role: "status", children: labels.stopped })), children, _jsx("div", { ref: endRef })] }) }), !following && (_jsx("button", { type: "button", className: "ck-jump", onClick: jumpToBottom, "aria-label": labels.jump, title: labels.jump, children: _jsx(IconArrowDown, {}) }))] }));
 }
 /** The empty state that starts a conversation. It disappears once one has. */
 export function ChatStarters({ starters, onPick, title, }) {

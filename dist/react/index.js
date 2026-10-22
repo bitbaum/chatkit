@@ -8,7 +8,7 @@
  * app's tokens through `--ck-*` variables (see styles.css).
  */
 export { Composer, DEFAULT_COMPOSER_LABELS } from "./Composer.js";
-export { ChatThread, ChatMessage, ChatReplies, ChatStarters, DEFAULT_THREAD_LABELS, } from "./Thread.js";
+export { ChatThread, ChatMessage, ChatReplies, ChatStarters, ThinkingRow, formatThinkingDuration, DEFAULT_THREAD_LABELS, } from "./Thread.js";
 export { ChatScreen } from "./Screen.js";
 export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
 export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";
