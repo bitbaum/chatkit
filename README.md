@@ -114,6 +114,11 @@ const system = `${yourPrompt}\n\n${REPLIES_INSTRUCTION}`; // server side
 <ChatThread messages={messages} onReply={send} … />
 ```
 
+Below 40rem the replies are one row that scrolls sideways with a fade, the
+lead reply first and always on screen; wider, they wrap. The Copy · Listen ·
+Share · Retry row under an answer keeps each word on one line and every button
+at the 44px target (0.12.1).
+
 That is the whole integration. `ChatThread` takes the `quick_replies` block out
 of every answer (and out of a streaming one before it has finished, so nobody
 watches JSON appear), and shows the buttons under the latest answer only, never
