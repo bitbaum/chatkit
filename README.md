@@ -132,6 +132,19 @@ recommended next step first, and the first button is drawn as the lead
 tap, the way Grok does it. Only an answer that ends the conversation has no
 buttons.
 
+No heading over the buttons (0.15.1). Models like to write their own
+"**Quick follow-up options**" (or "Suggested replies", "Mögliche
+Rückfragen:", …) as the last line above the block; drawn over the buttons it
+reads as an empty section. The instruction tells the model not to, and
+`extractReplies` drops it anyway — decided by shape and position, not a word
+list, so it holds in every language: the last block before the replies, a
+heading or a bold/italic-only line of at most six words with no sentence
+punctuation but a closing colon, plus an `---` beside it. A bold sentence
+("**China holds 99 %.**") stays. While streaming (`{ streaming: true }`, which
+`ChatThread` passes) such a line is held back until the next line shows what
+it is, so it never flashes. `dropReplyLabel(text)` is exported for apps that
+pass their own `replies`.
+
 ### Under every answer — Copy, Listen, Share
 
 `AnswerActions` is the row under an answer, the same in every product:

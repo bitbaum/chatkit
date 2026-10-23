@@ -72,6 +72,7 @@ try {
         composers: document.querySelectorAll(".ck-composer").length,
         replies: document.querySelectorAll(".ck-reply").length,
         rawReplies: document.body.innerText.includes("quick_replies"),
+        replyHeading: document.body.innerText.includes("Quick follow-up options"),
         mics: document.querySelectorAll(".ck-composer .ck-mic").length,
         small: [
           ...document.querySelectorAll(
@@ -84,6 +85,7 @@ try {
     });
     check(m.overflow <= 0, `${name}: no horizontal scroll (${m.overflow}px over)`);
     check(m.replies === 3 && !m.rawReplies, `${name}: suggested replies as buttons (${m.replies})`);
+    check(!m.replyHeading, `${name}: no heading the model wrote over the reply buttons`);
     check(m.input >= 16, `${name}: input text >= 16px (${m.input}px)`);
     check(m.text >= 16, `${name}: message text >= 16px (${m.text}px)`);
     check(

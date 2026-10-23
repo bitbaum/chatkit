@@ -60,7 +60,7 @@ const SEED: ChatMessageData[] = [
     role: "assistant",
     speaker: { name: "Loki", id: "loki" },
     content:
-      'If you want a portfolio site around it, I can build that too — see https://loki.orangecat.ch.\n\n```quick_replies\n["Set up the pay link", "Build the site too", "What does it cost?"]\n```',
+      'If you want a portfolio site around it, I can build that too — see https://loki.orangecat.ch.\n\n**Quick follow-up options**\n\n```quick_replies\n["Set up the pay link", "Build the site too", "What does it cost?"]\n```',
   },
 ];
 
