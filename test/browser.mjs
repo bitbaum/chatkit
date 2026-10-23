@@ -16,6 +16,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { BROKEN_WORDS_SOURCE } from "../dist/audit.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const types = {
@@ -100,42 +101,30 @@ try {
   // letter, so a three-column table squeezed its first column to nothing. A
   // word may wrap onto the next line; it may never be cut. Measured, not read
   // from the CSS: every word of every answer is laid out in a Range and must
-  // sit on one line. (Words with a hyphen, slash or dot beside them, and
-  // anything over 24 characters, are exempt: a URL has to break somewhere.)
+  // sit on one line (src/audit.ts, exported as @bitbaum/chatkit/audit so every
+  // product can run the same check against its own pages).
+  // The audit can fail: a word forced onto two lines is reported, a word that
+  // simply wraps to the next line is not. A gate that cannot fail is no gate.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 600 } });
+    await page.setContent(
+      `<div style="width:30px;overflow-wrap:anywhere;font:16px sans-serif">Directory</div>
+       <div style="width:120px;font:16px sans-serif">A directory that wraps between words</div>`,
+    );
+    const found = await page.evaluate(`(${BROKEN_WORDS_SOURCE})(document.body)`);
+    check(
+      found.length === 1 && found[0] === "Directory",
+      `the audit reports a squeezed word and not a wrapped sentence (${found.join(",")})`,
+    );
+    await page.close();
+  }
   for (const width of [320, 390, 1280]) {
     for (const file of ["index.html", "screen.html"]) {
       const page = await browser.newPage({ viewport: { width, height: 900 } });
       await page.goto(base.replace("index.html", file));
       await page.waitForSelector(".ck-md");
       await page.waitForTimeout(200);
-      const broken = await page.evaluate(() => {
-        const found = [];
-        for (const el of document.querySelectorAll(".ck-md, .ck-bubble")) {
-          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-          for (let n; (n = walker.nextNode());) {
-            const text = n.nodeValue ?? "";
-            const re = /[\p{L}\p{N}']+/gu;
-            for (let m; (m = re.exec(text));) {
-              const word = m[0];
-              if (word.length > 24) continue;
-              const near = /[-\u2010\u2011\u2013\u2014/_.@:]/;
-              if (
-                near.test(text[m.index - 1] ?? "") ||
-                near.test(text[m.index + word.length] ?? "")
-              )
-                continue;
-              const r = document.createRange();
-              r.setStart(n, m.index);
-              r.setEnd(n, m.index + word.length);
-              const tops = [...r.getClientRects()]
-                .filter((x) => x.width > 0)
-                .map((x) => Math.round(x.top));
-              if (tops.length > 1 && Math.max(...tops) - Math.min(...tops) > 6) found.push(word);
-            }
-          }
-        }
-        return found;
-      });
+      const broken = await page.evaluate(`(${BROKEN_WORDS_SOURCE})(document.body)`);
       check(
         broken.length === 0,
         `${file} at ${width}px: no word is cut across lines (${broken.slice(0, 8).join(", ")})`,
