@@ -2,7 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { Markdown, defaultRenderLink } from "./Markdown.js";
 import { useStickToBottom } from "./hooks.js";
-import { extractReplies } from "../replies.js";
+import { dropReplyLabel, extractReplies } from "../replies.js";
 import { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS, } from "./AnswerActions.js";
 import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
 /** "3m 38s", "42s", "1h 02m" — the ChatGPT app's unit words, so a product
@@ -40,6 +40,9 @@ export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, 
     }
     const parsed = extractReplies(message.content);
     const replies = message.replies ?? parsed.replies;
+    // Replies handed in by the app still get no heading drawn over them.
+    if (message.replies && message.replies.length > 0)
+        parsed.text = dropReplyLabel(parsed.text);
     const cls = ["ck-turn", "ck-turn-answer"];
     if (message.speaker?.id)
         cls.push(`ck-from-${message.speaker.id}`);
@@ -95,7 +98,7 @@ export function ChatThread({ messages, live = null, loading = false, stopped = f
     const speakers = new Set([...messages.map((m) => m.speaker?.name), live?.speaker?.name].filter(Boolean));
     const named = showSpeakers ?? speakers.size > 1;
     const lastAnswer = [...messages].reverse().find((m) => m.role === "assistant");
-    return (_jsxs("div", { className: "ck-thread-wrap", children: [_jsx("div", { ref: scrollRef, className: "ck-thread", onScroll: onScroll, children: _jsxs("div", { className: "ck-thread-inner", children: [messages.map((m) => (_jsx(ChatMessage, { message: m, onRetry: onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined, renderLink: renderLink, showSpeaker: named, footer: renderFooter?.(m), last: m.id === lastAnswer?.id, onReply: live || stopped ? undefined : onReply, speaker: speaker, share: share, onFeedback: onFeedback, renderers: renderers, labels: labels }, m.id))), live && (_jsxs("div", { className: "ck-turn ck-turn-answer", children: [named && live.speaker && _jsx("span", { className: "ck-speaker", children: live.speaker.name }), live.steps && live.steps.length > 0 && (_jsx(ThinkingRow, { thinking: { steps: live.steps }, live: true, labels: labels })), live.text ? (_jsx(Markdown, { text: extractReplies(live.text).text, renderLink: renderLink, renderers: renderers })) : live.steps && live.steps.length > 0 ? null : (_jsxs("p", { className: "ck-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), live.status ?? labels.working] })), onStop && (_jsxs("button", { type: "button", className: "ck-stop", onClick: onStop, children: [_jsx(IconStop, {}), labels.stop] }))] })), stopped && !live && (_jsx("p", { className: "ck-stopped", role: "status", children: labels.stopped })), children, _jsx("div", { ref: endRef })] }) }), !following && (_jsx("button", { type: "button", className: "ck-jump", onClick: jumpToBottom, "aria-label": labels.jump, title: labels.jump, children: _jsx(IconArrowDown, {}) }))] }));
+    return (_jsxs("div", { className: "ck-thread-wrap", children: [_jsx("div", { ref: scrollRef, className: "ck-thread", onScroll: onScroll, children: _jsxs("div", { className: "ck-thread-inner", children: [messages.map((m) => (_jsx(ChatMessage, { message: m, onRetry: onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined, renderLink: renderLink, showSpeaker: named, footer: renderFooter?.(m), last: m.id === lastAnswer?.id, onReply: live || stopped ? undefined : onReply, speaker: speaker, share: share, onFeedback: onFeedback, renderers: renderers, labels: labels }, m.id))), live && (_jsxs("div", { className: "ck-turn ck-turn-answer", children: [named && live.speaker && _jsx("span", { className: "ck-speaker", children: live.speaker.name }), live.steps && live.steps.length > 0 && (_jsx(ThinkingRow, { thinking: { steps: live.steps }, live: true, labels: labels })), live.text ? (_jsx(Markdown, { text: extractReplies(live.text, { streaming: true }).text, renderLink: renderLink, renderers: renderers })) : live.steps && live.steps.length > 0 ? null : (_jsxs("p", { className: "ck-live", role: "status", "aria-live": "polite", children: [_jsxs("span", { className: "ck-dots", "aria-hidden": true, children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }), live.status ?? labels.working] })), onStop && (_jsxs("button", { type: "button", className: "ck-stop", onClick: onStop, children: [_jsx(IconStop, {}), labels.stop] }))] })), stopped && !live && (_jsx("p", { className: "ck-stopped", role: "status", children: labels.stopped })), children, _jsx("div", { ref: endRef })] }) }), !following && (_jsx("button", { type: "button", className: "ck-jump", onClick: jumpToBottom, "aria-label": labels.jump, title: labels.jump, children: _jsx(IconArrowDown, {}) }))] }));
 }
 /** The empty state that starts a conversation. It disappears once one has. */
 export function ChatStarters({ starters, onPick, title, }) {

@@ -55,6 +55,65 @@ test("replies: malformed JSON yields no buttons and no raw text", () => {
   assert.deepEqual(replies, []);
 });
 
+const BLOCK = '\n\n```quick_replies\n["Yes, do it", "Not now"]\n```';
+
+test("replies: a heading the model writes over the replies is dropped, in any language", () => {
+  for (const label of [
+    "**Quick follow-up options**",
+    "### Suggested replies",
+    "**Mögliche Rückfragen:**",
+    "_Mögliche Rückfragen:_",
+    "## Быстрые ответы",
+    "**Варианты ответа**:",
+  ]) {
+    const { text, replies } = extractReplies("Here is the answer.\n\n" + label + BLOCK);
+    assert.equal(text, "Here is the answer.", label);
+    assert.equal(replies.length, 2, label);
+  }
+});
+
+test("replies: a rule with a heading above the replies is dropped too", () => {
+  for (const tail of ["---\n\n**Quick replies**", "**Quick replies**\n\n---", "---"]) {
+    assert.equal(extractReplies("Answer.\n\n" + tail + BLOCK).text, "Answer.", tail);
+  }
+});
+
+test("replies: a bold sentence that concludes the answer is kept", () => {
+  for (const kept of [
+    "**China holds 99 %.**",
+    "**This is a real conclusion with more than six words**",
+  ]) {
+    const answerText = "Gallium is refined, not mined.\n\n" + kept;
+    assert.equal(extractReplies(answerText + BLOCK).text, answerText, kept);
+  }
+});
+
+test("replies: a heading in the middle of an answer, or with no replies, is kept", () => {
+  const mid = "## Plan\n\nStep one.";
+  assert.equal(extractReplies(mid + BLOCK).text, mid);
+  assert.equal(extractReplies("Intro.\n\n**Quick replies**").text, "Intro.\n\n**Quick replies**");
+});
+
+test("replies: while streaming, the heading over the replies never shows", () => {
+  for (const partial of [
+    "Answer.\n\n**Quick fo",
+    "Answer.\n\n**Quick follow-up options**",
+    "Answer.\n\n**Quick follow-up options**\n\n",
+    "Answer.\n\n**Quick follow-up options**\n\n```",
+    "Answer.\n\n**Quick follow-up options**\n\n```quick_rep",
+    'Answer.\n\n---\n\n### Mögliche Rückfragen\n\n```quick_replies\n["Ja',
+  ]) {
+    assert.equal(extractReplies(partial, { streaming: true }).text, "Answer.", partial);
+  }
+  // A real section shows as soon as its first words arrive.
+  const section = "Answer.\n\n## Plan\n\nStep one is";
+  assert.equal(extractReplies(section, { streaming: true }).text, section);
+});
+
+test("replies: the instruction forbids a heading over the replies", () => {
+  assert.match(REPLIES_INSTRUCTION, /Do not write any heading or label before it/);
+});
+
 test("replies: the instruction makes the model lead — every answer, best reply first", () => {
   assert.match(REPLIES_INSTRUCTION, /End every answer/);
   assert.match(REPLIES_INSTRUCTION, /FIRST/);

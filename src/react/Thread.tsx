@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Markdown, defaultRenderLink, type CitationMap, type RenderLink } from "./Markdown.js";
 import { useStickToBottom } from "./hooks.js";
-import { extractReplies } from "../replies.js";
+import { dropReplyLabel, extractReplies } from "../replies.js";
 import type { Speaker } from "../speech.js";
 import {
   AnswerActions,
@@ -143,6 +143,8 @@ export function ChatMessage({
 
   const parsed = extractReplies(message.content);
   const replies = message.replies ?? parsed.replies;
+  // Replies handed in by the app still get no heading drawn over them.
+  if (message.replies && message.replies.length > 0) parsed.text = dropReplyLabel(parsed.text);
   const cls = ["ck-turn", "ck-turn-answer"];
   if (message.speaker?.id) cls.push(`ck-from-${message.speaker.id}`);
   // A failed turn and the latest answer never hide their buttons: Retry after
@@ -422,7 +424,7 @@ export function ChatThread({
               )}
               {live.text ? (
                 <Markdown
-                  text={extractReplies(live.text).text}
+                  text={extractReplies(live.text, { streaming: true }).text}
                   renderLink={renderLink}
                   renderers={renderers}
                 />
