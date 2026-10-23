@@ -1,13 +1,34 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useId, useState } from "react";
+import { chartFallback } from "../chart.js";
 import { Sheet } from "./Sheet.js";
 import { StackIconSvg } from "./icons.js";
-export function RichAnswerBlock({ block, onReply, }) {
+import { useRichRenderers } from "./renderers.js";
+/**
+ * The chart chatkit draws itself: the caption and a table of the data. It is
+ * what a reader gets without an injected renderer, when the renderer returns
+ * null for a kind it does not draw, and when the block is malformed — a chart
+ * is never a blank. Numbers sit right-aligned in tabular figures; a row with a
+ * link is a link.
+ */
+export function ChartTableFigure({ table }) {
+    return (_jsxs("figure", { className: "ck-rich ck-chart ck-chart-table", children: [_jsx("div", { className: "ck-table-wrap", children: _jsxs("table", { className: "ck-table", children: [_jsx("thead", { children: _jsx("tr", { children: table.head.map((cell, j) => (_jsx("th", { className: j > 0 ? "ck-chart-num" : undefined, children: cell }, j))) }) }), _jsx("tbody", { children: table.rows.map((row, i) => (_jsx("tr", { children: table.head.map((_, j) => (_jsx("td", { className: j > 0 ? "ck-chart-num" : undefined, children: j === 0 && row.href ? (_jsx("a", { href: row.href, className: "ck-chart-link", children: row.cells[0] })) : ((row.cells[j] ?? "")) }, j))) }, i))) })] }) }), _jsx("figcaption", { className: "ck-chart-caption", children: table.caption })] }));
+}
+function ChartFigure({ block, renderers }) {
+    const drawn = renderers?.chart?.(block);
+    if (drawn !== null && drawn !== undefined && drawn !== false)
+        return (_jsx("figure", { className: "ck-rich ck-chart", "data-chart": block.chart, children: drawn }));
+    return _jsx(ChartTableFigure, { table: chartFallback(block) });
+}
+export function RichAnswerBlock({ block, onReply, renderers: own, }) {
     const id = useId();
     const [selected, setSelected] = useState(null);
     const [sent, setSent] = useState(false);
     const [photo, setPhoto] = useState(null);
+    const renderers = useRichRenderers(own);
+    if (block.type === "chart")
+        return _jsx(ChartFigure, { block: block, renderers: renderers });
     if (block.type === "audio")
         return (_jsxs("figure", { className: "ck-rich ck-audio", children: [_jsx("figcaption", { className: "ck-rich-title", children: block.title }), block.creator && _jsx("p", { children: block.creator }), _jsx("audio", { controls: true, preload: "none", src: block.src, "aria-label": block.title }), block.caption && _jsx("p", { children: block.caption }), _jsxs("a", { href: block.src, target: "_blank", rel: "noopener noreferrer", children: [block.title, " \u2197"] })] }));
     if (block.type === "gallery") {

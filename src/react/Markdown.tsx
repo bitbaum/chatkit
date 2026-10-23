@@ -2,7 +2,9 @@
 
 import { useState, type ReactNode } from "react";
 import { parseRichBlock } from "../rich.js";
-import { RichAnswerBlock } from "./RichBlock.js";
+import { chartFallback } from "../chart.js";
+import { ChartTableFigure, RichAnswerBlock } from "./RichBlock.js";
+import type { RichRenderers } from "./renderers.js";
 import { IconBook } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import {
@@ -282,10 +284,13 @@ export function Markdown({
   sourcesLabel = "Sources",
   className,
   onReply,
+  renderers,
 }: {
   text: string;
   /** A visual choice sends a normal conversation message. Omit while streaming. */
   onReply?: (text: string) => void;
+  /** The app's drawing for a chart block; without it, the caption and a table. */
+  renderers?: RichRenderers;
   citations?: CitationMap;
   renderLink?: RenderLink;
   renderCitation?: RenderCitation;
@@ -352,7 +357,13 @@ export function Markdown({
           case "code": {
             if (b.lang === "chat_ui") {
               const block = parseRichBlock(b.code);
-              if (block) return <RichAnswerBlock key={i} block={block} onReply={onReply} />;
+              if (block)
+                return (
+                  <RichAnswerBlock key={i} block={block} onReply={onReply} renderers={renderers} />
+                );
+              // A malformed chart still has a caption and rows: show those.
+              const table = chartFallback(b.code);
+              if (table) return <ChartTableFigure key={i} table={table} />;
               // A partial JSON block must not flash in the conversation.
               return null;
             }

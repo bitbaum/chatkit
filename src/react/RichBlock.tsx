@@ -2,20 +2,83 @@
 
 import { useId, useState, type CSSProperties } from "react";
 import type { RichBlock } from "../rich.js";
+import { chartFallback, type ChartBlock, type ChartTable } from "../chart.js";
 import { Sheet } from "./Sheet.js";
 import { StackIconSvg } from "./icons.js";
+import { useRichRenderers, type RichRenderers } from "./renderers.js";
+
+/**
+ * The chart chatkit draws itself: the caption and a table of the data. It is
+ * what a reader gets without an injected renderer, when the renderer returns
+ * null for a kind it does not draw, and when the block is malformed — a chart
+ * is never a blank. Numbers sit right-aligned in tabular figures; a row with a
+ * link is a link.
+ */
+export function ChartTableFigure({ table }: { table: ChartTable }) {
+  return (
+    <figure className="ck-rich ck-chart ck-chart-table">
+      <div className="ck-table-wrap">
+        <table className="ck-table">
+          <thead>
+            <tr>
+              {table.head.map((cell, j) => (
+                <th key={j} className={j > 0 ? "ck-chart-num" : undefined}>
+                  {cell}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row, i) => (
+              <tr key={i}>
+                {table.head.map((_, j) => (
+                  <td key={j} className={j > 0 ? "ck-chart-num" : undefined}>
+                    {j === 0 && row.href ? (
+                      <a href={row.href} className="ck-chart-link">
+                        {row.cells[0]}
+                      </a>
+                    ) : (
+                      (row.cells[j] ?? "")
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <figcaption className="ck-chart-caption">{table.caption}</figcaption>
+    </figure>
+  );
+}
+
+function ChartFigure({ block, renderers }: { block: ChartBlock; renderers?: RichRenderers }) {
+  const drawn = renderers?.chart?.(block);
+  if (drawn !== null && drawn !== undefined && drawn !== false)
+    return (
+      <figure className="ck-rich ck-chart" data-chart={block.chart}>
+        {drawn}
+      </figure>
+    );
+  return <ChartTableFigure table={chartFallback(block)!} />;
+}
 
 export function RichAnswerBlock({
   block,
   onReply,
+  renderers: own,
 }: {
   block: RichBlock;
   onReply?: (text: string) => void;
+  /** The app's drawing for a chart; without it, the caption and a table. */
+  renderers?: RichRenderers;
 }) {
   const id = useId();
   const [selected, setSelected] = useState<number | null>(null);
   const [sent, setSent] = useState(false);
   const [photo, setPhoto] = useState<number | null>(null);
+  const renderers = useRichRenderers(own);
+  if (block.type === "chart") return <ChartFigure block={block} renderers={renderers} />;
   if (block.type === "audio")
     return (
       <figure className="ck-rich ck-audio">

@@ -2,6 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useLayoutEffect, useRef } from "react";
 import { useViewportHeight } from "./hooks.js";
+import { RichRenderersContext } from "./renderers.js";
 /**
  * The chat as the whole screen, the way the ChatGPT and Claude apps lay it
  * out: the conversation runs edge to edge and top to bottom, and the controls
@@ -20,7 +21,7 @@ import { useViewportHeight } from "./hooks.js";
  *
  * chatkit's own `ChatThread` does that already.
  */
-export function ChatScreen({ header, composer, footnote, children, fill = "parent", className, }) {
+export function ChatScreen({ header, composer, footnote, children, fill = "parent", className, renderers, }) {
     const rootRef = useRef(null);
     const headerRef = useRef(null);
     const dockRef = useRef(null);
@@ -51,6 +52,6 @@ export function ChatScreen({ header, composer, footnote, children, fill = "paren
         cls.push("ck-screen-viewport");
     if (className)
         cls.push(className);
-    return (_jsxs("div", { ref: rootRef, className: cls.join(" "), children: [_jsx("div", { className: "ck-screen-body", children: children }), hasHeader && (_jsx("div", { ref: headerRef, className: "ck-screen-header", children: _jsx("div", { className: "ck-screen-header-row", children: header }) })), _jsx("div", { ref: dockRef, className: "ck-screen-dock", children: _jsxs("div", { className: "ck-screen-column", children: [composer, footnote != null && _jsx("p", { className: "ck-screen-footnote", children: footnote })] }) })] }));
+    return (_jsxs("div", { ref: rootRef, className: cls.join(" "), children: [_jsx("div", { className: "ck-screen-body", children: renderers ? (_jsx(RichRenderersContext.Provider, { value: renderers, children: children })) : (children) }), hasHeader && (_jsx("div", { ref: headerRef, className: "ck-screen-header", children: _jsx("div", { className: "ck-screen-header-row", children: header }) })), _jsx("div", { ref: dockRef, className: "ck-screen-dock", children: _jsxs("div", { className: "ck-screen-column", children: [composer, footnote != null && _jsx("p", { className: "ck-screen-footnote", children: footnote })] }) })] }));
 }
 //# sourceMappingURL=Screen.js.map

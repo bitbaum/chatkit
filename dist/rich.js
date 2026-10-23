@@ -1,3 +1,5 @@
+import { chartFallback, chartText, parseChartBlock } from "./chart.js";
+export * from "./chart.js";
 /** The icons a stack tile may carry — a closed set, so a name is never markup. */
 export const STACK_ICONS = [
     "agent",
@@ -45,7 +47,11 @@ export function parseRichBlock(raw) {
     catch {
         return null;
     }
-    if (!record(b) || !str(b.title, 200))
+    if (!record(b))
+        return null;
+    if (b.type === "chart")
+        return parseChartBlock(b);
+    if (!str(b.title, 200))
         return null;
     switch (b.type) {
         case "audio":
@@ -119,15 +125,25 @@ export const RICH_ANSWERS_INSTRUCTION = [
     '{"type":"stack","title":"The complete architecture","layers":[{"nodes":[{"kicker":"USER","label":"Build this","detail":"One conversation, one goal"}],"link":"the goal"},{"nodes":[{"kicker":"CONTROL PLANE","label":"Plan · Dispatch · Verify","tone":"accent"}],"link":"work orders","both":true},{"nodes":[{"icon":"agent","label":"AI agents","detail":"Code, research"},{"icon":"people","label":"People","detail":"Specialists"},{"icon":"robot","label":"Robots","detail":"Move, inspect"}]}],"caption":"Proposed logical architecture — not a claim that every connection exists today."}',
     '{"type":"callout","title":"Recommendation","body":"The useful takeaway."}',
     '{"type":"choices","title":"What would you like next?","options":[{"label":"Explain the first option","reply":"Explain the first option"},{"label":"Compare the alternatives","reply":"Compare the alternatives"}],"submit":"Continue"}',
+    '{"type":"chart","chart":"bars","caption":"Gallium production, 2024","unit":"t","highlight":"China","rows":[{"label":"China","value":750,"share":98,"href":"/atlas/china"},{"label":"Japan","value":10,"estimated":true,"note":"Optional"}]}',
+    'Other charts, same envelope: "share" with "rows":[{"label","share"(0–100),"href"?}] and "other"?; "line" with "series":[{"id","label","points":[{"x","y","href"?,"note"?}]}]; "timeline" with "events":[{"date","label","href"?,"tone":"up|down|neutral"?}]; "tiles" with "tiles":[{"label","value","href"?,"note"?}].',
+    "Draw a chart instead of a list when the figures are there: ranked quantities with 3 or more rows → bars; shares of one whole → share; a quantity over time with 3 or more points → line; 3 or more dated events → timeline; 2–4 headline figures → tiles. Every number comes from a tool result in this conversation — never from memory, and never a chart for a figure the tools did not return. Copy each row's href from the result's page or link, and leave it out when there is none. Say the takeaway in prose too; a reader without the figure still gets the answer.",
     "Use a stack for an architecture, a pipeline or layers of responsibility (top to bottom, at most 8 layers of at most 4 tiles; icons only from: agent, people, robot, person, building, money, document, code, check, globe, wrench, box, chat, flag); use a diagram for an arbitrary graph. When you lay out a few approaches to choose from, write them as a numbered list whose items open with a bold name, and mark the one you recommend with [Recommended] right after the name. Use at most 6 images, 8 diagram nodes, 16 edges, or 6 choices per block. Translate titles, labels and submit into the reader's language. A choice sends its reply as a normal message; it never performs an action directly. Audio uses explicit playback, never autoplay. Include audio only for URLs actually provided by a person, context or a completed tool result; a track title or a planned generation is not a playable file. Preserve creator attribution and distinguish previews, generated drafts and finished recordings. Never invent media URLs, numbers, sources, tool results or product capabilities. Use only image URLs provided by the person, context or tools; otherwise use a diagram or plain text. Always explain the takeaway in prose too. No HTML, scripts, raw SVG, or decorative images. Preserve domain-specific evidence and authority rules. Put suggested replies last, outside chat_ui blocks.",
 ].join("\n");
 /** Copy, share and voice keep the content of a visual, never its wire JSON. */
 export function richAnswerText(text) {
     return text.replace(/```chat_ui\s*([\s\S]*?)(?:```|$)/g, (_, raw) => {
         const b = parseRichBlock(raw);
-        if (!b)
-            return "";
+        if (!b) {
+            // A malformed chart reads as its caption and rows, the way it renders.
+            const t = chartFallback(raw);
+            return t
+                ? `${t.caption}\n${t.rows.map((r) => r.cells.filter(Boolean).join(" — ")).join("\n")}`
+                : "";
+        }
         switch (b.type) {
+            case "chart":
+                return chartText(b);
             case "audio":
                 return `${b.title}${b.creator ? ` — ${b.creator}` : ""}${b.caption ? `\n${b.caption}` : ""}\n${b.src}`;
             case "callout":

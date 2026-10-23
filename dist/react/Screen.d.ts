@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { type RichRenderers } from "./renderers.js";
 /**
  * The chat as the whole screen, the way the ChatGPT and Claude apps lay it
  * out: the conversation runs edge to edge and top to bottom, and the controls
@@ -17,7 +18,14 @@ import { type ReactNode } from "react";
  *
  * chatkit's own `ChatThread` does that already.
  */
-export declare function ChatScreen({ header, composer, footnote, children, fill, className, }: {
+export declare function ChatScreen({ header, composer, footnote, children, fill, className, renderers, }: {
+    /**
+     * The app's drawing for chart blocks in every answer on this screen:
+     * `{ chart: (block) => <Chart … /> }`. Reaches chatkit's thread and
+     * `Markdown` wherever they render under it; a `renderers` prop on one of
+     * them overrides it there.
+     */
+    renderers?: RichRenderers;
     /** Floats over the top of the conversation. Give its buttons `ck-glass`. */
     header?: ReactNode;
     /** The composer (and anything that belongs with it: an error, a queue). */

@@ -26,5 +26,7 @@ export type { AttachMenuLabels } from "./AttachMenu.js";
 export { useAttachments } from "./use-attachments.js";
 export type { AttachmentsController } from "./use-attachments.js";
 export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "./hooks.js";
-export { RichAnswerBlock } from "./RichBlock.js";
+export { RichAnswerBlock, ChartTableFigure } from "./RichBlock.js";
+export { RichRenderersContext, useRichRenderers } from "./renderers.js";
+export type { RichRenderers } from "./renderers.js";
 //# sourceMappingURL=index.d.ts.map

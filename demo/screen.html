@@ -14,6 +14,37 @@
       body {
         margin: 0;
       }
+      /* The demo's stand-in for an injected chart renderer (chartkit in
+         Substrata): a labelled bar per row, the highlighted one in the accent. */
+      .demo-bars {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .demo-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 7rem) 1fr auto;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9375em;
+      }
+      .demo-bar-track {
+        height: 0.875rem;
+        border-radius: 999px;
+        background: var(--ck-raised);
+        overflow: hidden;
+      }
+      .demo-bar-fill {
+        display: block;
+        height: 100%;
+        background: var(--ck-fg-3);
+      }
+      .demo-bar-hi {
+        background: var(--ck-accent);
+      }
+      .demo-bar-value {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>

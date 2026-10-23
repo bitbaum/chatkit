@@ -129,6 +129,37 @@ try {
         broken.length === 0,
         `${file} at ${width}px: no word is cut across lines (${broken.slice(0, 8).join(", ")})`,
       );
+      // Charts in answers (0.15): the screen demo carries a bars block drawn
+      // by an injected renderer (the demo's stub; chartkit in Substrata) and
+      // a line block the stub declines, so chatkit's own fallback draws it —
+      // the caption and a table. Both must fit the column at every width.
+      if (file === "screen.html") {
+        const c = await page.evaluate(() => {
+          const charts = [...document.querySelectorAll(".ck-chart")];
+          const drawn = document.querySelector(".ck-chart[data-chart='bars'] .demo-bars");
+          const fallback = document.querySelector(".ck-chart-table");
+          return {
+            charts: charts.length,
+            drawnBars: drawn ? drawn.querySelectorAll(".demo-bar").length : 0,
+            fallbackCaption: fallback?.querySelector(".ck-chart-caption")?.textContent ?? "",
+            fallbackRows: fallback?.querySelectorAll("tbody tr").length ?? 0,
+            fit: charts.every((e) => e.scrollWidth <= e.clientWidth + 1),
+            overflow: document.documentElement.scrollWidth - window.innerWidth,
+          };
+        });
+        check(
+          c.charts === 2 && c.drawnBars === 4,
+          `${file} at ${width}px: the bars chart is drawn by the injected renderer (${c.drawnBars} bars)`,
+        );
+        check(
+          c.fallbackRows === 10 && /by year/.test(c.fallbackCaption),
+          `${file} at ${width}px: the line chart falls back to its caption and a table (${c.fallbackRows} rows, "${c.fallbackCaption}")`,
+        );
+        check(
+          c.fit && c.overflow <= 0,
+          `${file} at ${width}px: charts fit, no horizontal overflow`,
+        );
+      }
       await page.close();
     }
   }

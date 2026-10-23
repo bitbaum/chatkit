@@ -151,6 +151,54 @@ answer's prose (or what you pass), only where one exists. A button that does
 nothing is never shown. `ChatThread` renders it under every answer; pass
 `speaker` and `share` through.
 
+### Charts in answers (0.15)
+
+"Who produces gallium?" is answered with a ranked bar chart, not a list.
+chatkit stays dependency-free: it defines the **data contract** and a
+**renderer slot**; the drawing is the app's. Substrata injects
+[`@bitbaum/chartkit`](https://github.com/bitbaum/chartkit), whose components
+take exactly the block's fields, so a block spreads into the matching one:
+
+```tsx
+import { BarChart, LineChart, ShareBars, Timeline, StatTiles } from "@bitbaum/chartkit";
+const renderers = {
+  chart: (b) =>
+    b.chart === "bars" ? <BarChart {...b} /> : b.chart === "line" ? <LineChart {...b} /> : b.chart === "share" ? <ShareBars {...b} /> : b.chart === "timeline" ? <Timeline {...b} /> : <StatTiles {...b} />,
+};
+<ChatScreen renderers={renderers} …>   // every answer on the screen
+<ChatThread renderers={renderers} …>   // or one thread; Markdown and RichAnswerBlock take it too
+```
+
+Without a renderer, or when one returns `null` for a kind it does not draw,
+chatkit draws the **fallback itself**: the caption and a `.ck-table` of the
+data, so a chart is never a blank. A malformed block (a share of 140, a link
+with a script in it) is rejected by the parser and degrades to the same table
+of whatever rows were safe — the renderer never sees it. Copy and Listen read
+the figures as lines.
+
+The model writes a chart in the same fenced `chat_ui` JSON as every other
+block. `RICH_ANSWERS_INSTRUCTION` now says when to draw one — ranked
+quantities with 3+ rows → `bars`; shares of one whole → `share`; a quantity
+over time with 3+ points → `line`; 3+ dated events → `timeline`; 2–4 headline
+figures → `tiles` — that every number comes from a tool result, and that each
+row's `href` is copied from the result's page or link.
+
+The contract (`ChartBlock`, exported; limits are the parser's):
+
+```ts
+{ type: "chart", chart: "bars",     caption, unit?, highlight?, rows: [{ label, value, href?, share?, note?, estimated? }] }   // ≤ 24 rows
+{ type: "chart", chart: "share",    caption, other?, rows: [{ label, share, href? }] }                                        // share 0–100
+{ type: "chart", chart: "line",     caption, unit?, series: [{ id, label, points: [{ x, y, href?, note? }] }] }               // ≤ 6 series, ≤ 120 points
+{ type: "chart", chart: "timeline", caption, events: [{ date, label, href?, tone?: "up" | "down" | "neutral", kind? }] }     // ≤ 24 events
+{ type: "chart", chart: "tiles",    caption, tiles: [{ label, value, href?, note? }] }                                       // ≤ 6 tiles
+```
+
+An `href` is a same-site path or a web URL, never anything else. The block
+sits in the answer column with the stack figure's margins (`.ck-rich
+.ck-chart`); `test/browser.mjs` renders one through a stub renderer and one
+through the fallback at 320, 390 and 1280px, runs the broken-word scan over
+them and asserts no horizontal overflow.
+
 ### Words are never cut (0.14.1)
 
 A word may wrap onto the next line; it may never be cut in two. `.ck-md` sets
