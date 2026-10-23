@@ -1,5 +1,9 @@
+import { type ChartBlock } from "./chart.js";
+export * from "./chart.js";
 /** Declarative answer blocks. Model output is data, never HTML or executable SVG. */
-export type RichBlock = {
+export type RichBlock = 
+/** A figure drawn by the app's injected renderer (see chart.ts). */
+ChartBlock | {
     type: "audio";
     title: string;
     src: string;

@@ -9,7 +9,41 @@ import {
   ChatThread,
   Composer,
   type ChatMessageData,
+  type RichRenderers,
 } from "../src/react/index.js";
+
+// What an app injects: here a stub that draws bars and nothing else, so the
+// screen shows both paths — a bars block through the renderer, a line block
+// through chatkit's own fallback (the caption and a table). Substrata hands
+// the same block to @bitbaum/chartkit instead.
+const demoRenderers: RichRenderers = {
+  chart: (block) => {
+    if (block.chart !== "bars") return null;
+    const max = Math.max(...block.rows.map((r) => r.value));
+    return (
+      <div className="demo-bars" data-chart="bars">
+        {block.rows.map((r) => (
+          <div key={r.label} className="demo-bar">
+            <span className="demo-bar-label">{r.label}</span>
+            <span className="demo-bar-track">
+              <span
+                className={
+                  r.label === block.highlight ? "demo-bar-fill demo-bar-hi" : "demo-bar-fill"
+                }
+                style={{ width: `${Math.max(1, (r.value / max) * 100)}%` }}
+              />
+            </span>
+            <span className="demo-bar-value">
+              {r.value}
+              {block.unit ? ` ${block.unit}` : ""}
+            </span>
+          </div>
+        ))}
+        <p className="ck-chart-caption">{block.caption}</p>
+      </div>
+    );
+  },
+};
 
 const visual = (value: object) => "\n\n```chat_ui\n" + JSON.stringify(value) + "\n```";
 const SEED: ChatMessageData[] = [
@@ -110,6 +144,58 @@ const LONG: ChatMessageData[] = [
           "Proposed logical architecture \u2014 not a claim that every connection is implemented today.",
       }) +
       "\n\nThe figure separates three questions. **What needs to happen?** Loki answers this. **Who can do it, and under what terms?** OrangeCat. **Did it actually happen correctly?** Loki owns the evidence; a person accepts the result.",
+  },
+  { id: "l2d", role: "user", content: "Who produces gallium, and how has that changed?" },
+  {
+    id: "l2e",
+    role: "assistant",
+    content:
+      "China refines almost all of the world's primary gallium; everyone else together is a rounding error." +
+      visual({
+        type: "chart",
+        chart: "bars",
+        caption: "Primary gallium production, 2024 (USGS)",
+        unit: "t",
+        highlight: "China",
+        rows: [
+          { label: "China", value: 750, share: 98.4, href: "/atlas/china" },
+          { label: "Russia", value: 5, share: 0.7, href: "/atlas/russia", estimated: true },
+          { label: "Japan", value: 3, share: 0.4, href: "/atlas/japan", estimated: true },
+          { label: "South Korea", value: 3, share: 0.4, href: "/atlas/south-korea" },
+        ],
+      }) +
+      "\n\nThe gap opened over the last decade: China's output tripled while the rest of the world stood still." +
+      visual({
+        type: "chart",
+        chart: "line",
+        caption: "Primary gallium production by year (USGS)",
+        unit: "t",
+        series: [
+          {
+            id: "cn",
+            label: "China",
+            points: [
+              { x: 2014, y: 435 },
+              { x: 2017, y: 300 },
+              { x: 2020, y: 420 },
+              { x: 2022, y: 600 },
+              { x: 2024, y: 750, href: "/atlas/china" },
+            ],
+          },
+          {
+            id: "row",
+            label: "Rest of the world",
+            points: [
+              { x: 2014, y: 25 },
+              { x: 2017, y: 20 },
+              { x: 2020, y: 15 },
+              { x: 2022, y: 12 },
+              { x: 2024, y: 11 },
+            ],
+          },
+        ],
+      }) +
+      "\n\nSo a gallium bottleneck is not a mining question but a refining one: the metal is a by-product of aluminium and zinc, and the capacity to pull it out sits in one country.",
   },
   { id: "l3", role: "user", content: "And who decides when something goes wrong?" },
   {
@@ -234,6 +320,7 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
     return (
       <ChatScreen
         fill="viewport"
+        renderers={demoRenderers}
         header={
           <>
             <button type="button" className="ck-glass" aria-label="Chats">

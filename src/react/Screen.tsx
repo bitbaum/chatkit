@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useViewportHeight } from "./hooks.js";
+import { RichRenderersContext, type RichRenderers } from "./renderers.js";
 
 /**
  * The chat as the whole screen, the way the ChatGPT and Claude apps lay it
@@ -28,7 +29,15 @@ export function ChatScreen({
   children,
   fill = "parent",
   className,
+  renderers,
 }: {
+  /**
+   * The app's drawing for chart blocks in every answer on this screen:
+   * `{ chart: (block) => <Chart … /> }`. Reaches chatkit's thread and
+   * `Markdown` wherever they render under it; a `renderers` prop on one of
+   * them overrides it there.
+   */
+  renderers?: RichRenderers;
   /** Floats over the top of the conversation. Give its buttons `ck-glass`. */
   header?: ReactNode;
   /** The composer (and anything that belongs with it: an error, a queue). */
@@ -73,7 +82,15 @@ export function ChatScreen({
   if (className) cls.push(className);
   return (
     <div ref={rootRef} className={cls.join(" ")}>
-      <div className="ck-screen-body">{children}</div>
+      <div className="ck-screen-body">
+        {renderers ? (
+          <RichRenderersContext.Provider value={renderers}>
+            {children}
+          </RichRenderersContext.Provider>
+        ) : (
+          children
+        )}
+      </div>
       {hasHeader && (
         <div ref={headerRef} className="ck-screen-header">
           <div className="ck-screen-header-row">{header}</div>

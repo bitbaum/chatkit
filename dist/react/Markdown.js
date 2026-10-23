@@ -2,7 +2,8 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState } from "react";
 import { parseRichBlock } from "../rich.js";
-import { RichAnswerBlock } from "./RichBlock.js";
+import { chartFallback } from "../chart.js";
+import { ChartTableFigure, RichAnswerBlock } from "./RichBlock.js";
 import { IconBook } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import { citedIds, isCardList, isInternalHref, listLead, parseBlocks, parseInline, } from "../markdown.js";
@@ -94,7 +95,7 @@ function Inline({ spans, citations, renderLink, renderCitation, }) {
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", className, onReply, }) {
+export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", className, onReply, renderers, }) {
     const inline = (t) => (_jsx(Inline, { spans: parseInline(t), citations: citations, renderLink: renderLink, renderCitation: renderCitation }));
     const items = (list, ordered, start = 1) => {
         const List = ordered ? "ol" : "ul";
@@ -111,7 +112,11 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
                         if (b.lang === "chat_ui") {
                             const block = parseRichBlock(b.code);
                             if (block)
-                                return _jsx(RichAnswerBlock, { block: block, onReply: onReply }, i);
+                                return (_jsx(RichAnswerBlock, { block: block, onReply: onReply, renderers: renderers }, i));
+                            // A malformed chart still has a caption and rows: show those.
+                            const table = chartFallback(b.code);
+                            if (table)
+                                return _jsx(ChartTableFigure, { table: table }, i);
                             // A partial JSON block must not flash in the conversation.
                             return null;
                         }

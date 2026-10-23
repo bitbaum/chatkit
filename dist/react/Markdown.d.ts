@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import type { RichRenderers } from "./renderers.js";
 /** What a grounded answer's `[F8]` / `[D1]` handle refers to. Unknown handles
  *  are dropped rather than shown bare: a dangling `[F8]` implies a source the
  *  reader cannot reach. */
@@ -64,10 +65,12 @@ export declare const defaultRenderCitation: RenderCitation;
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export declare function Markdown({ text, citations, renderLink, renderCitation, renderSources, sources, sourcesLabel, className, onReply, }: {
+export declare function Markdown({ text, citations, renderLink, renderCitation, renderSources, sources, sourcesLabel, className, onReply, renderers, }: {
     text: string;
     /** A visual choice sends a normal conversation message. Omit while streaming. */
     onReply?: (text: string) => void;
+    /** The app's drawing for a chart block; without it, the caption and a table. */
+    renderers?: RichRenderers;
     citations?: CitationMap;
     renderLink?: RenderLink;
     renderCitation?: RenderCitation;

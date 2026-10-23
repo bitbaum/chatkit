@@ -11,6 +11,7 @@ import {
   type AnswerActionsLabels,
 } from "./AnswerActions.js";
 import type { AnswerFeedback } from "../review.js";
+import type { RichRenderers } from "./renderers.js";
 import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
 
 export type ChatSpeaker = {
@@ -108,11 +109,14 @@ export function ChatMessage({
   speaker,
   share,
   onFeedback,
+  renderers,
   labels = DEFAULT_THREAD_LABELS,
 }: {
   message: ChatMessageData;
   /** Thumbs under the answer; the product keeps and exports what it learns. */
   onFeedback?: (feedback: AnswerFeedback) => void;
+  /** The app's drawing for chart blocks (`{ chart }`); without it, a table. */
+  renderers?: RichRenderers;
   /** The app's voice for Listen (the browser's without it). */
   speaker?: Speaker | null;
   /** What Share hands to the system sheet. `false` hides Share. */
@@ -159,6 +163,7 @@ export function ChatMessage({
           citations={message.citations}
           renderLink={renderLink}
           onReply={last ? onReply : undefined}
+          renderers={renderers}
         />
       )}
       {footer}
@@ -325,6 +330,7 @@ export function ChatThread({
   speaker,
   share,
   onFeedback,
+  renderers,
   empty,
   children,
   labels: labelOverrides,
@@ -332,6 +338,12 @@ export function ChatThread({
   messages: ChatMessageData[];
   /** Thumbs under every answer (chatkit's feedback loop, README). */
   onFeedback?: (feedback: AnswerFeedback) => void;
+  /**
+   * The app's drawing for chart blocks: `{ chart: (block) => <Chart … /> }`.
+   * Without it (or when it returns null) chatkit shows the caption and a
+   * table of the data. `ChatScreen renderers` sets the same for every answer.
+   */
+  renderers?: RichRenderers;
   /** The app's voice for Listen under every answer (the browser's without it). */
   speaker?: Speaker | null;
   /** What Share hands to the system sheet. `false` hides Share. */
@@ -398,6 +410,7 @@ export function ChatThread({
               speaker={speaker}
               share={share}
               onFeedback={onFeedback}
+              renderers={renderers}
               labels={labels}
             />
           ))}
@@ -408,7 +421,11 @@ export function ChatThread({
                 <ThinkingRow thinking={{ steps: live.steps }} live labels={labels} />
               )}
               {live.text ? (
-                <Markdown text={extractReplies(live.text).text} renderLink={renderLink} />
+                <Markdown
+                  text={extractReplies(live.text).text}
+                  renderLink={renderLink}
+                  renderers={renderers}
+                />
               ) : live.steps && live.steps.length > 0 ? null : (
                 <p className="ck-live" role="status" aria-live="polite">
                   <span className="ck-dots" aria-hidden>

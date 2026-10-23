@@ -1728,6 +1728,41 @@ a.ck-source-row:hover .ck-source-title {
   text-align: center;
 }
 
+/* A chart in an answer (0.15). The drawing is the app's (an injected
+   renderer); chatkit gives it the same place in the column as the stack
+   figure, and draws the fallback — the caption and a table of the data —
+   itself. Numbers are right-aligned tabular figures that never wrap. */
+.ck-chart {
+  max-width: 100%;
+}
+.ck-chart > * {
+  max-width: 100%;
+}
+.ck-chart-table .ck-table-wrap {
+  margin: 0;
+}
+.ck-chart-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ck-chart-table .ck-table th:last-child,
+.ck-chart-table .ck-table td:last-child {
+  padding-right: 0;
+}
+.ck-chart-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ck-accent) 60%, transparent);
+  text-underline-offset: 0.15em;
+}
+.ck-chart-caption {
+  margin: 0.875rem 0 0;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  text-align: center;
+}
+
 /* Thumbs under an answer, and the sheet that asks why. */
 .ck-action-on {
   color: var(--ck-fg);
