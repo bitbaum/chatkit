@@ -164,6 +164,21 @@ answer's prose (or what you pass), only where one exists. A button that does
 nothing is never shown. `ChatThread` renders it under every answer; pass
 `speaker` and `share` through.
 
+### Dictation reads Android's cumulative results once (0.15.2)
+
+Android's Chrome-family recognisers (Chrome, Brave, Samsung Internet) report
+one utterance cumulatively — "why", "why exactly", "why exactly is", … — often
+every one of them flagged final. The hook appended every final, so Substrata's
+Ask box on Brave typed the sentence once per word (2026-10-25). The transcript
+is now rebuilt from the recogniser's whole results list on every event by
+`heardFromResults` (core, pure), which collapses a growing chain to its last
+link. Desktop finals are untouched: two different phrases stay two, and a word
+the person really repeats as separate results stays repeated. The one
+limitation — "no" then "no no" as two separate results reads as one utterance
+growing — is written down beside the rule. `test/dictation.test.js` holds the
+fixtures; `test/browser.mjs` drives the real composer with a fake cumulative
+recogniser and fails on the old hook.
+
 ### Charts in answers (0.15)
 
 "Who produces gallium?" is answered with a ranked bar chart, not a list.

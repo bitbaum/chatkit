@@ -78,6 +78,145 @@ export function liveWords(finals: readonly string[], interim: string): string {
     .join(" ");
 }
 
+/** One entry of a Web Speech `event.results` list, as much of it as we read. */
+export type RecognitionResultLike = { isFinal?: boolean } & ArrayLike<{ transcript?: string }>;
+
+/** What a recogniser has heard so far, read from its whole results list. */
+export type HeardSoFar = {
+  /** Settled phrases, in order. */
+  finals: string[];
+  /** The phrase still being guessed at, or "". Only ever the last one. */
+  interim: string;
+  /** What to deliver if the take ended now: the finals — plus, when the
+   *  interim tail is a revision of a phrase that HAD settled, that settled
+   *  phrase, so ending mid-revision never loses words already heard. */
+  text: string;
+};
+
+const wordsOf = (s: string): string[] => s.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
+/** Is `a` a whole-word prefix of `b` (equal counts)? */
+function startsWithWords(b: readonly string[], a: readonly string[]): boolean {
+  if (a.length === 0 || a.length > b.length) return false;
+  return a.every((w, i) => b[i] === w);
+}
+
+/** Length of the longest common subsequence of two word lists. */
+function commonWords(a: readonly string[], b: readonly string[]): number {
+  let prev = new Array<number>(b.length + 1).fill(0);
+  for (const wa of a) {
+    const row = new Array<number>(b.length + 1).fill(0);
+    for (let j = 0; j < b.length; j++) {
+      row[j + 1] = wa === b[j] ? prev[j]! + 1 : Math.max(prev[j + 1]!, row[j]!);
+    }
+    prev = row;
+  }
+  return prev[b.length]!;
+}
+
+/**
+ * The transcript so far, from a recogniser's COMPLETE results list.
+ *
+ * Why this exists: Android's Chrome-family recognisers (Chrome, Brave, Samsung
+ * Internet) with `continuous` + `interimResults` report CUMULATIVE results.
+ * One utterance arrives as "why", "why exactly", "why exactly is", … — either
+ * as one result re-reported with `resultIndex` 0 on every event, or as a new
+ * result per event at the next index — and often every one of them flagged
+ * `isFinal`. A hook that pushed every final from `resultIndex` onwards into a
+ * running array typed the sentence once per word: "why why exactly why exactly
+ * is …" (Substrata's Ask box, Brave on Android, 2026-10-25). Desktop Chrome
+ * reports stable finals at increasing indices, so it never showed.
+ *
+ * So the transcript is rebuilt from the whole list on every event (the Web
+ * Speech spec makes `results` the session's full list; nothing is kept
+ * between events), and a cumulative chain collapses to its last link:
+ *
+ * - A result whose words BEGIN with the previous kept result's words, and
+ *   add more, is the same utterance growing: it replaces it. Always on —
+ *   desktop finals are consecutive phrases and essentially never restate the
+ *   previous one whole.
+ * - Once a list has shown that growth, the recogniser is cumulative, and two
+ *   more rules apply for that list only: a result the previous one already
+ *   begins with (a late, shorter or identical re-report) is dropped; and a
+ *   result at least as long, starting with the same word, that keeps all but
+ *   a quarter (min. one) of the previous one's words in order, is a REVISION
+ *   ("why exactly is is so" → "why exactly is it so hard") and replaces it.
+ * - Anything else is a new phrase and is appended.
+ *
+ * The tradeoff, chosen on purpose: the looser rules only run on a recogniser
+ * that has proved itself cumulative, so on desktop nothing the person said is
+ * ever dropped — "no", "no", "no" as three separate results stays "no no no",
+ * and "hello there" then "how are you" stays both. The one limitation: a
+ * person who really says "no" and then "no no" as two separate results reads
+ * as one growing utterance and is delivered as "no no". That needs a word to
+ * be heard as its own result and then restated with more after it, and it
+ * loses a repeat, never a new word.
+ *
+ * `unflaggedIsFinal`: whether a result with no `isFinal` at all counts as
+ * settled (the browser leg has always read it so; the preview has not).
+ */
+export function heardFromResults(
+  results: ArrayLike<RecognitionResultLike | undefined>,
+  opts: { unflaggedIsFinal?: boolean } = {},
+): HeardSoFar {
+  type Kept = { text: string; words: string[]; final: boolean; revises: string | null };
+  const raw: Kept[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const text = (r?.[0]?.transcript ?? "").trim();
+    if (!r || !text) continue;
+    const final = opts.unflaggedIsFinal ? r.isFinal !== false : r.isFinal === true;
+    raw.push({ text, words: wordsOf(text), final, revises: null });
+  }
+
+  let cumulative = false;
+  for (let i = 1; i < raw.length; i++) {
+    const a = raw[i - 1]!.words;
+    const b = raw[i]!.words;
+    if (b.length > a.length && startsWithWords(b, a)) {
+      cumulative = true;
+      break;
+    }
+  }
+
+  const kept: Kept[] = [];
+  for (const next of raw) {
+    const prev = kept[kept.length - 1];
+    if (!prev) {
+      kept.push(next);
+      continue;
+    }
+    const grows = next.words.length > prev.words.length && startsWithWords(next.words, prev.words);
+    const lateReport = cumulative && startsWithWords(prev.words, next.words);
+    const revision =
+      cumulative &&
+      next.words.length >= prev.words.length &&
+      next.words[0] === prev.words[0] &&
+      commonWords(prev.words, next.words) >=
+        prev.words.length - Math.max(1, Math.floor(prev.words.length / 4));
+    if (lateReport && !grows) continue;
+    if (grows || revision) {
+      // The settled words an interim revision stands in for, so a take that
+      // ends before the revision settles still delivers them.
+      const revises = next.final ? null : prev.final ? prev.text : prev.revises;
+      kept[kept.length - 1] = { ...next, revises };
+      continue;
+    }
+    kept.push(next);
+  }
+
+  // Only the tail after the last settled link is interim (desktop Chrome may
+  // split its guess into more than one result); a non-final before a final
+  // has been followed by settled speech, so its words stand.
+  let cut = kept.length;
+  while (cut > 0 && !kept[cut - 1]!.final) cut--;
+  const tail = kept.slice(cut);
+  const finals = kept.slice(0, cut).map((k) => k.text);
+  const interim = tail.map((k) => k.text).join(" ");
+  const revised = tail.flatMap((k) => (k.revises ? [k.revises] : []));
+  return { finals, interim, text: [...finals, ...revised].join(" ") };
+}
+
 /** A working recogniser fires `start` well inside this once the mic is allowed. */
 export const START_TIMEOUT_MS = 4000;
 
