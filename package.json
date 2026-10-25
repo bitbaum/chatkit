@@ -1,7 +1,7 @@
 {
   "name": "@bitbaum/chatkit",
   "version": "0.15.2",
-  "description": "One chat for every product: a composer with a microphone that always works, a thread that does not fight the reader, messages with copy and retry, and LLM markdown \u2014 the fleet's chat standard as a package.",
+  "description": "One chat for every product: a composer with a microphone that always works, a thread that does not fight the reader, messages with copy and retry, and LLM markdown — the fleet's chat standard as a package.",
   "license": "MIT",
   "author": "Cato",
   "homepage": "https://github.com/bitbaum/chatkit#readme",
@@ -74,7 +74,7 @@
     "test:browser": "pnpm run demo && node test/browser.mjs"
   },
   "devDependencies": {
-    "@bitbaum/design-tokens": "^1.1.0",
+    "@bitbaum/design-tokens": "github:bitbaum/design-tokens#5c31f48743dabf9294bf9380a15862b4efbc68a0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",
