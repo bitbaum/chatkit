@@ -21,25 +21,28 @@
  * Exempt, because a break there is legal: a word beside a hyphen, slash, dot,
  * at-sign, colon or underscore, and anything over `maxWord` characters (a URL
  * or an identifier has to break somewhere). Hidden text has no boxes and is
- * skipped.
+ * skipped. CJK scripts permit line breaks between characters; their wrapping
+ * is not a broken word. Other scripts use Unicode word boundaries.
  */
 export function findBrokenWords(root = document, options = {}) {
     const maxWord = options.maxWord ?? 24;
     const found = [];
     const near = /[-‐‑–—/_.@:]/;
+    const characterWrapping = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+    const words = new Intl.Segmenter(undefined, { granularity: "word" });
     const walker = document.createTreeWalker(root instanceof Document ? root.body : root, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         const text = n.nodeValue ?? "";
-        const re = /[\p{L}\p{N}']+/gu;
-        for (let m = re.exec(text); m; m = re.exec(text)) {
-            const word = m[0];
-            if (word.length > maxWord)
+        for (const { segment: word, index, isWordLike } of words.segment(text)) {
+            if (!isWordLike || characterWrapping.test(word) || word.length > maxWord)
                 continue;
-            if (near.test(text[m.index - 1] ?? "") || near.test(text[m.index + word.length] ?? ""))
+            if (near.test(word) ||
+                near.test(text[index - 1] ?? "") ||
+                near.test(text[index + word.length] ?? ""))
                 continue;
             const range = document.createRange();
-            range.setStart(n, m.index);
-            range.setEnd(n, m.index + word.length);
+            range.setStart(n, index);
+            range.setEnd(n, index + word.length);
             const tops = Array.from(range.getClientRects())
                 .filter((r) => r.width > 0)
                 .map((r) => Math.round(r.top));

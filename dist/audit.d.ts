@@ -21,7 +21,8 @@
  * Exempt, because a break there is legal: a word beside a hyphen, slash, dot,
  * at-sign, colon or underscore, and anything over `maxWord` characters (a URL
  * or an identifier has to break somewhere). Hidden text has no boxes and is
- * skipped.
+ * skipped. CJK scripts permit line breaks between characters; their wrapping
+ * is not a broken word. Other scripts use Unicode word boundaries.
  */
 export declare function findBrokenWords(root?: ParentNode, options?: {
     maxWord?: number;

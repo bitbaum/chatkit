@@ -506,3 +506,5 @@ catalogue access belong to the app's media tools: this renderer does not
 create a song or grant rights to redistribute it. Copy and speech preserve the
 track's title, creator and caption. The demo WAV is an original synthesized
 fixture; it is not a commercial track or a model-generated recording.
+
+The browser word-layout audit uses Unicode word boundaries. Chinese, Japanese and Korean may wrap between characters; those legal breaks are accepted while squeezed Latin words, including words embedded in CJK text, are still reported. Whole-page and chart overflow checks remain separate.
