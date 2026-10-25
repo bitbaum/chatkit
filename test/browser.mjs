@@ -118,6 +118,18 @@ try {
       found.length === 1 && found[0] === "Directory",
       `the audit reports a squeezed word and not a wrapped sentence (${found.join(",")})`,
     );
+    await page.setContent(
+      `<div lang="zh" style="width:35px;font:16px sans-serif">实施更严格的最终用户和最终用途审查</div>
+       <div lang="ja" style="width:35px;font:16px sans-serif">研究と技術のディレクトリ</div>
+       <div lang="ko" style="width:35px;font:16px sans-serif">연구기술디렉터리</div>
+       <div style="width:30px;overflow-wrap:anywhere;font:16px sans-serif">目录Directory目录</div>
+       <div style="width:30px;overflow-wrap:anywhere;font:16px sans-serif">one-two/a.b@example:route_name</div>`,
+    );
+    const mixed = await page.evaluate(`(${BROKEN_WORDS_SOURCE})(document.body)`);
+    check(
+      mixed.length === 1 && mixed[0] === "Directory",
+      `legal CJK wrapping and punctuation stay valid while mixed-script Latin clipping fails (${mixed.join(",")})`,
+    );
     await page.close();
   }
   for (const width of [320, 390, 1280]) {
