@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, fallbackCanRescue, liveWords, problemFor, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
+import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, fallbackCanRescue, heardFromResults, liveWords, problemFor, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
 function recogniser() {
     if (typeof window === "undefined")
         return undefined;
@@ -146,20 +146,13 @@ export function useDictation(opts) {
         catch {
             return;
         }
-        const finals = [];
         rec.onstart = null;
         rec.onresult = (event) => {
             if (previewRef.current !== rec)
                 return;
-            let interim = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const r = event.results[i];
-                const t = r?.[0]?.transcript ?? "";
-                if (r && r.isFinal)
-                    finals.push(t);
-                else
-                    interim += t;
-            }
+            // Rebuilt from the whole list every time — never accumulated — so an
+            // Android recogniser's cumulative results show once (heardFromResults).
+            const { finals, interim } = heardFromResults(event.results);
             setLiveText(liveWords(finals, interim));
         };
         rec.onerror = () => {
@@ -292,7 +285,10 @@ export function useDictation(opts) {
         // only the final ones are delivered.
         rec.interimResults = true;
         const current = () => recRef.current === rec;
-        const heard = [];
+        // The latest reading of the WHOLE results list, replaced on every event
+        // and never appended to: Android recognisers re-report the utterance
+        // cumulatively, and appending typed it once per word.
+        let said = "";
         let started = false;
         let handedOff = false;
         const finish = (next) => {
@@ -327,17 +323,10 @@ export function useDictation(opts) {
             started = true;
         };
         rec.onresult = (event) => {
-            let interim = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const r = event.results[i];
-                const t = r?.[0]?.transcript ?? "";
-                if (r && r.isFinal !== false)
-                    heard.push(t);
-                else
-                    interim += t;
-            }
+            const heard = heardFromResults(event.results, { unflaggedIsFinal: true });
+            said = heard.text;
             if (current())
-                setLiveText(liveWords(heard, interim));
+                setLiveText(liveWords(heard.finals, heard.interim));
         };
         rec.onerror = (event) => {
             const why = problemFor(event?.error);
@@ -350,7 +339,6 @@ export function useDictation(opts) {
         rec.onend = () => {
             if (!current() || handedOff)
                 return;
-            const said = heard.join(" ");
             finish(null);
             if (!cancelledRef.current)
                 deliver(said);

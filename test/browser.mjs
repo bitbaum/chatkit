@@ -546,6 +546,63 @@ try {
   check((await box.locator(".ck-problem").count()) === 0, "mic: the problem clears once it lands");
   await context.close();
 
+  // An Android recogniser reports one utterance CUMULATIVELY — "why", "why
+  // exactly", … — each flagged final, a new result per event. The box must
+  // read the sentence once (Substrata on Brave/Android, 2026-10-25, typed it
+  // once per word). The fake stands in for the recogniser; the hook, the
+  // composer and the delivered text are the real ones.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.addInitScript(() => {
+      const sentence = "why exactly is it so hard to replace ASML".split(" ");
+      class FakeRecognition {
+        start() {
+          setTimeout(() => {
+            this.onstart?.();
+            const results = [];
+            sentence.forEach((_, i) => {
+              setTimeout(() => {
+                const r = [{ transcript: sentence.slice(0, i + 1).join(" ") }];
+                r.isFinal = true;
+                results.push(r);
+                this.onresult?.({ resultIndex: results.length - 1, results: [...results] });
+              }, i * 20);
+            });
+          }, 10);
+        }
+        stop() {
+          setTimeout(() => this.onend?.(), 10);
+        }
+        abort() {
+          setTimeout(() => this.onend?.(), 10);
+        }
+      }
+      window.webkitSpeechRecognition = FakeRecognition;
+      window.SpeechRecognition = FakeRecognition;
+    });
+    await page.goto(base);
+    const box = page.locator("#empty");
+    await box.locator(".ck-mic").click();
+    await page.waitForTimeout(600);
+    const live = (await box.locator(".ck-voice-bar").textContent()) ?? "";
+    await box.locator(".ck-voice-confirm").click();
+    await page
+      .waitForFunction(() => document.querySelector("#empty .ck-input")?.value !== "", null, {
+        timeout: 3000,
+      })
+      .catch(() => {});
+    const value = await box.locator(".ck-input").inputValue();
+    check(
+      value === "why exactly is it so hard to replace ASML",
+      `mic: cumulative Android results land once (${JSON.stringify(value)})`,
+    );
+    check(
+      live.includes("why exactly is it so hard to replace ASML") && !/why.*why/.test(live),
+      `mic: the live words show the sentence once (${JSON.stringify(live)})`,
+    );
+    await page.close();
+  }
+
   // Under every answer: Copy, and Listen where the browser can speak. While it
   // reads, the row is a player with Stop. Headless Chromium has no voices and
   // ends an utterance at once, so the voice is a stand-in that reads until
