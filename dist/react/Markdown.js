@@ -95,7 +95,14 @@ function Inline({ spans, citations, renderLink, renderCitation, }) {
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
-export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", className, onReply, renderers, }) {
+export const DEFAULT_ALERT_LABELS = {
+    note: "Note",
+    tip: "Tip",
+    important: "Important",
+    warning: "Warning",
+    caution: "Caution",
+};
+export function Markdown({ text, citations, renderLink = defaultRenderLink, renderCitation = defaultRenderCitation, renderSources, sources = true, sourcesLabel = "Sources", alertLabels, className, onReply, renderers, }) {
     const inline = (t) => (_jsx(Inline, { spans: parseInline(t), citations: citations, renderLink: renderLink, renderCitation: renderCitation }));
     const items = (list, ordered, start = 1) => {
         const List = ordered ? "ol" : "ul";
@@ -134,8 +141,12 @@ export function Markdown({ text, citations, renderLink = defaultRenderLink, rend
                     }
                     case "quote":
                         return (_jsx("blockquote", { children: b.text.split("\n").map((line, j) => (_jsx("p", { children: inline(line) }, j))) }, i));
+                    case "alert":
+                        return (_jsxs("aside", { className: `ck-alert ck-alert-${b.alert}`, children: [_jsx("p", { className: "ck-alert-label", children: alertLabels?.[b.alert] ?? DEFAULT_ALERT_LABELS[b.alert] }), b.text.split("\n").map((line, j) => (_jsx("p", { children: inline(line) }, j)))] }, i));
                     case "table":
-                        return (_jsx("div", { className: "ck-table-wrap", children: _jsxs("table", { className: "ck-table", children: [_jsx("thead", { children: _jsx("tr", { children: b.head.map((cell, j) => (_jsx("th", { children: inline(cell) }, j))) }) }), _jsx("tbody", { children: b.rows.map((row, j) => (_jsx("tr", { children: b.head.map((_, k) => (_jsx("td", { children: inline(row[k] ?? "") }, k))) }, j))) })] }) }, i));
+                        return (_jsx("div", { className: "ck-table-wrap", children: _jsxs("table", { className: "ck-table", children: [b.head.length > 0 && (_jsx("thead", { children: _jsx("tr", { children: b.head.map((cell, j) => (_jsx("th", { children: inline(cell) }, j))) }) })), _jsx("tbody", { children: b.rows.map((row, j) => (_jsx("tr", { children: Array.from({
+                                                length: b.head.length || Math.max(...b.rows.map((r) => r.length)),
+                                            }, (_, k) => (_jsx("td", { children: inline(row[k] ?? "") }, k))) }, j))) })] }) }, i));
                     case "hr":
                         return _jsx("hr", { className: "ck-hr" }, i);
                     default:

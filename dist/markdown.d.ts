@@ -39,12 +39,19 @@ export type MarkdownBlock = {
     kind: "quote";
     text: string;
 } | {
+    kind: "alert";
+    alert: AlertKind;
+    text: string;
+} | {
     kind: "table";
     head: string[];
     rows: string[][];
 } | {
     kind: "hr";
 };
+/** GitHub's callouts: `> [!CAUTION]` and its siblings. */
+export declare const ALERT_KINDS: readonly ["note", "tip", "important", "warning", "caution"];
+export type AlertKind = (typeof ALERT_KINDS)[number];
 export declare function parseBlocks(text: string): MarkdownBlock[];
 /**
  * A list where every item opens with a bold lead — `**Title.** body` — is a
