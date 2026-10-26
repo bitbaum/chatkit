@@ -5,6 +5,7 @@ import { Markdown, defaultRenderLink, type CitationMap, type RenderLink } from "
 import { useStickToBottom } from "./hooks.js";
 import { dropReplyLabel, extractReplies } from "../replies.js";
 import type { Speaker } from "../speech.js";
+import type { AlertKind } from "../markdown.js";
 import {
   AnswerActions,
   DEFAULT_ANSWER_ACTIONS_LABELS,
@@ -77,6 +78,8 @@ export type ThreadLabels = AnswerActionsLabels & {
   failed: string;
   loading: string;
   replies: string;
+  /** The word over a `> [!CAUTION]` callout in an answer, in the product's language. */
+  alerts?: Partial<Record<AlertKind, string>>;
 };
 
 export const DEFAULT_THREAD_LABELS: ThreadLabels = {
@@ -166,6 +169,7 @@ export function ChatMessage({
           renderLink={renderLink}
           onReply={last ? onReply : undefined}
           renderers={renderers}
+          alertLabels={labels.alerts}
         />
       )}
       {footer}
@@ -427,6 +431,7 @@ export function ChatThread({
                   text={extractReplies(live.text, { streaming: true }).text}
                   renderLink={renderLink}
                   renderers={renderers}
+                  alertLabels={labels.alerts}
                 />
               ) : live.steps && live.steps.length > 0 ? null : (
                 <p className="ck-live" role="status" aria-live="polite">

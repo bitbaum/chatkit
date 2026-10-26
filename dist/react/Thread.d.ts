@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { type CitationMap, type RenderLink } from "./Markdown.js";
 import type { Speaker } from "../speech.js";
+import type { AlertKind } from "../markdown.js";
 import { type AnswerActionsLabels } from "./AnswerActions.js";
 import type { AnswerFeedback } from "../review.js";
 import type { RichRenderers } from "./renderers.js";
@@ -57,6 +58,8 @@ export type ThreadLabels = AnswerActionsLabels & {
     failed: string;
     loading: string;
     replies: string;
+    /** The word over a `> [!CAUTION]` callout in an answer, in the product's language. */
+    alerts?: Partial<Record<AlertKind, string>>;
 };
 export declare const DEFAULT_THREAD_LABELS: ThreadLabels;
 /**
