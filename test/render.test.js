@@ -299,3 +299,14 @@ test("a table with no header row still shows its cells", () => {
   assert.equal((html.match(/<td>/g) ?? []).length, 2);
   assert.ok(html.includes("KfW") && html.includes("Raw materials fund"));
 });
+
+test("a thread passes the product's word for a callout to every answer", () => {
+  const html = renderToStaticMarkup(
+    h(ChatThread, {
+      messages: [{ id: "a", role: "assistant", content: "> [!WARNING]\n> Frist beachten." }],
+      labels: { alerts: { warning: "Warnung" } },
+    }),
+  );
+  assert.ok(html.includes("Warnung"));
+  assert.ok(!html.includes("[!WARNING]"));
+});
