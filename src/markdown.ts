@@ -26,8 +26,14 @@ export type MarkdownBlock =
   | { kind: "ol"; items: ListItem[]; start: number }
   | { kind: "code"; lang: string; code: string }
   | { kind: "quote"; text: string }
+  | { kind: "alert"; alert: AlertKind; text: string }
   | { kind: "table"; head: string[]; rows: string[][] }
   | { kind: "hr" };
+
+/** GitHub's callouts: `> [!CAUTION]` and its siblings. */
+export const ALERT_KINDS = ["note", "tip", "important", "warning", "caution"] as const;
+export type AlertKind = (typeof ALERT_KINDS)[number];
+const ALERT_RE = /^\[!(note|tip|important|warning|caution)\]\s*(.*)$/i;
 
 const BULLET_RE = /^([-*•])\s+(.*)$/;
 const NUMBERED_RE = /^(\d+)[.)]\s+(.*)$/;
@@ -88,6 +94,25 @@ export function parseBlocks(text: string): MarkdownBlock[] {
       blocks.push({ kind: "table", head, rows });
       continue;
     }
+    // A table whose header row was lost (a filter upstream dropped it, seen
+    // live on substrata): the rule opens it. Rows under it are still a table,
+    // not "| :--- | :--- |" printed as prose.
+    if (
+      line.includes("|") &&
+      TABLE_RULE_RE.test(line) &&
+      (lines[i + 1] ?? "").trim().includes("|")
+    ) {
+      list = null;
+      const rows: string[][] = [];
+      i += 1;
+      while (i < lines.length && (lines[i] ?? "").trim().includes("|")) {
+        rows.push(tableCells((lines[i] ?? "").trim()));
+        i++;
+      }
+      i--;
+      blocks.push({ kind: "table", head: [], rows });
+      continue;
+    }
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
       list = null;
       blocks.push({ kind: "hr" });
@@ -121,15 +146,38 @@ export function parseBlocks(text: string): MarkdownBlock[] {
     if (heading) {
       const level = Math.min(heading[1]!.length, 3) as 1 | 2 | 3;
       blocks.push({ kind: "h", text: heading[2] ?? "", level });
-    } else if (line.startsWith(">")) {
+    } else if (line.startsWith(">") || ALERT_RE.test(line)) {
       // A model's `>` leaked into prose was one of orangecat's fixed bugs.
-      // Consecutive quoted lines are one quote.
+      // Consecutive quoted lines are one quote. `[!CAUTION]` opening a quote
+      // (or standing alone, as models also write it) makes it a callout
+      // instead of printing the marker (seen live, causius, 2026-10-26).
       const prev = blocks[blocks.length - 1];
       const quoted = line.replace(/^>\s?/, "");
-      if (prev && prev.kind === "quote" && (lines[i - 1] ?? "").trim().startsWith(">"))
+      const alert = ALERT_RE.exec(quoted.trim());
+      const prevLine = (lines[i - 1] ?? "").trim();
+      const continues =
+        prev &&
+        (prev.kind === "quote" || prev.kind === "alert") &&
+        prevLine &&
+        (prevLine.startsWith(">") || (prev.kind === "alert" && line.startsWith(">")));
+      if (alert) {
+        blocks.push({
+          kind: "alert",
+          alert: alert[1]!.toLowerCase() as AlertKind,
+          text: alert[2] ?? "",
+        });
+      } else if (continues && prev.kind === "alert") {
+        prev.text += prev.text ? `\n${quoted}` : quoted;
+      } else if (continues && prev.kind === "quote") {
         prev.text += `\n${quoted}`;
-      else blocks.push({ kind: "quote", text: quoted });
+      } else blocks.push({ kind: "quote", text: quoted });
     } else {
+      const prevBlock = blocks[blocks.length - 1];
+      // A bare `[!CAUTION]` line carries the paragraph under it.
+      if (prevBlock && prevBlock.kind === "alert" && (lines[i - 1] ?? "").trim()) {
+        prevBlock.text += prevBlock.text ? `\n${line}` : line;
+        continue;
+      }
       const prev = blocks[blocks.length - 1];
       // A soft line break inside a paragraph continues it.
       if (prev && prev.kind === "p" && (lines[i - 1] ?? "").trim()) prev.text += `\n${line}`;

@@ -1035,6 +1035,36 @@ a.ck-source:hover {
   border-left: 3px solid var(--ck-line-2);
   color: var(--ck-fg-2);
 }
+/* A callout (`> [!CAUTION]`): a quiet panel, the word above it. Only warning
+   and caution take a status colour, and only on the rule and the word. */
+.ck-md .ck-alert {
+  display: grid;
+  gap: 0.25em;
+  padding: 0.75em 0.875em;
+  border-left: 3px solid var(--ck-line-2);
+  border-radius: 0 var(--ck-radius-sm) var(--ck-radius-sm) 0;
+  background: var(--ck-raised);
+}
+.ck-md .ck-alert p {
+  margin: 0;
+}
+.ck-md .ck-alert-label {
+  font-size: 0.8125em;
+  font-weight: 650;
+  color: var(--ck-fg-2);
+}
+.ck-md .ck-alert-warning {
+  border-left-color: var(--ck-warning);
+}
+.ck-md .ck-alert-warning .ck-alert-label {
+  color: var(--ck-warning);
+}
+.ck-md .ck-alert-caution {
+  border-left-color: var(--ck-danger);
+}
+.ck-md .ck-alert-caution .ck-alert-label {
+  color: var(--ck-danger);
+}
 .ck-md strong {
   font-weight: 650;
 }
