@@ -149,6 +149,9 @@ export type ComposerProps = {
   /** Inside the box, under the controls. */
   footer?: ReactNode;
   hint?: string;
+  /** Where staged pictures and files sit: under the text (the default) or
+   *  above it, as the ChatGPT and Claude apps draw them. ChatApp uses above. */
+  stagedPosition?: "above" | "below";
   labels?: ComposerLabelOverrides;
   autoFocus?: boolean;
 };
@@ -265,6 +268,7 @@ export function Composer({
   trailing,
   footer,
   hint,
+  stagedPosition = "below",
   labels: labelOverrides,
   autoFocus,
 }: ComposerProps) {
@@ -427,6 +431,9 @@ export function Composer({
             </div>
           )}
           {header}
+          {attachOn && stagedPosition === "above" && (
+            <AttachmentStrip attachments={attachments} labels={labels} />
+          )}
 
           <textarea
             ref={textareaRef}
@@ -459,7 +466,9 @@ export function Composer({
             }}
           />
 
-          {attachOn && <AttachmentStrip attachments={attachments} labels={labels} />}
+          {attachOn && stagedPosition === "below" && (
+            <AttachmentStrip attachments={attachments} labels={labels} />
+          )}
 
           <div className="ck-actions">
             <div className="ck-tools">

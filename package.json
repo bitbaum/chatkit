@@ -71,7 +71,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "demo": "esbuild demo/demo.tsx --bundle --jsx=automatic --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=demo/dist/demo.js --log-level=warning",
-    "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs"
+    "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs && node test/browser-app.mjs"
   },
   "devDependencies": {
     "@bitbaum/design-tokens": "github:bitbaum/design-tokens#5c31f48743dabf9294bf9380a15862b4efbc68a0",

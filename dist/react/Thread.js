@@ -4,7 +4,7 @@ import { Markdown, defaultRenderLink } from "./Markdown.js";
 import { useStickToBottom } from "./hooks.js";
 import { dropReplyLabel, extractReplies } from "../replies.js";
 import { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS, } from "./AnswerActions.js";
-import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
+import { IconArrowDown, IconChevron, IconFile, IconRetry, IconStop } from "./icons.js";
 /** "3m 38s", "42s", "1h 02m" — the ChatGPT app's unit words, so a product
  *  translating the labels still gets one shape. */
 export function formatThinkingDuration(ms) {
@@ -36,7 +36,7 @@ export const DEFAULT_THREAD_LABELS = {
  */
 export function ChatMessage({ message, onRetry, renderLink = defaultRenderLink, showSpeaker = true, footer, last = false, onReply, speaker, share, onFeedback, renderers, labels = DEFAULT_THREAD_LABELS, }) {
     if (message.role === "user") {
-        return (_jsx("div", { className: "ck-turn ck-turn-user", children: _jsx("div", { className: "ck-bubble", children: message.content }) }));
+        return (_jsxs("div", { className: "ck-turn ck-turn-user", children: [message.attachments && message.attachments.length > 0 && (_jsx("div", { className: "ck-turn-files", children: message.attachments.map((a, i) => a.kind === "image" && a.previewUrl ? (_jsx("img", { src: a.previewUrl, alt: a.name, className: "ck-attach-thumb" }, i)) : (_jsxs("span", { className: "ck-attach-file", children: [_jsx(IconFile, {}), _jsx("span", { className: "ck-truncate", children: a.name })] }, i))) })), message.content && _jsx("div", { className: "ck-bubble", children: message.content })] }));
     }
     const parsed = extractReplies(message.content);
     const replies = message.replies ?? parsed.replies;

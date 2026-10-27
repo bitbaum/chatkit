@@ -5,6 +5,7 @@ import type { AlertKind } from "../markdown.js";
 import { type AnswerActionsLabels } from "./AnswerActions.js";
 import type { AnswerFeedback } from "../review.js";
 import type { RichRenderers } from "./renderers.js";
+import type { MessageAttachment } from "../conversations.js";
 export type ChatSpeaker = {
     /** Shown above the message when more than one agent can answer. */
     name: string;
@@ -19,6 +20,9 @@ export type ChatMessageData = {
     citations?: CitationMap;
     /** The turn failed: shown as a failure with Retry, never as silence. */
     failed?: boolean;
+    /** What the person sent with their words: pictures drawn small above the
+     *  bubble, other files as their name. */
+    attachments?: readonly MessageAttachment[];
     /**
      * What the person is likely to say next, as one-tap buttons under the
      * latest answer. Leave it out and a `quick_replies` block in `content` is

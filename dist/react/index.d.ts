@@ -29,4 +29,10 @@ export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "
 export { RichAnswerBlock, ChartTableFigure } from "./RichBlock.js";
 export { RichRenderersContext, useRichRenderers } from "./renderers.js";
 export type { RichRenderers } from "./renderers.js";
+export { ChatApp, DEFAULT_CHAT_APP_LABELS } from "./ChatApp.js";
+export type { ChatAppProps, ChatAppLabels } from "./ChatApp.js";
+export { ChatHistory } from "./ChatHistory.js";
+export type { ChatHistoryProps } from "./ChatHistory.js";
+export { useChatApp, isTemporaryId } from "./use-chat-app.js";
+export type { ChatTransport, ChatTurn, ChatTurnResult, ChatAppController, ChatAppProblem, UseChatAppOptions, } from "./use-chat-app.js";
 //# sourceMappingURL=index.d.ts.map
