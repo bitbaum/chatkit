@@ -669,13 +669,14 @@ if (isPdfFile(file) && file.size <= PDF_MAX_BYTES) {
   import), and the legacy build is used so older iPhones read PDFs too.
 
 **One step per app**: pdf.js fetches its worker and image decoders by URL at
-runtime, which no bundler follows. Copy them before building:
+runtime, which no bundler follows. Copy them as the first step of `dev` and
+`build` (pnpm does not run `prebuild` hooks by default):
 
 ```json
-"prebuild": "chatkit-copy-pdf-assets public/pdfjs"
+"build": "chatkit-copy-pdf-assets public/pdfjs && next build"
 ```
 
-and pass `assetsUrl: "/pdfjs/"` (keep `public/pdfjs/` out of git). Served
+and pass `assetsUrl: "/pdfjs/"`. Keep that folder out of git. Served
 from the app's own origin they pass a strict CSP, and they include the
 decoders without which pages whose pictures are JPEG 2000 — macOS's "reduce
 file size" export — draw blank. `test/browser-pdf.mjs` checks both

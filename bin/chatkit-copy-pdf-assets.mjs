@@ -7,9 +7,9 @@
 // pdf.js loads its worker and its image decoders (JPEG 2000, JBIG2) by URL at
 // runtime, which no bundler follows. Without them a page whose pictures are
 // JPEG 2000 — macOS's "reduce file size" PDF export — draws blank (found
-// 2026-10-27 on an investor deck). Run it before the app builds (a `prebuild`
-// script) so the files always match the installed pdf.js; the folder can stay
-// out of git. Idempotent.
+// 2026-10-27 on an investor deck). Run it as the first step of the app's dev
+// and build scripts (pnpm skips `prebuild` hooks by default) so the files
+// always match the installed pdf.js; the folder stays out of git. Idempotent.
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
