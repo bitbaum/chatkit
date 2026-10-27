@@ -45,11 +45,11 @@ export function isImageMime(mime) {
 const TEXT_EXTENSIONS = /\.(txt|md|markdown|json|jsonl|csv|tsv|log|ya?ml|toml|ini|xml|html?|css|scss|js|jsx|mjs|cjs|ts|tsx|py|rb|go|rs|java|kt|swift|c|h|cpp|hpp|cs|php|sh|bash|zsh|sql|env|diff|patch|srt|vtt)$/i;
 const TEXT_MIME = /^(text\/|application\/(json|xml|x-yaml|yaml|javascript|x-sh|sql))/i;
 /**
- * Whether a file is text the model can read inline. The Files picker accepts
- * anything — that is what keeps it the phone's real document browser instead
- * of a camera chooser — so the decision about what can actually be sent moves
- * here, after the pick, where a PDF gets a sentence instead of being read as
- * binary noise and pasted into a prompt.
+ * Whether a file is text the model can read inline. The Files picker asks for
+ * documents (FILES_ACCEPT) but a picker may still hand over anything, so the
+ * decision about what can actually be sent stays here, after the pick, where
+ * a PDF gets a sentence instead of being read as binary noise and pasted into
+ * a prompt.
  */
 export function isTextFile(name, mime) {
     if (TEXT_MIME.test(mime))
@@ -58,10 +58,18 @@ export function isTextFile(name, mime) {
         return false;
     return TEXT_EXTENSIONS.test(name);
 }
+/**
+ * What the Files source asks the phone for: PDFs and text, one "document"
+ * family. MIME types first (what Android and iOS map to their pickers), then
+ * the extensions a desktop file dialog filters by. Only types every platform
+ * knows: an extension a phone cannot map can widen the request back to
+ * "anything" — the capture chooser this exists to avoid.
+ */
+export const FILES_ACCEPT = "application/pdf,text/*,application/json,.pdf,.txt,.md,.markdown,.csv,.tsv,.json";
 export const ATTACH_SOURCE_INPUT = {
     camera: { accept: "image/*", capture: "environment" },
     photos: { accept: "image/*" },
-    files: {},
+    files: { accept: FILES_ACCEPT },
 };
 const FAMILY_BY_EXTENSION = {};
 for (const ext of [

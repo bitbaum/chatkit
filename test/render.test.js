@@ -36,7 +36,11 @@ test("composer: the paperclip carries one input per source, not one mixed input"
   assert.match(html, /<input[^>]*data-ck-source="photos"/);
   const files = /<input[^>]*data-ck-source="files"[^>]*>/.exec(html)?.[0] ?? "";
   assert.ok(files, "a Files input");
-  assert.doesNotMatch(files, /accept=/, "Files accepts anything: the real document browser");
+  assert.match(
+    files,
+    /accept="application\/pdf,text\/\*/,
+    "Files asks for documents: the real document browser",
+  );
   assert.match(html, /aria-haspopup="dialog"/);
 });
 

@@ -14,6 +14,7 @@ export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
 export type { AttachExtra, AttachMenuLabels } from "./AttachMenu.js";
 export {
   ATTACH_SOURCE_INPUT,
+  FILES_ACCEPT,
   acceptFamilies,
   isImageMime,
   isTextFile,
