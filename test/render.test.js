@@ -314,3 +314,26 @@ test("a thread passes the product's word for a callout to every answer", () => {
   assert.ok(html.includes("Warnung"));
   assert.ok(!html.includes("[!WARNING]"));
 });
+
+test("screen: the footnote may hold block content — it is not wrapped in a paragraph", () => {
+  const { ChatScreen } = reactMod;
+  const html = renderToStaticMarkup(
+    h(ChatScreen, {
+      composer: h("div", null, "composer"),
+      footnote: h(
+        "span",
+        null,
+        "one line",
+        h("p", { className: "aside" }, "a paragraph"),
+        h("form"),
+      ),
+      children: h("div", null, "thread"),
+    }),
+  );
+  assert.match(html, /<div class="ck-screen-footnote">/);
+  assert.doesNotMatch(html, /<p class="ck-screen-footnote"/);
+  // A <p> may not contain a <p> or a <form>: a browser closes the outer one while
+  // parsing, and React then hydrates a different tree (error #418).
+  const footnote = /<div class="ck-screen-footnote">([\s\S]*?)<\/div><\/div><\/div>/.exec(html);
+  assert.ok(footnote, "the footnote is the last block of the dock");
+});

@@ -52,6 +52,6 @@ export function ChatScreen({ header, composer, footnote, children, fill = "paren
         cls.push("ck-screen-viewport");
     if (className)
         cls.push(className);
-    return (_jsxs("div", { ref: rootRef, className: cls.join(" "), children: [_jsx("div", { className: "ck-screen-body", children: renderers ? (_jsx(RichRenderersContext.Provider, { value: renderers, children: children })) : (children) }), hasHeader && (_jsx("div", { ref: headerRef, className: "ck-screen-header", children: _jsx("div", { className: "ck-screen-header-row", children: header }) })), _jsx("div", { ref: dockRef, className: "ck-screen-dock", children: _jsxs("div", { className: "ck-screen-column", children: [composer, footnote != null && _jsx("p", { className: "ck-screen-footnote", children: footnote })] }) })] }));
+    return (_jsxs("div", { ref: rootRef, className: cls.join(" "), children: [_jsx("div", { className: "ck-screen-body", children: renderers ? (_jsx(RichRenderersContext.Provider, { value: renderers, children: children })) : (children) }), hasHeader && (_jsx("div", { ref: headerRef, className: "ck-screen-header", children: _jsx("div", { className: "ck-screen-header-row", children: header }) })), _jsx("div", { ref: dockRef, className: "ck-screen-dock", children: _jsxs("div", { className: "ck-screen-column", children: [composer, footnote != null && _jsx("div", { className: "ck-screen-footnote", children: footnote })] }) })] }));
 }
 //# sourceMappingURL=Screen.js.map
