@@ -74,7 +74,7 @@
     "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs && node test/browser-app.mjs"
   },
   "devDependencies": {
-    "@bitbaum/design-tokens": "github:bitbaum/design-tokens#5c31f48743dabf9294bf9380a15862b4efbc68a0",
+    "@bitbaum/design-tokens": "^1.2.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",

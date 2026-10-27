@@ -18,6 +18,14 @@
   </head>
   <body>
     <div id="scroll-fixture"></div>
+    <script>
+      if (new URLSearchParams(location.search).has("null-root")) {
+        Object.defineProperty(document, "scrollingElement", {
+          configurable: true,
+          value: undefined,
+        });
+      }
+    </script>
     <script src="dist/demo.js"></script>
   </body>
 </html>
