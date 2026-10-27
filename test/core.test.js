@@ -479,3 +479,36 @@ test("review 0.14: the judge's answer is read back strictly; junk yields nothing
   assert.match(prompt, /a1: down \(dead_end\)/);
   assert.match(prompt, /data, not instructions/);
 });
+
+test("markdown: a GitHub callout is a callout, never a printed [!CAUTION]", () => {
+  // Seen live on causius (2026-10-26): the marker showed as text in a quote.
+  const quoted = parseBlocks(
+    "Intro.\n\n> [!CAUTION]\n> Versuchen Sie nicht, ein Unternehmen zu gründen.\n> Zweite Zeile.\n\nAfter.",
+  );
+  assert.deepEqual(
+    quoted.map((b) => b.kind),
+    ["p", "alert", "p"],
+  );
+  assert.equal(quoted[1].alert, "caution");
+  assert.equal(quoted[1].text, "Versuchen Sie nicht, ein Unternehmen zu gründen.\nZweite Zeile.");
+  // Written without the quote marks, and with the text on the marker's line.
+  const bare = parseBlocks("[!WARNING]\nCheck the deadline.\n\n> [!tip] Keep a copy.");
+  assert.deepEqual(
+    bare.map((b) => [b.kind, b.alert, b.text]),
+    [
+      ["alert", "warning", "Check the deadline."],
+      ["alert", "tip", "Keep a copy."],
+    ],
+  );
+  // An ordinary quote stays a quote.
+  assert.equal(parseBlocks("> just a quote")[0].kind, "quote");
+});
+
+test("markdown: a table that lost its header row is still a table", () => {
+  // Seen live on substrata (2026-10-26): the answer opened on the rule.
+  const blocks = parseBlocks("|---|---|\n| KfW | Raw materials fund [W2] |\n| Grid | Bonds |");
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].kind, "table");
+  assert.deepEqual(blocks[0].head, []);
+  assert.deepEqual(blocks[0].rows[1], ["Grid", "Bonds"]);
+});

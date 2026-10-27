@@ -16,6 +16,7 @@ import {
   parseInline,
   type InlineSpan,
   type ListItem,
+  type AlertKind,
 } from "../markdown.js";
 
 /** What a grounded answer's `[F8]` / `[D1]` handle refers to. Unknown handles
@@ -274,6 +275,14 @@ function Inline({
  * instead of breaking the page; the sources an answer cites are listed once
  * under it as chips.
  */
+export const DEFAULT_ALERT_LABELS: Record<AlertKind, string> = {
+  note: "Note",
+  tip: "Tip",
+  important: "Important",
+  warning: "Warning",
+  caution: "Caution",
+};
+
 export function Markdown({
   text,
   citations,
@@ -282,6 +291,7 @@ export function Markdown({
   renderSources,
   sources = true,
   sourcesLabel = "Sources",
+  alertLabels,
   className,
   onReply,
   renderers,
@@ -299,6 +309,8 @@ export function Markdown({
   /** The row of cited sources under the answer (needs `citations`). */
   sources?: boolean;
   sourcesLabel?: string;
+  /** The word on a `> [!CAUTION]` callout, in the product's language. */
+  alertLabels?: Partial<Record<AlertKind, string>>;
   className?: string;
 }) {
   const inline = (t: string) => (
@@ -403,23 +415,42 @@ export function Markdown({
                 ))}
               </blockquote>
             );
+          case "alert":
+            return (
+              <aside key={i} className={`ck-alert ck-alert-${b.alert}`}>
+                <p className="ck-alert-label">
+                  {alertLabels?.[b.alert] ?? DEFAULT_ALERT_LABELS[b.alert]}
+                </p>
+                {b.text.split("\n").map((line, j) => (
+                  <p key={j}>{inline(line)}</p>
+                ))}
+              </aside>
+            );
           case "table":
             return (
               <div key={i} className="ck-table-wrap">
                 <table className="ck-table">
-                  <thead>
-                    <tr>
-                      {b.head.map((cell, j) => (
-                        <th key={j}>{inline(cell)}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  {b.head.length > 0 && (
+                    <thead>
+                      <tr>
+                        {b.head.map((cell, j) => (
+                          <th key={j}>{inline(cell)}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                  )}
                   <tbody>
                     {b.rows.map((row, j) => (
                       <tr key={j}>
-                        {b.head.map((_, k) => (
-                          <td key={k}>{inline(row[k] ?? "")}</td>
-                        ))}
+                        {/* As many cells as the header has, or the widest row when it has none. */}
+                        {Array.from(
+                          {
+                            length: b.head.length || Math.max(...b.rows.map((r) => r.length)),
+                          },
+                          (_, k) => (
+                            <td key={k}>{inline(row[k] ?? "")}</td>
+                          ),
+                        )}
                       </tr>
                     ))}
                   </tbody>

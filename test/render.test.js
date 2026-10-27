@@ -278,3 +278,35 @@ test("0.14: thumbs render only with onFeedback, and every label is translatable"
   );
   assert.doesNotMatch(without, /ck-feedback/);
 });
+
+test("a callout renders as one labelled panel in the product's words", () => {
+  const html = renderToStaticMarkup(
+    h(Markdown, {
+      text: "> [!CAUTION]\n> Nicht unterschreiben.",
+      alertLabels: { caution: "Achtung" },
+    }),
+  );
+  assert.ok(html.includes('class="ck-alert ck-alert-caution"'));
+  assert.ok(html.includes("Achtung"));
+  assert.ok(!html.includes("[!CAUTION]"));
+});
+
+test("a table with no header row still shows its cells", () => {
+  const html = renderToStaticMarkup(
+    h(Markdown, { text: "|---|---|\n| KfW | Raw materials fund |" }),
+  );
+  assert.ok(!html.includes("<thead"));
+  assert.equal((html.match(/<td>/g) ?? []).length, 2);
+  assert.ok(html.includes("KfW") && html.includes("Raw materials fund"));
+});
+
+test("a thread passes the product's word for a callout to every answer", () => {
+  const html = renderToStaticMarkup(
+    h(ChatThread, {
+      messages: [{ id: "a", role: "assistant", content: "> [!WARNING]\n> Frist beachten." }],
+      labels: { alerts: { warning: "Warnung" } },
+    }),
+  );
+  assert.ok(html.includes("Warnung"));
+  assert.ok(!html.includes("[!WARNING]"));
+});
