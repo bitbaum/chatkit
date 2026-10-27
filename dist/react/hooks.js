@@ -96,6 +96,17 @@ export function useStickToBottom(changes, grew) {
             selected = selected.parentElement;
         }
         selected ??= document.scrollingElement;
+        // Some DOM implementations (including server-side test environments) do
+        // not expose a scrolling element. A formerly scrollable thread can become
+        // unscrollable after its layout changes, so do not assume the fallback
+        // exists when resolving its replacement.
+        if (!selected) {
+            cleanup.current?.();
+            cleanup.current = null;
+            owner.current = null;
+            setPageScroll(false);
+            return;
+        }
         if (selected === owner.current)
             return;
         cleanup.current?.();
