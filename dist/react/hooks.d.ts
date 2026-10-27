@@ -9,18 +9,17 @@ export declare function useClipboard(resetMs?: number): {
     copy: (text: string) => void;
 };
 /**
- * Follow the conversation only while the reader is at the bottom, and offer a
- * way back once they are not. Pinned in a layout effect so the view settles
- * before the new token paints — in a passive effect the content lands first
- * and the scroll catches up, which reads as a shudder on every chunk.
- *
- * `grew` should change when a NEW turn is added (message count): sending is an
- * unambiguous "show me the reply", so it re-arms following.
+ * Follow the thread until the reader scrolls up. The scroll owner may be the
+ * thread, a bounded ancestor, or the document (a conversation embedded in a
+ * case page). Never scroll other ancestors as a side effect of following.
+ * `grew` counts new user turns: an arriving assistant turn is not permission
+ * to take the reader away from an older answer.
  */
 export declare function useStickToBottom(changes: DependencyList, grew: number): {
     scrollRef: RefObject<HTMLDivElement | null>;
     endRef: RefObject<HTMLDivElement | null>;
     following: boolean;
+    pageScroll: boolean;
     onScroll: () => void;
     jumpToBottom: () => void;
 };

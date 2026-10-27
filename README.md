@@ -15,7 +15,7 @@ interface that calls them.)
 ## Install
 
 ```sh
-pnpm add @bitbaum/chatkit@^0.13.0
+pnpm add @bitbaum/chatkit
 ```
 
 **Install releases from npm, never a commit or a branch.** A semver range is
@@ -508,3 +508,12 @@ track's title, creator and caption. The demo WAV is an original synthesized
 fixture; it is not a commercial track or a model-generated recording.
 
 The browser word-layout audit uses Unicode word boundaries. Chinese, Japanese and Korean may wrap between characters; those legal breaks are accepted while squeezed Latin words, including words embedded in CJK text, are still reported. Whole-page and chart overflow checks remain separate.
+
+### Scrolling in a page or panel
+
+`ChatThread` detects whether its own panel, an ancestor, or the page scrolls.
+Upward touch, wheel and keyboard gestures pause automatic following immediately,
+including close to the bottom. Status updates and incoming assistant turns keep
+the reading position. Sending a new user turn or choosing return-to-latest
+resumes following. Full-screen `ChatScreen` keeps its bounded scroll containment;
+embedded threads allow gestures to reach their surrounding page.

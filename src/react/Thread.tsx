@@ -379,9 +379,9 @@ export function ChatThread({
   labels?: Partial<ThreadLabels>;
 }) {
   const labels = { ...DEFAULT_THREAD_LABELS, ...labelOverrides };
-  const { scrollRef, endRef, following, onScroll, jumpToBottom } = useStickToBottom(
+  const { scrollRef, endRef, following, pageScroll, onScroll, jumpToBottom } = useStickToBottom(
     [messages.length, live?.text, live?.status, live?.steps?.length, stopped],
-    messages.length,
+    messages.filter((message) => message.role === "user").length,
   );
 
   if (loading) {
@@ -463,7 +463,7 @@ export function ChatThread({
       {!following && (
         <button
           type="button"
-          className="ck-jump"
+          className={`ck-jump${pageScroll ? " ck-jump-page" : ""}`}
           onClick={jumpToBottom}
           aria-label={labels.jump}
           title={labels.jump}

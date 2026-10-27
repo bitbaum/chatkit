@@ -1,3 +1,4 @@
+import { mountScrollFixture } from "./scroll.js";
 // The visual check: every part of the chat on one page, in light and dark.
 // `pnpm run demo` builds demo/dist/; open demo/index.html. Screenshot it at
 // 390px and at desktop width before calling a change to chatkit done.
@@ -386,3 +387,5 @@ for (const [id, props] of [
   const el = document.getElementById(id);
   if (el) createRoot(el).render(<Demo {...props} />);
 }
+
+mountScrollFixture();

@@ -462,7 +462,8 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  /* Embedded threads must allow gestures to reach the page scroll owner. */
+  overscroll-behavior: auto;
   padding: 0.5rem 0;
 }
 .ck-thread-inner {
@@ -720,6 +721,7 @@
 /* The thread scrolls the full width (the scrollbar sits at the screen's
    edge, and a swipe anywhere moves it); its column keeps a reading measure. */
 .ck-screen .ck-thread {
+  overscroll-behavior: contain;
   padding: var(--ck-top-inset, 0px) var(--ck-gutter) calc(var(--ck-bottom-inset, 0px) + 0.75rem);
   scroll-padding-top: var(--ck-top-inset, 0px);
   scroll-padding-bottom: var(--ck-bottom-inset, 0px);
@@ -1927,4 +1929,12 @@ details.ck-thinking[open] > summary svg {
   align-items: center;
   min-height: 44px;
   overflow-wrap: anywhere;
+}
+
+/* Embedded page threads keep the return-to-latest action in the viewport. */
+.ck-jump-page {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
 }
