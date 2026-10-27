@@ -1,5 +1,5 @@
 import { type ClipboardEvent } from "react";
-import { type Attachment, type AttachmentLimits, type AttachmentNotes, type StagedAttachment } from "../attachments.js";
+import { type Attachment, type AttachOptions, type AttachmentLimits, type AttachmentNotes, type AttachmentReader, type FileReadResult, type StagedAttachment } from "../attachments.js";
 export type AttachmentsController = {
     attachments: StagedAttachment[];
     /** Why something did not attach (too big, wrong type, too many). Never
@@ -22,7 +22,7 @@ export type AttachmentsController = {
  * are revoked on remove, clear and unmount (a preview never revoked is a leak
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
-export declare function useAttachments(limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>): AttachmentsController;
+export declare function useAttachments(options?: AttachOptions, notes?: Partial<AttachmentNotes>): AttachmentsController;
 export type ReadAttachment = {
     attachment: StagedAttachment;
     note?: undefined;
@@ -40,4 +40,17 @@ export type ReadAttachment = {
 export declare function readAttachmentFile(file: File, limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>, { preview }?: {
     preview?: boolean;
 }): Promise<ReadAttachment>;
+/**
+ * `readAttachmentFile`, with the app's own reader first. The reader may turn
+ * one file into several attachments (a PDF of slide pictures) or into text, or
+ * decline with `undefined`, in which case chatkit's reader decides. A reader
+ * that throws gives the "could not read" note, never an exception.
+ */
+export declare function readAttachmentFiles(file: File, limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>, options?: {
+    preview?: boolean;
+    readFile?: AttachmentReader;
+    images?: number;
+    room?: number;
+    progress?: (note: string) => void;
+}): Promise<FileReadResult>;
 //# sourceMappingURL=use-attachments.d.ts.map

@@ -233,3 +233,60 @@ test("sent bubble: the product's chips beside the pictures, a link when it has o
   assert.match(html, /<a href="\/listings\/1" class="ck-attach-file ck-turn-chip">/);
   assert.match(html, /Budget note/);
 });
+
+test("attach.readFile: the app's reader decides first, declines with undefined, errors become a note", async () => {
+  const { readAttachmentFiles } = await import("../dist/react/index.js");
+  const pdf = new File(["%PDF-1.4"], "deck.pdf", { type: "application/pdf" });
+  const seen = [];
+  const readFile = async (file, ctx) => {
+    seen.push({ images: ctx.images, room: ctx.room, max: ctx.limits.maxFiles });
+    ctx.progress("Reading…");
+    if (file.name === "boom.pdf") throw new Error("locked");
+    if (file.name !== "deck.pdf") return undefined;
+    return {
+      attachments: [
+        { kind: "image", name: "deck-1.jpg", mimeType: "image/jpeg", dataBase64: "AAAA" },
+        { kind: "image", name: "deck-2.jpg", mimeType: "image/jpeg", dataBase64: "BBBB" },
+        { kind: "text", name: "extra.txt", content: "x" },
+      ],
+      note: "Pages 1–8 of 17.",
+    };
+  };
+  const progress = [];
+  const got = await readAttachmentFiles(
+    pdf,
+    { maxFiles: 5 },
+    {},
+    {
+      readFile,
+      images: 1,
+      room: 2,
+      progress: (n) => progress.push(n),
+    },
+  );
+  assert.deepEqual(seen[0], { images: 1, room: 2, max: 5 });
+  assert.deepEqual(progress, ["Reading…"]);
+  assert.equal(got.note, "Pages 1–8 of 17.");
+  assert.equal(got.attachments.length, 2, "never more than the room left");
+
+  const boom = await readAttachmentFiles(
+    new File(["x"], "boom.pdf", { type: "application/pdf" }),
+    {},
+    {},
+    { readFile },
+  );
+  assert.deepEqual(boom, { attachments: [], note: "Could not read boom.pdf." });
+
+  // Declined: chatkit's own reader judges it, and a PDF is still refused
+  // without a reader of the app's.
+  const declined = await readAttachmentFiles(
+    new File(["x"], "other.pdf", { type: "application/pdf" }),
+    {},
+    {},
+    { readFile },
+  );
+  assert.equal(declined.attachments.length, 0);
+  assert.match(declined.note, /other\.pdf/);
+  const none = await readAttachmentFiles(pdf);
+  assert.match(none.note, /deck\.pdf/);
+});

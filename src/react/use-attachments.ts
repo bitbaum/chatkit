@@ -11,8 +11,12 @@ import {
   stripDataUrlBase64,
   toWire,
   type Attachment,
+  type AttachOptions,
   type AttachmentLimits,
   type AttachmentNotes,
+  type AttachmentReader,
+  type FileReadContext,
+  type FileReadResult,
   type StagedAttachment,
 } from "../attachments.js";
 
@@ -40,25 +44,32 @@ export type AttachmentsController = {
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
 export function useAttachments(
-  limits: Partial<AttachmentLimits> = {},
+  options: AttachOptions = {},
   notes: Partial<AttachmentNotes> = {},
 ): AttachmentsController {
-  const lim: AttachmentLimits = { ...DEFAULT_ATTACHMENT_LIMITS, ...limits };
+  const { readFile, ...given } = options;
+  const lim: AttachmentLimits = { ...DEFAULT_ATTACHMENT_LIMITS, ...given };
   const { maxFiles, maxImageBytes, maxTextChars, maxImageEdge } = lim;
-  // Mirrored in a ref so a new `notes` object every render does not rebuild
-  // every callback below.
+  // Mirrored in a ref so a new `notes` or `readFile` object every render does
+  // not rebuild every callback below.
   const say = useRef<AttachmentNotes>(DEFAULT_ATTACHMENT_NOTES);
+  const reader = useRef<AttachmentReader | undefined>(undefined);
   useEffect(() => {
     say.current = { ...DEFAULT_ATTACHMENT_NOTES, ...notes };
+    reader.current = readFile;
   });
   const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const previews = useRef<Set<string>>(new Set());
-  const count = useRef(0);
+  // The staged list, kept in a ref too: files are read one at a time and each
+  // read must see what the one before it staged.
+  const staged = useRef<StagedAttachment[]>([]);
+  const queue = useRef<Promise<void>>(Promise.resolve());
 
-  useEffect(() => {
-    count.current = attachments.length;
-  }, [attachments.length]);
+  const commit = useCallback((next: StagedAttachment[]) => {
+    staged.current = next;
+    setAttachments(next);
+  }, []);
 
   useEffect(() => {
     const urls = previews.current;
@@ -69,44 +80,54 @@ export function useAttachments(
   }, []);
 
   const add = useCallback(
-    (item: StagedAttachment) =>
-      setAttachments((prev) => {
-        if (prev.length >= maxFiles) return prev;
-        if (prev.some((p) => attachmentKey(p) === attachmentKey(item))) return prev;
-        return [...prev, item];
-      }),
-    [maxFiles],
+    (item: StagedAttachment) => {
+      const prev = staged.current;
+      if (prev.length >= maxFiles) return;
+      if (prev.some((p) => attachmentKey(p) === attachmentKey(item))) return;
+      commit([...prev, item]);
+    },
+    [commit, maxFiles],
   );
 
   const stage = useCallback(
-    (file: File) => {
+    async (file: File) => {
       const limits = { maxFiles, maxImageBytes, maxImageEdge, maxTextChars };
-      void readAttachmentFile(file, limits, say.current, { preview: true }).then((read) => {
-        if (read.note !== undefined) {
-          setNote(read.note);
-          return;
-        }
-        if (read.attachment.previewUrl) previews.current.add(read.attachment.previewUrl);
-        add(read.attachment);
+      const read = await readAttachmentFiles(file, limits, say.current, {
+        preview: true,
+        readFile: reader.current,
+        images: staged.current.filter((a) => a.kind === "image").length,
+        room: maxFiles - staged.current.length,
+        progress: setNote,
       });
+      setNote(read.note ?? null);
+      for (const item of read.attachments) {
+        if (item.previewUrl?.startsWith("blob:")) previews.current.add(item.previewUrl);
+        add(item);
+      }
     },
     [add, maxFiles, maxImageBytes, maxImageEdge, maxTextChars],
+  );
+
+  // One file at a time: a PDF that becomes pictures needs to know how many
+  // pictures the files before it left room for.
+  const enqueue = useCallback(
+    (file: File) => {
+      queue.current = queue.current.then(() => stage(file)).catch(() => undefined);
+    },
+    [stage],
   );
 
   const addFiles = useCallback(
     (files: FileList | File[] | null) => {
       if (!files) return;
       setNote(null);
-      const room = maxFiles - count.current;
-      if (room <= 0) {
+      if (maxFiles - staged.current.length <= 0) {
         setNote(say.current.tooMany(maxFiles));
         return;
       }
-      for (const file of Array.from(files).slice(0, room)) {
-        stage(file);
-      }
+      for (const file of Array.from(files)) enqueue(file);
     },
-    [maxFiles, stage],
+    [enqueue, maxFiles],
   );
 
   const addFromPaste = useCallback(
@@ -118,11 +139,11 @@ export function useAttachments(
       setNote(null);
       for (const item of images) {
         const file = item.getAsFile();
-        if (file) stage(file);
+        if (file) enqueue(file);
       }
       return true;
     },
-    [stage],
+    [enqueue],
   );
 
   const revoke = (a: StagedAttachment) => {
@@ -131,21 +152,20 @@ export function useAttachments(
     previews.current.delete(a.previewUrl);
   };
 
-  const remove = useCallback((key: string) => {
-    setAttachments((prev) => {
-      const target = prev.find((a) => attachmentKey(a) === key);
+  const remove = useCallback(
+    (key: string) => {
+      const target = staged.current.find((a) => attachmentKey(a) === key);
       if (target) revoke(target);
-      return prev.filter((a) => attachmentKey(a) !== key);
-    });
-  }, []);
+      commit(staged.current.filter((a) => attachmentKey(a) !== key));
+    },
+    [commit],
+  );
 
   const clear = useCallback(() => {
-    setAttachments((prev) => {
-      prev.forEach(revoke);
-      return [];
-    });
+    staged.current.forEach(revoke);
+    commit([]);
     setNote(null);
-  }, []);
+  }, [commit]);
 
   return {
     attachments,
@@ -227,6 +247,52 @@ export async function readAttachmentFile(
   } catch {
     return { note: say.unreadable(file.name) };
   }
+}
+
+/**
+ * `readAttachmentFile`, with the app's own reader first. The reader may turn
+ * one file into several attachments (a PDF of slide pictures) or into text, or
+ * decline with `undefined`, in which case chatkit's reader decides. A reader
+ * that throws gives the "could not read" note, never an exception.
+ */
+export async function readAttachmentFiles(
+  file: File,
+  limits: Partial<AttachmentLimits> = {},
+  notes: Partial<AttachmentNotes> = {},
+  options: {
+    preview?: boolean;
+    readFile?: AttachmentReader;
+    images?: number;
+    room?: number;
+    progress?: (note: string) => void;
+  } = {},
+): Promise<FileReadResult> {
+  const full: AttachmentLimits = { ...DEFAULT_ATTACHMENT_LIMITS, ...limits };
+  const say = { ...DEFAULT_ATTACHMENT_NOTES, ...notes };
+  if (options.readFile) {
+    const ctx: FileReadContext = {
+      limits: full,
+      notes: say,
+      images: options.images ?? 0,
+      room: options.room ?? full.maxFiles,
+      progress: options.progress ?? (() => undefined),
+    };
+    try {
+      const mine = await options.readFile(file, ctx);
+      if (mine) {
+        return {
+          attachments: mine.attachments.slice(0, Math.max(0, ctx.room)),
+          ...(mine.note ? { note: mine.note } : {}),
+        };
+      }
+    } catch {
+      return { attachments: [], note: say.unreadable(file.name) };
+    }
+  }
+  const one = await readAttachmentFile(file, full, say, { preview: options.preview });
+  return one.note !== undefined
+    ? { attachments: [], note: one.note }
+    : { attachments: [one.attachment] };
 }
 
 function readAs(file: File, as: "text" | "dataUrl"): Promise<string> {

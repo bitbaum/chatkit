@@ -1,7 +1,7 @@
 import { type ReactNode, type Ref, type RefObject } from "react";
 import { type ComposerMode, type ComposerSendResult } from "../composer.js";
 import { type DictationProblem } from "../dictation.js";
-import { type Attachment, type AttachmentLimits, type AttachmentNotes } from "../attachments.js";
+import { type Attachment, type AttachOptions, type AttachmentNotes } from "../attachments.js";
 import { type UseDictationOptions } from "./use-dictation.js";
 import { type AttachExtra, type AttachMenuLabels } from "./AttachMenu.js";
 export type ComposerLabels = {
@@ -74,9 +74,11 @@ export type ComposerProps = {
      *  message will be queued — the next thought is typed while the last one is
      *  still being answered, never held until a spinner stops. */
     queue?: boolean;
-    /** Attachments on, optionally with the app's own limits. Off by default:
-     *  only offer what the app's API accepts. */
-    attach?: boolean | Partial<AttachmentLimits>;
+    /** Attachments on, optionally with the app's own limits and `readFile`, its
+     *  own reading of a file chatkit would refuse or read differently (a PDF —
+     *  see `@bitbaum/chatkit/pdf`). Off by default: only offer what the app's
+     *  API accepts. */
+    attach?: boolean | AttachOptions;
     /** The app's own rows in the same attach sheet, under Camera · Photos ·
      *  Files (one of the person's things, a saved note). With `attach: false`
      *  the paperclip opens a sheet of only these rows. */
