@@ -62,11 +62,11 @@ export declare function fitWithin(width: number, height: number, maxEdge: number
 export declare function dataUrlBytes(dataUrl: string): number;
 export declare function isImageMime(mime: string): boolean;
 /**
- * Whether a file is text the model can read inline. The Files picker accepts
- * anything — that is what keeps it the phone's real document browser instead
- * of a camera chooser — so the decision about what can actually be sent moves
- * here, after the pick, where a PDF gets a sentence instead of being read as
- * binary noise and pasted into a prompt.
+ * Whether a file is text the model can read inline. The Files picker asks for
+ * documents (FILES_ACCEPT) but a picker may still hand over anything, so the
+ * decision about what can actually be sent stays here, after the pick, where
+ * a PDF gets a sentence instead of being read as binary noise and pasted into
+ * a prompt.
  */
 export declare function isTextFile(name: string, mime: string): boolean;
 /**
@@ -80,10 +80,24 @@ export declare function isTextFile(name: string, mime: string): boolean;
  * - camera: `capture` opens the camera straight away.
  * - photos: `image/*` alone opens the system photo picker (Screenshots is its
  *   first album), not a chooser.
- * - files: no `accept` at all opens the real document browser — Downloads,
- *   Drive, any folder. The type check happens after, in `isTextFile`.
+ * - files: `FILES_ACCEPT`, documents only (PDF and text), opens the real
+ *   document browser — Downloads, Drive, any folder. It used to be no `accept`
+ *   at all, which Chrome answered with that browser but Brave on Android
+ *   (2026-10-27, OrangeCat) answered with the capture chooser above, Files
+ *   missing: an empty `accept` means "anything", and "anything" includes the
+ *   camera and the recorder. Naming only document types takes every capture
+ *   app off the table on both. The type check still happens after the pick,
+ *   in `isTextFile` and the app's own reader (`@bitbaum/chatkit/pdf`).
  */
 export type AttachSource = "camera" | "photos" | "files";
+/**
+ * What the Files source asks the phone for: PDFs and text, one "document"
+ * family. MIME types first (what Android and iOS map to their pickers), then
+ * the extensions a desktop file dialog filters by. Only types every platform
+ * knows: an extension a phone cannot map can widen the request back to
+ * "anything" — the capture chooser this exists to avoid.
+ */
+export declare const FILES_ACCEPT = "application/pdf,text/*,application/json,.pdf,.txt,.md,.markdown,.csv,.tsv,.json";
 export declare const ATTACH_SOURCE_INPUT: Record<AttachSource, {
     accept?: string;
     capture?: "environment";

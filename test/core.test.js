@@ -298,14 +298,18 @@ test("recordings: too large is a sentence that names the limit, and the limit fi
 test("attach: three sources, and never one mixed accept — that is what hid the screenshots", () => {
   assert.deepEqual(ATTACH_SOURCE_INPUT.camera, { accept: "image/*", capture: "environment" });
   assert.deepEqual(ATTACH_SOURCE_INPUT.photos, { accept: "image/*" });
-  // No accept at all is what opens the phone's real document browser.
-  assert.equal(ATTACH_SOURCE_INPUT.files.accept, undefined);
+  // Documents only: an empty accept ("anything") gave Brave on Android the
+  // capture chooser with no file browser (2026-10-27).
+  assert.ok(ATTACH_SOURCE_INPUT.files.accept);
+  assert.deepEqual(acceptFamilies(ATTACH_SOURCE_INPUT.files.accept), ["document"]);
+  assert.match(ATTACH_SOURCE_INPUT.files.accept, /application\/pdf/);
+  assert.doesNotMatch(ATTACH_SOURCE_INPUT.files.accept, /\*\/\*|image|audio|video/);
   for (const src of Object.values(ATTACH_SOURCE_INPUT)) {
-    assert.ok(!src.accept || !src.accept.includes(","), "one type family per input");
+    assert.ok(acceptFamilies(src.accept ?? "").length <= 1, "one type family per input");
   }
 });
 
-test("attach: Files takes anything, so text is decided after the pick", () => {
+test("attach: whatever Files hands over, text is decided after the pick", () => {
   assert.equal(isTextFile("notes.md", ""), true);
   assert.equal(isTextFile("trace.log", "application/octet-stream"), true);
   assert.equal(isTextFile("data.json", "application/json"), true);

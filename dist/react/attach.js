@@ -11,6 +11,6 @@
  * `chatkit-check-file-inputs`.
  */
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
-export { ATTACH_SOURCE_INPUT, acceptFamilies, isImageMime, isTextFile, } from "../attachments.js";
+export { ATTACH_SOURCE_INPUT, FILES_ACCEPT, acceptFamilies, isImageMime, isTextFile, } from "../attachments.js";
 export { shrinkImage } from "../image.js";
 //# sourceMappingURL=attach.js.map

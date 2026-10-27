@@ -613,9 +613,12 @@ Photos, Files — each its own file input. One input with a mixed `accept`
 apps (Camera, Camera, Recorder, "Photos & Videos"), where the screenshot you
 came to send is three levels down and the file browser is not offered at all.
 `ATTACH_SOURCE_INPUT` is the SSOT: Camera captures, Photos opens the system
-photo picker, Files has no `accept` and opens the real document browser.
-Because Files takes anything, `isTextFile` decides afterwards what can be read
-inline; a PDF gets a sentence, not a prompt full of bytes. With a mouse the
+photo picker, Files asks for documents only (`FILES_ACCEPT`: PDF and text)
+and opens the real document browser. It used to ask for nothing, which Brave
+on Android answered with the capture chooser and no Files at all: an empty
+`accept` means "anything", and anything includes the camera. A picker can
+still hand over other files, so `isTextFile` and `@bitbaum/chatkit/pdf`
+decide afterwards what can be read. With a mouse the
 paperclip opens the file dialog directly — on a desktop all three are the
 same dialog. A box that is not chatkit's composer renders `<AttachMenu
 onFiles={…} />` rather than a bare `<input type="file">`. An app with more to
