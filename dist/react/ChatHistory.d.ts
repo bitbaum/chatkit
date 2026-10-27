@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { type ConversationSummary } from "../conversations.js";
 import type { ChatAppLabels } from "./ChatApp.js";
 export type ChatHistoryProps = {
@@ -16,6 +17,11 @@ export type ChatHistoryProps = {
     search?: (list: ConversationSummary[], query: string) => ConversationSummary[];
     locale?: string;
     labels: ChatAppLabels;
+    /** The product's own line under the search box, above the chats (e.g.
+     *  "Only in this browser · Sign in to keep it"). */
+    slot?: ReactNode;
+    /** Shown instead of `labels.noChats` when there are no chats yet. */
+    empty?: ReactNode;
 };
 /**
  * The chat list — the same in every product: New chat, a search box, the
@@ -24,5 +30,5 @@ export type ChatHistoryProps = {
  * actions, Rename and Delete, as two equal cells under it. A delete asks
  * once, in the row.
  */
-export declare function ChatHistory({ conversations, state, activeId, busyIds, onOpen, onNew, onRename, onRemove, onRetry, onClose, search, locale, labels, }: ChatHistoryProps): import("react").JSX.Element;
+export declare function ChatHistory({ conversations, state, activeId, busyIds, onOpen, onNew, onRename, onRemove, onRetry, onClose, search, locale, labels, slot, empty, }: ChatHistoryProps): import("react").JSX.Element;
 //# sourceMappingURL=ChatHistory.d.ts.map

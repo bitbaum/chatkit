@@ -21,6 +21,20 @@ export const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels = {
   sources: { camera: "Camera", photos: "Photos", files: "Files" },
 };
 
+/**
+ * One of the app's own rows in the attach sheet, under Camera · Photos ·
+ * Files: an icon, what it adds (`label`), an optional second line. Every row
+ * has this one anatomy, so a product's "Your things" reads as part of the
+ * same sheet, not a second menu. Picking a row closes the sheet first.
+ */
+export type AttachExtra = {
+  id: string;
+  label: string;
+  detail?: string;
+  icon?: ReactNode;
+  onPick: () => void;
+};
+
 const SOURCES: readonly AttachSource[] = ["camera", "photos", "files"];
 const ICONS: Record<AttachSource, () => React.JSX.Element> = {
   camera: IconCamera,
@@ -53,6 +67,7 @@ export function AttachMenu({
   sources = SOURCES,
   trigger,
   extra,
+  rows,
   onOpenChange,
 }: {
   onFiles: (files: FileList | null) => void;
@@ -68,6 +83,10 @@ export function AttachMenu({
    *  sheet opens on every pointer. A row that should close the sheet calls
    *  the `close` it is given. */
   extra?: (close: () => void) => ReactNode;
+  /** The app's rows as data — drawn with one anatomy (see `AttachExtra`).
+   *  With them the sheet opens on every pointer; with no `sources` it holds
+   *  only them. */
+  rows?: readonly AttachExtra[];
   onOpenChange?: (open: boolean) => void;
 }) {
   const inputs = useRef<Partial<Record<AttachSource, HTMLInputElement | null>>>({});
@@ -81,8 +100,9 @@ export function AttachMenu({
     close();
     inputs.current[source]?.click();
   };
+  const hasRows = Boolean(extra) || (rows?.length ?? 0) > 0;
   const open = () => {
-    if (extra || (sources.length > 1 && prefersSheet())) setOpen(true);
+    if (hasRows || (sources.length > 1 && prefersSheet())) setOpen(true);
     // A mouse gets the broadest picker offered: Files when it is one of the
     // sources, else the last one (Photos, for an image uploader).
     else pick(sources.includes("files") ? "files" : sources[sources.length - 1]!);
@@ -119,24 +139,50 @@ export function AttachMenu({
         {trigger ?? <IconPaperclip />}
       </button>
       <Sheet open={sheetOpen} onClose={close} title={labels.title} closeLabel={labels.close}>
-        <div className="ck-attach-sources">
-          {sources.map((source) => {
-            const Icon = ICONS[source];
-            return (
+        {sources.length > 0 && (
+          <div className="ck-attach-sources">
+            {sources.map((source) => {
+              const Icon = ICONS[source];
+              return (
+                <button
+                  key={source}
+                  type="button"
+                  className="ck-attach-source"
+                  data-ck-source={source}
+                  onClick={() => pick(source)}
+                >
+                  <Icon />
+                  <span>{labels.sources[source]}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {hasRows && (
+          <div className={sources.length > 0 ? "ck-sheet-extra" : "ck-sheet-extra ck-sheet-only"}>
+            {rows?.map((row) => (
               <button
-                key={source}
+                key={row.id}
                 type="button"
-                className="ck-attach-source"
-                data-ck-source={source}
-                onClick={() => pick(source)}
+                className="ck-attach-extra"
+                data-ck-extra={row.id}
+                onClick={() => {
+                  close();
+                  row.onPick();
+                }}
               >
-                <Icon />
-                <span>{labels.sources[source]}</span>
+                <span className="ck-attach-extra-icon" aria-hidden>
+                  {row.icon ?? <IconPaperclip />}
+                </span>
+                <span className="ck-attach-extra-text">
+                  <span className="ck-truncate">{row.label}</span>
+                  {row.detail && <small className="ck-truncate">{row.detail}</small>}
+                </span>
               </button>
-            );
-          })}
-        </div>
-        {extra && <div className="ck-sheet-extra">{extra(close)}</div>}
+            ))}
+            {extra?.(close)}
+          </div>
+        )}
       </Sheet>
     </>
   );

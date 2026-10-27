@@ -11,7 +11,7 @@
  * `chatkit-check-file-inputs`.
  */
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
-export type { AttachMenuLabels } from "./AttachMenu.js";
+export type { AttachExtra, AttachMenuLabels } from "./AttachMenu.js";
 export {
   ATTACH_SOURCE_INPUT,
   acceptFamilies,

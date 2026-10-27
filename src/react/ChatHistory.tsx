@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   filterConversations,
   formatConversationDate,
@@ -26,6 +26,11 @@ export type ChatHistoryProps = {
   search?: (list: ConversationSummary[], query: string) => ConversationSummary[];
   locale?: string;
   labels: ChatAppLabels;
+  /** The product's own line under the search box, above the chats (e.g.
+   *  "Only in this browser · Sign in to keep it"). */
+  slot?: ReactNode;
+  /** Shown instead of `labels.noChats` when there are no chats yet. */
+  empty?: ReactNode;
 };
 
 /**
@@ -49,6 +54,8 @@ export function ChatHistory({
   search = filterConversations,
   locale,
   labels,
+  slot,
+  empty,
 }: ChatHistoryProps) {
   const [query, setQuery] = useState("");
   const [armed, setArmed] = useState<string | null>(null);
@@ -102,6 +109,7 @@ export function ChatHistory({
           enterKeyHint="search"
         />
       </label>
+      {slot && <div className="ck-history-slot">{slot}</div>}
 
       <div className="ck-history-list">
         {state === "loading" && conversations.length === 0 ? (
@@ -116,7 +124,11 @@ export function ChatHistory({
             </button>
           </div>
         ) : conversations.length === 0 ? (
-          <p className="ck-history-empty">{labels.noChats}</p>
+          empty ? (
+            <div className="ck-history-empty">{empty}</div>
+          ) : (
+            <p className="ck-history-empty">{labels.noChats}</p>
+          )
         ) : groups.length === 0 ? (
           <p className="ck-history-empty">{labels.noMatch(query.trim())}</p>
         ) : (

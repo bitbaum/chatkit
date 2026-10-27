@@ -1,14 +1,15 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, } from "react";
 import { localConversationStore } from "../stores.js";
 import { ChatScreen } from "./Screen.js";
 import { ChatStarters, ChatThread, } from "./Thread.js";
 import { Composer } from "./Composer.js";
+import { readAttachmentFile } from "./use-attachments.js";
 import { ChatHistory } from "./ChatHistory.js";
 import { useViewportHeight } from "./hooks.js";
 import { IconGhost, IconMenu, IconMore, IconNewChat, IconX } from "./icons.js";
-import { useChatApp } from "./use-chat-app.js";
+import { useChatApp, } from "./use-chat-app.js";
 export const DEFAULT_CHAT_APP_LABELS = {
     chats: "Chats",
     openChats: "Open your chats",
@@ -45,6 +46,23 @@ export const DEFAULT_CHAT_APP_LABELS = {
         open: "That chat did not open. Try again.",
     },
 };
+/** The words a `?q=`-style link carries, and the address without them. Pure. */
+export function takeDeepLink(href, param) {
+    let url;
+    try {
+        url = new URL(href);
+    }
+    catch {
+        return null;
+    }
+    const raw = url.searchParams.get(param);
+    if (raw === null)
+        return null;
+    url.searchParams.delete(param);
+    const text = raw.trim().slice(0, DEEP_LINK_MAX);
+    return { text, href: url.toString() };
+}
+const DEEP_LINK_MAX = 4000;
 function useMediaQuery(query) {
     const [match, setMatch] = useState(false);
     useEffect(() => {
@@ -70,13 +88,23 @@ let fallbackStore = null;
  * `store` that keeps chats (or nothing: the device then keeps them) — plus
  * its words. Everything a person sees and does is the same in every product.
  */
-export function ChatApp({ transport, store: givenStore, placeholder = "Ask anything", name = "", makeTitle, starters, startersTitle, empty, composer, thread, footnote, fill = "viewport", temporaryChats = true, onShare, conversationId, onConversationChange, rememberKey = "ck-chat:open", search, headerStart, headerEnd, locale, railQuery = "(min-width: 64rem)", labels: labelOverrides, className, }) {
+export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStore, placeholder = "Ask anything", name = "", makeTitle, starters, startersTitle, empty, composer, thread, footnote, fill = "viewport", temporaryChats = true, onShare, conversationId, onConversationChange, rememberKey = "ck-chat:open", search, headerStart, headerEnd, locale, railQuery = "(min-width: 64rem)", labels: labelOverrides, className, initialMessage, deepLinkParam, deepLinkAutoSend = false, stopKeepsPartial, failureMessage, onTemporaryEnd, chipsFor, historySlot, historyEmpty, }, ref) {
     const labels = {
         ...DEFAULT_CHAT_APP_LABELS,
         ...labelOverrides,
         problems: { ...DEFAULT_CHAT_APP_LABELS.problems, ...labelOverrides?.problems },
     };
     const store = useMemo(() => givenStore ?? (fallbackStore ??= localConversationStore()), [givenStore]);
+    // What the page arrived with, read once: a message handed over, or a
+    // `?q=` link. Either starts a new chat, so the reload's chat is not reopened.
+    const [arrival] = useState(() => {
+        if (initialMessage)
+            return initialMessage;
+        if (!deepLinkParam || typeof window === "undefined")
+            return null;
+        const link = takeDeepLink(window.location.href, deepLinkParam);
+        return link?.text ? { text: link.text, send: deepLinkAutoSend } : null;
+    });
     const app = useChatApp({
         store,
         transport,
@@ -84,7 +112,67 @@ export function ChatApp({ transport, store: givenStore, placeholder = "Ask anyth
         conversationId,
         onConversationChange,
         rememberKey,
+        stopKeepsPartial,
+        failureMessage,
+        onTemporaryEnd,
+        restore: !arrival,
     });
+    const composerRef = useRef(null);
+    const attachLimits = typeof composer?.attach === "object" ? composer.attach : {};
+    const fillBox = (text, files) => {
+        const box = composerRef.current;
+        if (!box)
+            return;
+        box.setText(text);
+        if (files && files.length > 0)
+            box.addFiles([...files]);
+        box.focus();
+    };
+    const sendFor = async (text, given = [], options) => {
+        await app.whenReady();
+        const files = given.filter((a) => typeof File !== "undefined" && a instanceof File);
+        const wire = given.filter((a) => !(typeof File !== "undefined" && a instanceof File));
+        const read = await Promise.all(files.map((f) => readAttachmentFile(f, attachLimits, composer?.labels?.attachNotes)));
+        if (read.some((r) => r.note !== undefined)) {
+            // One file cannot go: send nothing behind the person's back. The box
+            // gets the words and the files, and says why (the composer's own note).
+            if (options?.newChat)
+                app.newChat();
+            fillBox(text, files);
+            return false;
+        }
+        const attachments = [...wire, ...read.map((r) => stripPreview(r.attachment))];
+        return app.send(text, attachments, options);
+    };
+    const handle = {
+        send: sendFor,
+        fill: fillBox,
+        focus: () => composerRef.current?.focus(),
+        newChat: app.newChat,
+        openConversation: app.open,
+    };
+    useImperativeHandle(ref, () => handle);
+    // The arrival, once — StrictMode's rehearsal mount included (`taken` is
+    // kept across it), and only after the list is in so nothing moves it.
+    const taken = useRef(false);
+    useEffect(() => {
+        if (!app.ready || !arrival || taken.current)
+            return;
+        taken.current = true;
+        if (deepLinkParam && !initialMessage && typeof window !== "undefined") {
+            const link = takeDeepLink(window.location.href, deepLinkParam);
+            if (link)
+                window.history.replaceState(window.history.state, "", link.href);
+        }
+        if (arrival.send === false) {
+            app.newChat();
+            fillBox(arrival.text, (arrival.attachments ?? []).filter((a) => typeof File !== "undefined" && a instanceof File));
+        }
+        else {
+            void sendFor(arrival.text, arrival.attachments, { newChat: true, chips: arrival.chips });
+        }
+        // `arrival` is fixed at mount; the rest is read when it fires.
+    }, [app.ready]);
     const rootRef = useRef(null);
     useViewportHeight(rootRef, fill === "viewport");
     const wide = useMediaQuery(railQuery);
@@ -122,7 +210,7 @@ export function ChatApp({ transport, store: givenStore, placeholder = "Ask anyth
         }, onNew: () => {
             setDrawerOpen(false);
             app.newChat();
-        }, onRename: (id, t) => void app.rename(id, t), onRemove: (id) => void app.remove(id), onRetry: app.reloadList, onClose: wide ? undefined : () => setDrawerOpen(false), search: search, locale: locale, labels: labels }));
+        }, onRename: (id, t) => void app.rename(id, t), onRemove: (id) => void app.remove(id), onRetry: app.reloadList, onClose: wide ? undefined : () => setDrawerOpen(false), search: search, locale: locale, labels: labels, slot: historySlot, empty: historyEmpty }));
     const [renaming, setRenaming] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const menu = [];
@@ -155,8 +243,12 @@ export function ChatApp({ transport, store: givenStore, placeholder = "Ask anyth
                             setDeleting(false);
                             void app.remove(current.id);
                         }, children: labels.delete }), _jsx("button", { type: "button", onClick: () => setDeleting(false), children: labels.cancel })] })] })) : null;
-    const dock = (_jsxs(_Fragment, { children: [above, app.problem && (_jsxs("p", { className: "ck-problem", role: "status", children: [_jsx("span", { children: labels.problems[app.problem] }), _jsx("button", { type: "button", className: "ck-problem-x", onClick: app.clearProblem, "aria-label": labels.dismiss, children: _jsx(IconX, {}) })] })), app.queued.length > 0 && (_jsx("ul", { className: "ck-app-queue", "aria-label": labels.queued, children: app.queued.map((q) => (_jsxs("li", { children: [_jsxs("span", { className: "ck-app-queue-text", children: [_jsx("span", { className: "ck-truncate", children: q.text }), _jsx("small", { children: labels.queued })] }), _jsx("button", { type: "button", className: "ck-icon-btn", onClick: () => app.unqueue(q.id), "aria-label": labels.unqueue(q.text), title: labels.unqueue(q.text), children: _jsx(IconX, {}) })] }, q.id))) })), _jsx(Composer, { placeholder: placeholder, attach: true, stagedPosition: "above", ...composer, onSend: (text, attachments) => app.send(text, attachments), sending: app.busy, onStop: app.stop, queue: true })] }));
+    const dock = (_jsxs(_Fragment, { children: [above, app.problem && (_jsxs("p", { className: "ck-problem", role: "status", children: [_jsx("span", { children: labels.problems[app.problem] }), _jsx("button", { type: "button", className: "ck-problem-x", onClick: app.clearProblem, "aria-label": labels.dismiss, children: _jsx(IconX, {}) })] })), app.queued.length > 0 && (_jsx("ul", { className: "ck-app-queue", "aria-label": labels.queued, children: app.queued.map((q) => (_jsxs("li", { children: [_jsxs("span", { className: "ck-app-queue-text", children: [_jsx("span", { className: "ck-truncate", children: q.text }), _jsx("small", { children: labels.queued })] }), _jsx("button", { type: "button", className: "ck-icon-btn", onClick: () => app.unqueue(q.id), "aria-label": labels.unqueue(q.text), title: labels.unqueue(q.text), children: _jsx(IconX, {}) })] }, q.id))) })), _jsx(Composer, { placeholder: placeholder, attach: true, stagedPosition: "above", ...composer, handleRef: composerRef, onSend: (text, attachments) => {
+                    const chips = chipsFor?.({ text, attachments });
+                    return app.send(text, attachments, chips ? { chips } : undefined);
+                }, sending: app.busy, onStop: app.stop, queue: true })] }));
     const lastFailed = app.messages[app.messages.length - 1]?.failed;
+    const renderFooter = thread?.renderFooter;
     const onFeedback = thread?.onFeedback;
     const cls = ["ck-app"];
     if (fill === "viewport")
@@ -168,8 +260,22 @@ export function ChatApp({ transport, store: givenStore, placeholder = "Ask anyth
     return (_jsxs("div", { ref: rootRef, className: cls.join(" "), children: [wide ? (_jsx("aside", { className: "ck-app-rail", children: history })) : (_jsx("dialog", { ref: drawerRef, className: "ck-app-drawer", "aria-label": labels.chats, onClose: () => setDrawerOpen(false), onClick: (e) => {
                     if (e.target === e.currentTarget)
                         setDrawerOpen(false);
-                }, children: drawerOpen && _jsx("div", { className: "ck-app-drawer-panel", children: history }) })), _jsx(ChatScreen, { fill: "parent", className: "ck-app-screen", header: header, composer: dock, footnote: footnote, renderers: thread?.renderers, children: _jsx(ChatThread, { messages: app.messages, loading: app.loading, live: app.live, stopped: app.stopped, onStop: app.stop, onRetry: lastFailed || app.stopped ? app.retry : undefined, onReply: (text) => void app.send(text), renderLink: thread?.renderLink, renderFooter: thread?.renderFooter, speaker: thread?.speaker, share: thread?.share, onFeedback: onFeedback ? (f) => onFeedback({ ...f, conversationId: app.stored }) : undefined, labels: thread?.labels, empty: empty ??
-                        (starters && starters.length > 0 ? (_jsx(ChatStarters, { starters: starters, title: startersTitle, onPick: (text) => void app.send(text) })) : (_jsx("div", { className: "ck-starters", children: startersTitle && _jsx("div", { className: "ck-starters-title", children: startersTitle }) }))) }, app.activeId ?? (app.temporary ? "temporary" : "new")) })] }));
+                }, children: drawerOpen && _jsx("div", { className: "ck-app-drawer-panel", children: history }) })), _jsx(ChatScreen, { fill: "parent", className: "ck-app-screen", header: header, composer: dock, footnote: footnote, renderers: thread?.renderers, children: _jsx(ChatThread, { messages: app.messages, loading: app.loading, live: app.live, stopped: app.stopped, onStop: app.stop, onRetry: lastFailed || app.stopped ? app.retry : undefined, onReply: (text) => void app.send(text), renderLink: thread?.renderLink, renderFooter: renderFooter
+                        ? (m, info) => renderFooter(m, {
+                            ...info,
+                            send: (text, options) => void app.send(text, [], options),
+                            fill: (text) => fillBox(text),
+                        })
+                        : undefined, speaker: thread?.speaker, share: thread?.share, onFeedback: onFeedback ? (f) => onFeedback({ ...f, conversationId: app.stored }) : undefined, labels: thread?.labels, empty: empty ??
+                        (starters && starters.length > 0 ? (_jsx(ChatStarters, { starters: starters, title: startersTitle, onPick: (text) => void app.send(text) })) : (_jsx("div", { className: "ck-starters", children: startersTitle && _jsx("div", { className: "ck-starters-title", children: startersTitle }) }))), children: thread?.after }, app.activeId ?? (app.temporary ? "temporary" : "new")) })] }));
+});
+/** The wire shape only: a preview URL never leaves the page. */
+function stripPreview(a) {
+    if (!("previewUrl" in a))
+        return a;
+    const { previewUrl: _preview, ...wire } = a;
+    void _preview;
+    return wire;
 }
 /** The header's "…": a small menu under the button. Escape and a tap
  *  outside close it and give focus back to the button; arrows move. */

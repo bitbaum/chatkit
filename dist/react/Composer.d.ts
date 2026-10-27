@@ -1,9 +1,9 @@
-import { type ReactNode, type RefObject } from "react";
+import { type ReactNode, type Ref, type RefObject } from "react";
 import { type ComposerMode, type ComposerSendResult } from "../composer.js";
 import { type DictationProblem } from "../dictation.js";
 import { type Attachment, type AttachmentLimits, type AttachmentNotes } from "../attachments.js";
 import { type UseDictationOptions } from "./use-dictation.js";
-import { type AttachMenuLabels } from "./AttachMenu.js";
+import { type AttachExtra, type AttachMenuLabels } from "./AttachMenu.js";
 export type ComposerLabels = {
     send: string;
     stop: string;
@@ -28,6 +28,17 @@ export type ComposerLabels = {
 };
 export declare const DEFAULT_COMPOSER_LABELS: ComposerLabels;
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
+/** What a page can do to a composer it does not type into (`handleRef`). */
+export type ComposerHandle = {
+    /** Replace the draft with these words. */
+    setText: (text: string) => void;
+    /** Stage files exactly as the paperclip would (limits, shrinking, notes). */
+    addFiles: (files: FileList | File[]) => void;
+    /** Put the cursor in the box. */
+    focus: () => void;
+    /** Press Send: what `Enter` does, with the same checks. */
+    submit: () => Promise<void>;
+};
 /** Overrides: every label is optional, including each dictation and attachment note. */
 export type ComposerLabelOverrides = Partial<Omit<ComposerLabels, "dictation" | "attachNotes" | "attachMenu">> & {
     dictation?: Partial<ComposerLabels["dictation"]>;
@@ -66,6 +77,12 @@ export type ComposerProps = {
     /** Attachments on, optionally with the app's own limits. Off by default:
      *  only offer what the app's API accepts. */
     attach?: boolean | Partial<AttachmentLimits>;
+    /** The app's own rows in the same attach sheet, under Camera · Photos ·
+     *  Files (one of the person's things, a saved note). With `attach: false`
+     *  the paperclip opens a sheet of only these rows. */
+    attachExtras?: readonly AttachExtra[];
+    /** Fill, stage, focus or send from outside the box (see `ComposerHandle`). */
+    handleRef?: Ref<ComposerHandle>;
     /** The microphone. On by default. Pass `transcribeUrl` (or `transcribe`) so
      *  it still works where the browser recogniser does not — that fallback is
      *  what makes the mic never a dead button. `false` only for a surface that
@@ -106,5 +123,5 @@ export type ComposerProps = {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, stagedPosition, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
+export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, attachExtras, handleRef, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, stagedPosition, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
 //# sourceMappingURL=Composer.d.ts.map

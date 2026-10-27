@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import type { Attachment, AttachmentLimits } from "../attachments.js";
 import type { ConversationStore, ConversationSummary } from "../conversations.js";
 import { localConversationStore } from "../stores.js";
 import type { Speaker } from "../speech.js";
@@ -10,16 +19,24 @@ import {
   ChatStarters,
   ChatThread,
   type ChatMessageData,
+  type FooterInfo,
+  type MessageChip,
   type Starter,
   type ThreadLabels,
 } from "./Thread.js";
-import { Composer, type ComposerProps } from "./Composer.js";
+import { Composer, type ComposerHandle, type ComposerProps } from "./Composer.js";
+import { readAttachmentFile } from "./use-attachments.js";
 import { ChatHistory } from "./ChatHistory.js";
 import { useViewportHeight } from "./hooks.js";
 import type { RenderLink } from "./Markdown.js";
 import type { RichRenderers } from "./renderers.js";
 import { IconGhost, IconMenu, IconMore, IconNewChat, IconX } from "./icons.js";
-import { useChatApp, type ChatAppProblem, type ChatTransport } from "./use-chat-app.js";
+import {
+  useChatApp,
+  type ChatAppProblem,
+  type ChatTransport,
+  type SendOptions,
+} from "./use-chat-app.js";
 
 export type ChatAppLabels = {
   chats: string;
@@ -93,6 +110,49 @@ export const DEFAULT_CHAT_APP_LABELS: ChatAppLabels = {
   },
 };
 
+/**
+ * What a page can do to the chat it holds (`<ChatApp ref={chat}>`): send for
+ * the person ("Check this", `/chat?q=`, a message handed over from a home
+ * box), put words in the box for them to finish, and move between chats.
+ */
+export type ChatAppHandle = {
+  /**
+   * Send now, exactly as if typed and sent: queued behind a running answer,
+   * a new chat created when none is open (or always, with `newChat`). Files
+   * are read like the paperclip's (limits, shrinking); if one cannot be
+   * attached, nothing is sent — the words and files go into the box with the
+   * reason, for the person to decide. Resolves whether it was sent.
+   */
+  send: (
+    text: string,
+    attachments?: readonly (Attachment | File)[],
+    options?: SendOptions,
+  ) => Promise<boolean>;
+  /** Put words (and files) in the box and the cursor after them; nothing is sent. */
+  fill: (text: string, files?: readonly File[]) => void;
+  focus: () => void;
+  newChat: () => void;
+  openConversation: (id: string) => void;
+};
+
+/** A message the page arrives with (see `initialMessage`). */
+export type InitialMessage = {
+  text: string;
+  /** Pictures and files with it: `File`s as picked, or wire attachments. */
+  attachments?: readonly (Attachment | File)[];
+  chips?: readonly MessageChip[];
+  /** Send it (the default), or only put it in the box (`false`). */
+  send?: boolean;
+};
+
+/** What `thread.renderFooter` gets beside the message. */
+export type ChatAppFooterInfo = FooterInfo & {
+  /** Send for the person — a chip whose label differs from what it says. */
+  send: (text: string, options?: SendOptions) => void;
+  /** Put words in the box for the person to finish. */
+  fill: (text: string) => void;
+};
+
 export type ChatAppProps = {
   /** Send a turn and resolve with the answer (stream through `turn.update`). */
   transport: ChatTransport;
@@ -111,11 +171,13 @@ export type ChatAppProps = {
   /** Composer options: `voice` (give it `transcribeUrl`), `attach` (on by
    *  default; `false` only when the product's API takes no files), `tools`,
    *  `labels`… Sending, Stop and the queue are ChatApp's. */
-  composer?: Partial<Omit<ComposerProps, "onSend" | "sending" | "onStop" | "queue">>;
+  composer?: Partial<Omit<ComposerProps, "onSend" | "sending" | "onStop" | "queue" | "handleRef">>;
   /** Thread options, passed to ChatThread. */
   thread?: {
     renderLink?: RenderLink;
-    renderFooter?: (m: ChatMessageData) => ReactNode;
+    renderFooter?: (m: ChatMessageData, info: ChatAppFooterInfo) => ReactNode;
+    /** After the last turn, inside the thread (a pending action, a picker). */
+    after?: ReactNode;
     renderers?: RichRenderers;
     speaker?: Speaker | null;
     share?: { title?: string; url?: string } | false;
@@ -146,7 +208,53 @@ export type ChatAppProps = {
   railQuery?: string;
   labels?: Partial<ChatAppLabels>;
   className?: string;
+  /** A message to start with, in a NEW chat, once the list has loaded — the
+   *  home box handing its words and pictures to `/chat`. Used once per mount
+   *  (StrictMode's double mount included); clear it from your URL or state
+   *  yourself so a reload does not send it again. */
+  initialMessage?: InitialMessage | null;
+  /** Read this query parameter (e.g. `"q"`) into a new chat's box, then take
+   *  it off the address. The words are only put in the box: a link can never
+   *  send for someone unless `deepLinkAutoSend` is set too. */
+  deepLinkParam?: string;
+  /** Send the `deepLinkParam` words instead of filling the box. Off by default. */
+  deepLinkAutoSend?: boolean;
+  /** Stop keeps the half answer that had arrived. Default true; a transport
+   *  can decide per turn with `turn.stopKeepsPartial(keep)`. */
+  stopKeepsPartial?: boolean;
+  /** The words for a failed turn whose error is not a `ChatTurnError`
+   *  (return null for the thread's `failed` label). */
+  failureMessage?: (error: unknown) => string | null | undefined;
+  /** A temporary chat ended (left, page hidden, unmounted): delete what the
+   *  server kept for it. Gets `turn.chatId`; called once per chat. */
+  onTemporaryEnd?: (chatId: string) => void;
+  /** The product's things shown on the person's message when it is sent
+   *  from the box (the ones staged with `heldAttachments`). */
+  chipsFor?: (turn: {
+    text: string;
+    attachments: Attachment[];
+  }) => readonly MessageChip[] | null | undefined;
+  /** In the chat list, under the search box: the product's own line. */
+  historySlot?: ReactNode;
+  /** In the chat list, instead of "No chats yet…" when there are none. */
+  historyEmpty?: ReactNode;
 };
+
+/** The words a `?q=`-style link carries, and the address without them. Pure. */
+export function takeDeepLink(href: string, param: string): { text: string; href: string } | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  const raw = url.searchParams.get(param);
+  if (raw === null) return null;
+  url.searchParams.delete(param);
+  const text = raw.trim().slice(0, DEEP_LINK_MAX);
+  return { text, href: url.toString() };
+}
+const DEEP_LINK_MAX = 4000;
 
 function useMediaQuery(query: string): boolean {
   const [match, setMatch] = useState(false);
@@ -174,32 +282,44 @@ let fallbackStore: ConversationStore | null = null;
  * `store` that keeps chats (or nothing: the device then keeps them) — plus
  * its words. Everything a person sees and does is the same in every product.
  */
-export function ChatApp({
-  transport,
-  store: givenStore,
-  placeholder = "Ask anything",
-  name = "",
-  makeTitle,
-  starters,
-  startersTitle,
-  empty,
-  composer,
-  thread,
-  footnote,
-  fill = "viewport",
-  temporaryChats = true,
-  onShare,
-  conversationId,
-  onConversationChange,
-  rememberKey = "ck-chat:open",
-  search,
-  headerStart,
-  headerEnd,
-  locale,
-  railQuery = "(min-width: 64rem)",
-  labels: labelOverrides,
-  className,
-}: ChatAppProps) {
+export const ChatApp = forwardRef<ChatAppHandle, ChatAppProps>(function ChatApp(
+  {
+    transport,
+    store: givenStore,
+    placeholder = "Ask anything",
+    name = "",
+    makeTitle,
+    starters,
+    startersTitle,
+    empty,
+    composer,
+    thread,
+    footnote,
+    fill = "viewport",
+    temporaryChats = true,
+    onShare,
+    conversationId,
+    onConversationChange,
+    rememberKey = "ck-chat:open",
+    search,
+    headerStart,
+    headerEnd,
+    locale,
+    railQuery = "(min-width: 64rem)",
+    labels: labelOverrides,
+    className,
+    initialMessage,
+    deepLinkParam,
+    deepLinkAutoSend = false,
+    stopKeepsPartial,
+    failureMessage,
+    onTemporaryEnd,
+    chipsFor,
+    historySlot,
+    historyEmpty,
+  }: ChatAppProps,
+  ref,
+) {
   const labels: ChatAppLabels = {
     ...DEFAULT_CHAT_APP_LABELS,
     ...labelOverrides,
@@ -209,6 +329,14 @@ export function ChatApp({
     () => givenStore ?? (fallbackStore ??= localConversationStore()),
     [givenStore],
   );
+  // What the page arrived with, read once: a message handed over, or a
+  // `?q=` link. Either starts a new chat, so the reload's chat is not reopened.
+  const [arrival] = useState<InitialMessage | null>(() => {
+    if (initialMessage) return initialMessage;
+    if (!deepLinkParam || typeof window === "undefined") return null;
+    const link = takeDeepLink(window.location.href, deepLinkParam);
+    return link?.text ? { text: link.text, send: deepLinkAutoSend } : null;
+  });
   const app = useChatApp({
     store,
     transport,
@@ -216,7 +344,77 @@ export function ChatApp({
     conversationId,
     onConversationChange,
     rememberKey,
+    stopKeepsPartial,
+    failureMessage,
+    onTemporaryEnd,
+    restore: !arrival,
   });
+  const composerRef = useRef<ComposerHandle | null>(null);
+  const attachLimits: Partial<AttachmentLimits> =
+    typeof composer?.attach === "object" ? composer.attach : {};
+
+  const fillBox = (text: string, files?: readonly File[]) => {
+    const box = composerRef.current;
+    if (!box) return;
+    box.setText(text);
+    if (files && files.length > 0) box.addFiles([...files]);
+    box.focus();
+  };
+  const sendFor = async (
+    text: string,
+    given: readonly (Attachment | File)[] = [],
+    options?: SendOptions,
+  ): Promise<boolean> => {
+    await app.whenReady();
+    const files = given.filter((a): a is File => typeof File !== "undefined" && a instanceof File);
+    const wire = given.filter(
+      (a): a is Attachment => !(typeof File !== "undefined" && a instanceof File),
+    );
+    const read = await Promise.all(
+      files.map((f) => readAttachmentFile(f, attachLimits, composer?.labels?.attachNotes)),
+    );
+    if (read.some((r) => r.note !== undefined)) {
+      // One file cannot go: send nothing behind the person's back. The box
+      // gets the words and the files, and says why (the composer's own note).
+      if (options?.newChat) app.newChat();
+      fillBox(text, files);
+      return false;
+    }
+    const attachments = [...wire, ...read.map((r) => stripPreview(r.attachment!))];
+    return app.send(text, attachments, options);
+  };
+  const handle: ChatAppHandle = {
+    send: sendFor,
+    fill: fillBox,
+    focus: () => composerRef.current?.focus(),
+    newChat: app.newChat,
+    openConversation: app.open,
+  };
+  useImperativeHandle(ref, () => handle);
+
+  // The arrival, once — StrictMode's rehearsal mount included (`taken` is
+  // kept across it), and only after the list is in so nothing moves it.
+  const taken = useRef(false);
+  useEffect(() => {
+    if (!app.ready || !arrival || taken.current) return;
+    taken.current = true;
+    if (deepLinkParam && !initialMessage && typeof window !== "undefined") {
+      const link = takeDeepLink(window.location.href, deepLinkParam);
+      if (link) window.history.replaceState(window.history.state, "", link.href);
+    }
+    if (arrival.send === false) {
+      app.newChat();
+      fillBox(
+        arrival.text,
+        (arrival.attachments ?? []).filter(
+          (a): a is File => typeof File !== "undefined" && a instanceof File,
+        ),
+      );
+    } else {
+      void sendFor(arrival.text, arrival.attachments, { newChat: true, chips: arrival.chips });
+    }
+    // `arrival` is fixed at mount; the rest is read when it fires.
+  }, [app.ready]);
   const rootRef = useRef<HTMLDivElement | null>(null);
   useViewportHeight(rootRef, fill === "viewport");
   const wide = useMediaQuery(railQuery);
@@ -268,6 +466,8 @@ export function ChatApp({
       search={search}
       locale={locale}
       labels={labels}
+      slot={historySlot}
+      empty={historyEmpty}
     />
   );
 
@@ -415,7 +615,11 @@ export function ChatApp({
         attach
         stagedPosition="above"
         {...composer}
-        onSend={(text, attachments) => app.send(text, attachments)}
+        handleRef={composerRef}
+        onSend={(text, attachments) => {
+          const chips = chipsFor?.({ text, attachments });
+          return app.send(text, attachments, chips ? { chips } : undefined);
+        }}
         sending={app.busy}
         onStop={app.stop}
         queue
@@ -424,6 +628,7 @@ export function ChatApp({
   );
 
   const lastFailed = app.messages[app.messages.length - 1]?.failed;
+  const renderFooter = thread?.renderFooter;
   const onFeedback = thread?.onFeedback;
   const cls = ["ck-app"];
   if (fill === "viewport") cls.push("ck-app-viewport");
@@ -465,7 +670,16 @@ export function ChatApp({
           onRetry={lastFailed || app.stopped ? app.retry : undefined}
           onReply={(text) => void app.send(text)}
           renderLink={thread?.renderLink}
-          renderFooter={thread?.renderFooter}
+          renderFooter={
+            renderFooter
+              ? (m, info) =>
+                  renderFooter(m, {
+                    ...info,
+                    send: (text, options) => void app.send(text, [], options),
+                    fill: (text) => fillBox(text),
+                  })
+              : undefined
+          }
           speaker={thread?.speaker}
           share={thread?.share}
           onFeedback={
@@ -486,10 +700,20 @@ export function ChatApp({
               </div>
             ))
           }
-        />
+        >
+          {thread?.after}
+        </ChatThread>
       </ChatScreen>
     </div>
   );
+});
+
+/** The wire shape only: a preview URL never leaves the page. */
+function stripPreview(a: Attachment & { previewUrl?: string }): Attachment {
+  if (!("previewUrl" in a)) return a;
+  const { previewUrl: _preview, ...wire } = a;
+  void _preview;
+  return wire as Attachment;
 }
 
 type MenuItem = {

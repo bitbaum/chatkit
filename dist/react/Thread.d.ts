@@ -20,9 +20,18 @@ export type ChatMessageData = {
     citations?: CitationMap;
     /** The turn failed: shown as a failure with Retry, never as silence. */
     failed?: boolean;
+    /** Why THIS turn failed, kept with it: `message` is shown in its bubble
+     *  (else `content`, else the `failed` label), `kind` is the product's code
+     *  for the reason (a footer can link the fix). Two failures in one chat
+     *  each keep their own words. */
+    failure?: ChatFailure;
     /** What the person sent with their words: pictures drawn small above the
      *  bubble, other files as their name. */
     attachments?: readonly MessageAttachment[];
+    /** The product's own things that went with the person's words (one of
+     *  their listings, a document the model reads), drawn as chips beside the
+     *  pictures and files. Kept with the message, so they survive a reload. */
+    chips?: readonly MessageChip[];
     /**
      * What the person is likely to say next, as one-tap buttons under the
      * latest answer. Leave it out and a `quick_replies` block in `content` is
@@ -35,6 +44,24 @@ export type ChatMessageData = {
      * default; the answer is what the reader came for.
      */
     thinking?: Thinking;
+};
+/** Why a turn failed, as the transport said it (see `ChatTurnError`). */
+export type ChatFailure = {
+    kind?: string;
+    message?: string;
+};
+/** A product's thing on the person's message: a label, and where it opens. */
+export type MessageChip = {
+    label: string;
+    href?: string;
+    kind?: string;
+};
+/** What `renderFooter` knows about the answer it is drawn under. */
+export type FooterInfo = {
+    /** The newest answer in the thread — where "what next" belongs. */
+    isLatest: boolean;
+    /** The message's place in the thread, from 0. */
+    index: number;
 };
 export type ThinkingStep = {
     label: string;
@@ -161,8 +188,9 @@ export declare function ChatThread({ messages, live, loading, stopped, onStop, o
      */
     onReply?: (text: string) => void;
     renderLink?: RenderLink;
-    /** App-specific content under an answer (sources, an action card). */
-    renderFooter?: (m: ChatMessageData) => ReactNode;
+    /** App-specific content under an answer (sources, an action card); the
+     *  second argument says whether it is the latest answer, and where it is. */
+    renderFooter?: (m: ChatMessageData, info: FooterInfo) => ReactNode;
     /** Default: shown when more than one speaker appears in the thread. */
     showSpeakers?: boolean;
     /** Shown instead of the thread before the first message (starters). */
@@ -171,9 +199,27 @@ export declare function ChatThread({ messages, live, loading, stopped, onStop, o
     children?: ReactNode;
     labels?: Partial<ThreadLabels>;
 }): import("react").JSX.Element;
+/**
+ * A starter: the words it sends, or an object when the button says something
+ * else (`label`) or is in another language than the page (`lang`, set on the
+ * button, so a screen reader and the font read it right).
+ */
 export type Starter = string | {
     label: string;
     prompt?: string;
+    text?: string;
+    lang?: string;
+} | {
+    text: string;
+    label?: string;
+    prompt?: string;
+    lang?: string;
+};
+/** What a starter shows, what it sends, and its language. */
+export declare function starterParts(s: Starter): {
+    label: string;
+    prompt: string;
+    lang?: string;
 };
 /** The empty state that starts a conversation. It disappears once one has. */
 export declare function ChatStarters({ starters, onPick, title, }: {
