@@ -135,6 +135,38 @@ try {
         `PASS ${owner} ${width}: streaming, completed turn, resize, own send and small upward gesture`,
       );
     }
+
+  // Reproduce DOM implementations where document.scrollingElement is absent.
+  // Start with a real thread scroll owner, then remove its scrollability so
+  // the hook must safely replace a stale owner with no document fallback.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(
+      `http://localhost:${server.address().port}/demo/scroll.html?owner=panel&null-root`,
+    );
+    await page.waitForSelector(".ck-live");
+    await page.waitForTimeout(350);
+    await page.evaluate(() => {
+      for (const el of [
+        document.querySelector(".ck-thread"),
+        document.querySelector("#fixture-owner"),
+        document.body,
+        document.documentElement,
+      ]) {
+        if (el) el.style.overflowY = "visible";
+      }
+    });
+    await page.waitForTimeout(500);
+    assert.deepEqual(
+      errors,
+      [],
+      "missing document scrolling element does not crash after layout changes",
+    );
+    await page.close();
+    console.log("PASS missing document scrolling element after a prior thread scroll owner");
+  }
 } finally {
   await browser.close();
   server.close();
