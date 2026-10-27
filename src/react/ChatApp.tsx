@@ -184,7 +184,7 @@ export type ChatAppProps = {
     onFeedback?: (feedback: AnswerFeedback & { conversationId: string | null }) => void;
     labels?: Partial<ThreadLabels>;
   };
-  /** One quiet line under the composer. */
+  /** One quiet line under the composer; it sits in a `div`, so a product may put block content (a panel, a form) in it. */
   footnote?: ReactNode;
   /** "viewport" (default) follows the visual viewport, above the phone keyboard. */
   fill?: "viewport" | "parent";

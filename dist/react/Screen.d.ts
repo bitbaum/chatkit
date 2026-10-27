@@ -30,7 +30,7 @@ export declare function ChatScreen({ header, composer, footnote, children, fill,
     header?: ReactNode;
     /** The composer (and anything that belongs with it: an error, a queue). */
     composer: ReactNode;
-    /** One quiet line under the composer ("Answers can be wrong"). */
+    /** One quiet line under the composer ("Answers can be wrong"). It sits in a `div`, so a product may put block content (a panel, a form) in it without invalid HTML. */
     footnote?: ReactNode;
     /** The conversation: a `ChatThread`, or an app's own scroller. */
     children: ReactNode;
