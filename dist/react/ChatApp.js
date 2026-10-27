@@ -1,11 +1,12 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, } from "react";
+import { DEFAULT_ATTACHMENT_LIMITS } from "../attachments.js";
 import { localConversationStore } from "../stores.js";
 import { ChatScreen } from "./Screen.js";
 import { ChatStarters, ChatThread, } from "./Thread.js";
 import { Composer } from "./Composer.js";
-import { readAttachmentFile } from "./use-attachments.js";
+import { readAttachmentFiles } from "./use-attachments.js";
 import { ChatHistory } from "./ChatHistory.js";
 import { useViewportHeight } from "./hooks.js";
 import { IconGhost, IconMenu, IconMore, IconNewChat, IconX } from "./icons.js";
@@ -118,7 +119,7 @@ export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStor
         restore: !arrival,
     });
     const composerRef = useRef(null);
-    const attachLimits = typeof composer?.attach === "object" ? composer.attach : {};
+    const attachOptions = typeof composer?.attach === "object" ? composer.attach : {};
     const fillBox = (text, files) => {
         const box = composerRef.current;
         if (!box)
@@ -132,8 +133,23 @@ export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStor
         await app.whenReady();
         const files = given.filter((a) => typeof File !== "undefined" && a instanceof File);
         const wire = given.filter((a) => !(typeof File !== "undefined" && a instanceof File));
-        const read = await Promise.all(files.map((f) => readAttachmentFile(f, attachLimits, composer?.labels?.attachNotes)));
-        if (read.some((r) => r.note !== undefined)) {
+        // One at a time, like the box: a reader that makes pictures out of a PDF
+        // must see how many the files before it left room for.
+        const { readFile, ...limits } = attachOptions;
+        const read = [];
+        let images = wire.filter((a) => a.kind === "image").length;
+        let room = (limits.maxFiles ?? DEFAULT_ATTACHMENT_LIMITS.maxFiles) - wire.length;
+        for (const f of files) {
+            const r = await readAttachmentFiles(f, limits, composer?.labels?.attachNotes, {
+                readFile,
+                images,
+                room,
+            });
+            images += r.attachments.filter((a) => a.kind === "image").length;
+            room -= r.attachments.length;
+            read.push(r);
+        }
+        if (read.some((r) => r.note !== undefined && r.attachments.length === 0)) {
             // One file cannot go: send nothing behind the person's back. The box
             // gets the words and the files, and says why (the composer's own note).
             if (options?.newChat)
@@ -141,7 +157,7 @@ export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStor
             fillBox(text, files);
             return false;
         }
-        const attachments = [...wire, ...read.map((r) => stripPreview(r.attachment))];
+        const attachments = [...wire, ...read.flatMap((r) => r.attachments.map(stripPreview))];
         return app.send(text, attachments, options);
     };
     const handle = {

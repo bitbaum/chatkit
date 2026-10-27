@@ -22,7 +22,7 @@ import { DEFAULT_DICTATION_MESSAGES, isAudioFile, type DictationProblem } from "
 import {
   DEFAULT_ATTACHMENT_NOTES,
   type Attachment,
-  type AttachmentLimits,
+  type AttachOptions,
   type AttachmentNotes,
 } from "../attachments.js";
 import { useDictation, type UseDictationOptions } from "./use-dictation.js";
@@ -145,9 +145,11 @@ export type ComposerProps = {
    *  message will be queued — the next thought is typed while the last one is
    *  still being answered, never held until a spinner stops. */
   queue?: boolean;
-  /** Attachments on, optionally with the app's own limits. Off by default:
-   *  only offer what the app's API accepts. */
-  attach?: boolean | Partial<AttachmentLimits>;
+  /** Attachments on, optionally with the app's own limits and `readFile`, its
+   *  own reading of a file chatkit would refuse or read differently (a PDF —
+   *  see `@bitbaum/chatkit/pdf`). Off by default: only offer what the app's
+   *  API accepts. */
+  attach?: boolean | AttachOptions;
   /** The app's own rows in the same attach sheet, under Camera · Photos ·
    *  Files (one of the person's things, a saved note). With `attach: false`
    *  the paperclip opens a sheet of only these rows. */

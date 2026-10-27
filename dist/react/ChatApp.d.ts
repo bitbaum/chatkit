@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import type { Attachment } from "../attachments.js";
+import { type Attachment } from "../attachments.js";
 import type { ConversationStore, ConversationSummary } from "../conversations.js";
 import type { Speaker } from "../speech.js";
 import type { AnswerFeedback } from "../review.js";

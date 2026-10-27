@@ -36,6 +36,45 @@ export type AttachmentLimits = {
   maxImageEdge: number;
 };
 
+/**
+ * What a reader is told about the file it is asked to turn into attachments.
+ * `images` and `room` are counted from what is already staged (and from the
+ * files read before this one, which are read one at a time), so a reader that
+ * produces several pictures can stop at the app's own ceiling.
+ */
+export type FileReadContext = {
+  limits: AttachmentLimits;
+  notes: AttachmentNotes;
+  /** Images already staged. */
+  images: number;
+  /** How many more attachments fit under `limits.maxFiles`. */
+  room: number;
+  /** Say something while a slow read runs ("Reading deck.pdf…"). Replaced by
+   *  the result's `note`, or cleared when there is none. */
+  progress: (note: string) => void;
+};
+
+/**
+ * What a reader made of a file: the attachments to stage (none is fine) and
+ * the sentence the person reads under the box (why nothing, or what was left
+ * out). Never thrown — a rejected file must not lose the draft next to it.
+ */
+export type FileReadResult = { attachments: StagedAttachment[]; note?: string };
+
+/**
+ * The app's own reading of a picked, pasted or dropped file, for kinds the
+ * default reader refuses (a PDF; see `@bitbaum/chatkit/pdf`) or reads
+ * differently. Return `undefined` to leave the file to chatkit's reader. A
+ * thrown error becomes the "could not read" note.
+ */
+export type AttachmentReader = (
+  file: File,
+  ctx: FileReadContext,
+) => Promise<FileReadResult | undefined> | FileReadResult | undefined;
+
+/** The composer's `attach` option: the limits, and optionally a reader. */
+export type AttachOptions = Partial<AttachmentLimits> & { readFile?: AttachmentReader };
+
 export const DEFAULT_ATTACHMENT_LIMITS: AttachmentLimits = {
   maxFiles: 5,
   maxTextChars: 100_000,

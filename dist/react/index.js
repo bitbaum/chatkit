@@ -16,7 +16,7 @@ export { useSpeech } from "./use-speech.js";
 export { Sheet, prefersSheet } from "./Sheet.js";
 export { useDictation } from "./use-dictation.js";
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
-export { useAttachments, readAttachmentFile } from "./use-attachments.js";
+export { useAttachments, readAttachmentFile, readAttachmentFiles } from "./use-attachments.js";
 export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "./hooks.js";
 export { RichAnswerBlock, ChartTableFigure } from "./RichBlock.js";
 export { RichRenderersContext, useRichRenderers } from "./renderers.js";

@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Attachment, AttachmentLimits } from "../attachments.js";
+import { DEFAULT_ATTACHMENT_LIMITS, type Attachment, type AttachOptions } from "../attachments.js";
 import type { ConversationStore, ConversationSummary } from "../conversations.js";
 import { localConversationStore } from "../stores.js";
 import type { Speaker } from "../speech.js";
@@ -25,7 +25,7 @@ import {
   type ThreadLabels,
 } from "./Thread.js";
 import { Composer, type ComposerHandle, type ComposerProps } from "./Composer.js";
-import { readAttachmentFile } from "./use-attachments.js";
+import { readAttachmentFiles } from "./use-attachments.js";
 import { ChatHistory } from "./ChatHistory.js";
 import { useViewportHeight } from "./hooks.js";
 import type { RenderLink } from "./Markdown.js";
@@ -350,8 +350,7 @@ export const ChatApp = forwardRef<ChatAppHandle, ChatAppProps>(function ChatApp(
     restore: !arrival,
   });
   const composerRef = useRef<ComposerHandle | null>(null);
-  const attachLimits: Partial<AttachmentLimits> =
-    typeof composer?.attach === "object" ? composer.attach : {};
+  const attachOptions: AttachOptions = typeof composer?.attach === "object" ? composer.attach : {};
 
   const fillBox = (text: string, files?: readonly File[]) => {
     const box = composerRef.current;
@@ -370,17 +369,30 @@ export const ChatApp = forwardRef<ChatAppHandle, ChatAppProps>(function ChatApp(
     const wire = given.filter(
       (a): a is Attachment => !(typeof File !== "undefined" && a instanceof File),
     );
-    const read = await Promise.all(
-      files.map((f) => readAttachmentFile(f, attachLimits, composer?.labels?.attachNotes)),
-    );
-    if (read.some((r) => r.note !== undefined)) {
+    // One at a time, like the box: a reader that makes pictures out of a PDF
+    // must see how many the files before it left room for.
+    const { readFile, ...limits } = attachOptions;
+    const read: { attachments: Attachment[]; note?: string }[] = [];
+    let images = wire.filter((a) => a.kind === "image").length;
+    let room = (limits.maxFiles ?? DEFAULT_ATTACHMENT_LIMITS.maxFiles) - wire.length;
+    for (const f of files) {
+      const r = await readAttachmentFiles(f, limits, composer?.labels?.attachNotes, {
+        readFile,
+        images,
+        room,
+      });
+      images += r.attachments.filter((a) => a.kind === "image").length;
+      room -= r.attachments.length;
+      read.push(r);
+    }
+    if (read.some((r) => r.note !== undefined && r.attachments.length === 0)) {
       // One file cannot go: send nothing behind the person's back. The box
       // gets the words and the files, and says why (the composer's own note).
       if (options?.newChat) app.newChat();
       fillBox(text, files);
       return false;
     }
-    const attachments = [...wire, ...read.map((r) => stripPreview(r.attachment!))];
+    const attachments = [...wire, ...read.flatMap((r) => r.attachments.map(stripPreview))];
     return app.send(text, attachments, options);
   };
   const handle: ChatAppHandle = {

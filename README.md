@@ -686,6 +686,47 @@ file size" export — draw blank. `test/browser-pdf.mjs` checks both
 kinds in Chromium; `node test/browser-pdf.mjs your.pdf` prints what any PDF
 turns into.
 
+**Attaching a PDF through the composer or `ChatApp`**: the box reads images and
+text itself and refuses everything else. Give it your own reader and a PDF
+picked under Files, pasted, dropped or handed to `ChatAppHandle.send` goes
+through it too:
+
+```tsx
+<ChatApp
+  composer={{
+    attach: {
+      maxFiles: 5,
+      readFile: async (file, { images, room, progress }) => {
+        if (!isPdfFile(file)) return undefined; // chatkit reads everything else
+        progress(`Reading "${file.name}"…`);
+        const r = await readPdf(file, { maxSheets: Math.min(room, 5 - images), assetsUrl: "/pdfjs/" });
+        return r.kind === "text"
+          ? { attachments: [{ kind: "text", name: file.name, content: r.text }] }
+          : {
+              attachments: r.sheets.map((s) => ({
+                kind: "image",
+                name: sheetName(file.name, s.firstPage, s.lastPage),
+                mimeType: "image/jpeg",
+                dataBase64: s.dataUrl.split(",")[1],
+                previewUrl: s.dataUrl, // the thumbnail in the box
+              })),
+              note: r.pagesShown < r.pageCount ? `Pages 1–${r.pagesShown} of ${r.pageCount}.` : undefined,
+            };
+      },
+    },
+  }}
+/>
+```
+
+`readFile(file, ctx)` returns the attachments to stage (one file may become
+several), a `note` the person reads under the box, or `undefined` to leave the
+file to chatkit. `ctx` has `limits`, `notes`, `images` (already staged), `room`
+(how many more fit) and `progress(text)` for a slow read. Files are read one at
+a time, so `images` and `room` already count the file before. A thrown error
+becomes "Could not read …"; a note with no attachments keeps the draft and
+shows the reason. The same option is `readAttachmentFiles` for code that reads
+files outside the box.
+
 ### The check every app runs in CI
 
 ```sh
