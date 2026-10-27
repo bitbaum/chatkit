@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### PDFs a person attaches (0.20)
+
+- `@bitbaum/chatkit/pdf`: `readPdf(file, { maxSheets, assetsUrl })` reads a PDF in the browser. A PDF with a text layer comes back as text with page markers; one without (slide images, scans) as pictures of its pages, four to a sheet. Found on OrangeCat 2026-10-27: a 17-slide investor deck with no text layer could not be shared with the Cat at all.
+- `chatkit-copy-pdf-assets <dir>`: copies pdf.js's worker and decoders where the app serves static files. Without it, JPEG 2000 pages (macOS's compressed PDF export) draw blank.
+- Pure helpers for tests and an app's own wording: `isPdfFile`, `isTextRich`, `joinPageTexts`, `planSheets`, `sheetName`.
+- New dependency: `pdfjs-dist` (loaded only when a PDF is read).
+
 ### ChatApp: what the first four products could not do with it (0.19)
 
 From the adoption PRs' own lists (bitbaum/heidi#226, bitbaum/orangecat#1447,

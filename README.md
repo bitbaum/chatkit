@@ -644,6 +644,44 @@ import { AttachMenu, shrinkImage } from "@bitbaum/chatkit/attach";
 maxBytes)` is the in-browser downscale the composer uses. `acceptFamilies` and
 `ATTACH_SOURCE_INPUT` are the rule itself.
 
+### PDFs — `@bitbaum/chatkit/pdf`
+
+No model on a free chain reads a PDF file. So a PDF someone attaches is read
+in the browser and handed on the way the model already understands:
+
+```ts
+import { isPdfFile, readPdf, sheetName, PDF_MAX_BYTES } from "@bitbaum/chatkit/pdf";
+
+if (isPdfFile(file) && file.size <= PDF_MAX_BYTES) {
+  const r = await readPdf(file, { maxSheets: picturesLeft, assetsUrl: "/pdfjs/" });
+  if (r.kind === "text") attachText(file.name, r.text); // "--- page 3 ---" markers kept
+  else
+    r.sheets.forEach((s) => attachImage(sheetName(file.name, s.firstPage, s.lastPage), s.dataUrl));
+  // r.pagesShown < r.pageCount → tell the person which pages went
+}
+```
+
+- **A PDF with a text layer** (Word, Docs, a typed report) comes back as text.
+- **A PDF without one** (slides exported as pictures, a scan) comes back as
+  pictures of its pages, **four to a sheet** at 784px a page — slide text stays
+  legible, and a 20-page deck is 5 pictures. Send them to a model that sees.
+- pdf.js loads only on the first PDF (its own entry point and a dynamic
+  import), and the legacy build is used so older iPhones read PDFs too.
+
+**One step per app**: pdf.js fetches its worker and image decoders by URL at
+runtime, which no bundler follows. Copy them before building:
+
+```json
+"prebuild": "chatkit-copy-pdf-assets public/pdfjs"
+```
+
+and pass `assetsUrl: "/pdfjs/"` (keep `public/pdfjs/` out of git). Served
+from the app's own origin they pass a strict CSP, and they include the
+decoders without which pages whose pictures are JPEG 2000 — macOS's "reduce
+file size" export — draw blank. `test/browser-pdf.mjs` checks both
+kinds in Chromium; `node test/browser-pdf.mjs your.pdf` prints what any PDF
+turns into.
+
 ### The check every app runs in CI
 
 ```sh
