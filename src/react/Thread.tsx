@@ -31,9 +31,18 @@ export type ChatMessageData = {
   citations?: CitationMap;
   /** The turn failed: shown as a failure with Retry, never as silence. */
   failed?: boolean;
+  /** Why THIS turn failed, kept with it: `message` is shown in its bubble
+   *  (else `content`, else the `failed` label), `kind` is the product's code
+   *  for the reason (a footer can link the fix). Two failures in one chat
+   *  each keep their own words. */
+  failure?: ChatFailure;
   /** What the person sent with their words: pictures drawn small above the
    *  bubble, other files as their name. */
   attachments?: readonly MessageAttachment[];
+  /** The product's own things that went with the person's words (one of
+   *  their listings, a document the model reads), drawn as chips beside the
+   *  pictures and files. Kept with the message, so they survive a reload. */
+  chips?: readonly MessageChip[];
   /**
    * What the person is likely to say next, as one-tap buttons under the
    * latest answer. Leave it out and a `quick_replies` block in `content` is
@@ -46,6 +55,20 @@ export type ChatMessageData = {
    * default; the answer is what the reader came for.
    */
   thinking?: Thinking;
+};
+
+/** Why a turn failed, as the transport said it (see `ChatTurnError`). */
+export type ChatFailure = { kind?: string; message?: string };
+
+/** A product's thing on the person's message: a label, and where it opens. */
+export type MessageChip = { label: string; href?: string; kind?: string };
+
+/** What `renderFooter` knows about the answer it is drawn under. */
+export type FooterInfo = {
+  /** The newest answer in the thread — where "what next" belongs. */
+  isLatest: boolean;
+  /** The message's place in the thread, from 0. */
+  index: number;
 };
 
 export type ThinkingStep = {
@@ -143,15 +166,29 @@ export function ChatMessage({
   if (message.role === "user") {
     return (
       <div className="ck-turn ck-turn-user">
-        {message.attachments && message.attachments.length > 0 && (
+        {((message.attachments && message.attachments.length > 0) ||
+          (message.chips && message.chips.length > 0)) && (
           <div className="ck-turn-files">
-            {message.attachments.map((a, i) =>
+            {message.attachments?.map((a, i) =>
               a.kind === "image" && a.previewUrl ? (
                 <img key={i} src={a.previewUrl} alt={a.name} className="ck-attach-thumb" />
               ) : (
                 <span key={i} className="ck-attach-file">
                   <IconFile />
                   <span className="ck-truncate">{a.name}</span>
+                </span>
+              ),
+            )}
+            {message.chips?.map((c, i) =>
+              c.href ? (
+                <a key={`c${i}`} href={c.href} className="ck-attach-file ck-turn-chip">
+                  <IconFile />
+                  <span className="ck-truncate">{c.label}</span>
+                </a>
+              ) : (
+                <span key={`c${i}`} className="ck-attach-file ck-turn-chip">
+                  <IconFile />
+                  <span className="ck-truncate">{c.label}</span>
                 </span>
               ),
             )}
@@ -178,7 +215,7 @@ export function ChatMessage({
       {message.thinking && <ThinkingRow thinking={message.thinking} labels={labels} />}
       {message.failed ? (
         <p className="ck-failed" role="status">
-          {message.content || labels.failed}
+          {message.failure?.message || message.content || labels.failed}
         </p>
       ) : (
         <Markdown
@@ -386,8 +423,9 @@ export function ChatThread({
    */
   onReply?: (text: string) => void;
   renderLink?: RenderLink;
-  /** App-specific content under an answer (sources, an action card). */
-  renderFooter?: (m: ChatMessageData) => ReactNode;
+  /** App-specific content under an answer (sources, an action card); the
+   *  second argument says whether it is the latest answer, and where it is. */
+  renderFooter?: (m: ChatMessageData, info: FooterInfo) => ReactNode;
   /** Default: shown when more than one speaker appears in the thread. */
   showSpeakers?: boolean;
   /** Shown instead of the thread before the first message (starters). */
@@ -421,14 +459,14 @@ export function ChatThread({
     <div className="ck-thread-wrap">
       <div ref={scrollRef} className="ck-thread" onScroll={onScroll}>
         <div className="ck-thread-inner">
-          {messages.map((m) => (
+          {messages.map((m, index) => (
             <ChatMessage
               key={m.id}
               message={m}
               onRetry={onRetry && m.id === lastAnswer?.id && !live ? onRetry : undefined}
               renderLink={renderLink}
               showSpeaker={named}
-              footer={renderFooter?.(m)}
+              footer={renderFooter?.(m, { isLatest: m.id === lastAnswer?.id, index })}
               last={m.id === lastAnswer?.id}
               onReply={live || stopped ? undefined : onReply}
               speaker={speaker}
@@ -493,7 +531,22 @@ export function ChatThread({
   );
 }
 
-export type Starter = string | { label: string; prompt?: string };
+/**
+ * A starter: the words it sends, or an object when the button says something
+ * else (`label`) or is in another language than the page (`lang`, set on the
+ * button, so a screen reader and the font read it right).
+ */
+export type Starter =
+  | string
+  | { label: string; prompt?: string; text?: string; lang?: string }
+  | { text: string; label?: string; prompt?: string; lang?: string };
+
+/** What a starter shows, what it sends, and its language. */
+export function starterParts(s: Starter): { label: string; prompt: string; lang?: string } {
+  if (typeof s === "string") return { label: s, prompt: s };
+  const prompt = s.prompt ?? s.text ?? s.label ?? "";
+  return { label: s.label ?? prompt, prompt, lang: s.lang };
+}
 
 /** The empty state that starts a conversation. It disappears once one has. */
 export function ChatStarters({
@@ -510,10 +563,15 @@ export function ChatStarters({
       {title && <div className="ck-starters-title">{title}</div>}
       <div className="ck-starters-list">
         {starters.map((s, i) => {
-          const label = typeof s === "string" ? s : s.label;
-          const prompt = typeof s === "string" ? s : (s.prompt ?? s.label);
+          const { label, prompt, lang } = starterParts(s);
           return (
-            <button key={i} type="button" className="ck-starter" onClick={() => onPick(prompt)}>
+            <button
+              key={i}
+              type="button"
+              className="ck-starter"
+              lang={lang}
+              onClick={() => onPick(prompt)}
+            >
               {label}
             </button>
           );

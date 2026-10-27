@@ -10,6 +10,19 @@ export type AttachMenuLabels = {
 };
 export declare const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels;
 /**
+ * One of the app's own rows in the attach sheet, under Camera · Photos ·
+ * Files: an icon, what it adds (`label`), an optional second line. Every row
+ * has this one anatomy, so a product's "Your things" reads as part of the
+ * same sheet, not a second menu. Picking a row closes the sheet first.
+ */
+export type AttachExtra = {
+    id: string;
+    label: string;
+    detail?: string;
+    icon?: ReactNode;
+    onPick: () => void;
+};
+/**
  * The paperclip, and what it opens on a phone: a sheet with Camera, Photos and
  * Files — one input each. See `ATTACH_SOURCE_INPUT` for why three inputs and
  * not one: a single mixed-`accept` input is what made a phone offer a recorder
@@ -27,7 +40,7 @@ export declare const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels;
  * they sit under Camera · Photos · Files in the same sheet, on every pointer,
  * since a mouse cannot reach them through a file dialog.
  */
-export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger, extra, onOpenChange, }: {
+export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger, extra, rows, onOpenChange, }: {
     onFiles: (files: FileList | null) => void;
     disabled?: boolean;
     labels?: AttachMenuLabels;
@@ -41,6 +54,10 @@ export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger
      *  sheet opens on every pointer. A row that should close the sheet calls
      *  the `close` it is given. */
     extra?: (close: () => void) => ReactNode;
+    /** The app's rows as data — drawn with one anatomy (see `AttachExtra`).
+     *  With them the sheet opens on every pointer; with no `sources` it holds
+     *  only them. */
+    rows?: readonly AttachExtra[];
     onOpenChange?: (open: boolean) => void;
 }): import("react").JSX.Element;
 //# sourceMappingURL=AttachMenu.d.ts.map

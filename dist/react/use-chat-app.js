@@ -1,6 +1,45 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { deriveTitle, newId, pickRestored, } from "../conversations.js";
+/**
+ * Throw this from a transport to say why a turn failed in the reader's
+ * words: the failed bubble shows `message`, and `kind` (the product's own
+ * code, e.g. "quota" or "no-vision") travels with that message as
+ * `failure.kind` for a footer to link the fix. Any other error shows the
+ * thread's `failed` label — a raw `TypeError: Failed to fetch` is never
+ * shown to a reader — unless ChatApp's `failureMessage` maps it.
+ */
+export class ChatTurnError extends Error {
+    kind;
+    constructor(message, options = {}) {
+        super(message, options.cause === undefined ? undefined : { cause: options.cause });
+        this.name = "ChatTurnError";
+        this.kind = options.kind;
+    }
+}
+/**
+ * What a failed turn keeps: a `ChatTurnError`'s words and kind, a plain
+ * `{ message, kind }` object as thrown, or what `map` makes of anything
+ * else. Never an ordinary Error's message — that is for the console.
+ */
+export function chatTurnFailure(error, map) {
+    if (error instanceof ChatTurnError) {
+        return { message: error.message, ...(error.kind ? { kind: error.kind } : {}) };
+    }
+    const mapped = map?.(error);
+    if (mapped)
+        return { message: mapped };
+    if (error && typeof error === "object" && !(error instanceof Error)) {
+        const { message, kind } = error;
+        const out = {};
+        if (typeof message === "string" && message.trim())
+            out.message = message;
+        if (typeof kind === "string" && kind)
+            out.kind = kind;
+        return out;
+    }
+    return {};
+}
 const TEMP = "tmp";
 export const isTemporaryId = (id) => !!id && id.startsWith(`${TEMP}-`);
 function messageAttachments(list) {
@@ -38,7 +77,7 @@ function writeRemembered(key, id) {
  * and temporary chats, turns (one per conversation, each running on when the
  * person opens another chat), the queue, titles and the reopen-on-reload.
  */
-export function useChatApp({ store, transport, makeTitle, conversationId, onConversationChange, rememberKey, }) {
+export function useChatApp({ store, transport, makeTitle, conversationId, onConversationChange, rememberKey, stopKeepsPartial = true, failureMessage, onTemporaryEnd, restore = true, }) {
     const [list, setList] = useState([]);
     const [listState, setListState] = useState("loading");
     const [activeId, setActiveId] = useState(null);
@@ -50,6 +89,7 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
     const [queue, setQueue] = useState([]);
     const [problem, setProblem] = useState(null);
     const [reload, setReload] = useState(0);
+    const [ready, setReady] = useState(false);
     // Async work reads the CURRENT state through these, never a stale closure.
     const threadsRef = useRef(threads);
     const queueRef = useRef(queue);
@@ -59,10 +99,32 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
     const restored = useRef(false);
     const transportRef = useRef(transport);
     const titleRef = useRef(makeTitle);
+    const optionsRef = useRef({ stopKeepsPartial, failureMessage, onTemporaryEnd });
     useEffect(() => {
         transportRef.current = transport;
         titleRef.current = makeTitle;
+        optionsRef.current = { stopKeepsPartial, failureMessage, onTemporaryEnd };
     });
+    // The files of each person's message, by its id, kept until its answer
+    // lands: Retry after a failure sends the pictures again, not only the words.
+    const turnFiles = useRef(new Map());
+    const ended = useRef(new Set());
+    const readyWaiters = useRef([]);
+    const markReady = () => {
+        restored.current = true;
+        setReady(true);
+        for (const go of readyWaiters.current.splice(0))
+            go();
+    };
+    /** Resolves once the list has loaded and the reopened chat is chosen, so a
+     *  message sent from outside never lands before the restore moves away. */
+    const whenReady = () => restored.current ? Promise.resolve() : new Promise((go) => readyWaiters.current.push(go));
+    const endTemporary = (id) => {
+        if (!isTemporaryId(id) || ended.current.has(id))
+            return;
+        ended.current.add(id);
+        optionsRef.current.onTemporaryEnd?.(id);
+    };
     const setThreadsNow = (fn) => {
         threadsRef.current = fn(threadsRef.current);
         setThreads(threadsRef.current);
@@ -83,13 +145,28 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
         if (!isTemporaryId(id))
             return;
         controllers.current.get(id)?.abort();
+        for (const m of threadsRef.current[id] ?? [])
+            turnFiles.current.delete(m.id);
         setThreadsNow((t) => {
             const next = { ...t };
             delete next[id];
             return next;
         });
         setQueueNow((q) => q.filter((item) => item.conversation !== id));
+        endTemporary(id);
     };
+    // A temporary chat also ends when the page goes away or ChatApp unmounts.
+    // (StrictMode's rehearsal unmount finds no temporary chat: one only exists
+    // after a first message.)
+    useEffect(() => {
+        const hide = () => endTemporary(activeRef.current);
+        globalThis.addEventListener?.("pagehide", hide);
+        return () => {
+            globalThis.removeEventListener?.("pagehide", hide);
+            hide();
+        };
+        // Reads everything through refs.
+    }, []);
     const open = (id) => {
         if (id === activeRef.current)
             return;
@@ -126,17 +203,21 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
             setList(rows);
             setListState("ready");
             if (!restored.current) {
-                restored.current = true;
-                const id = pickRestored(rows, conversationId, readRemembered(rememberKey));
-                if (id)
+                const id = restore
+                    ? pickRestored(rows, conversationId, readRemembered(rememberKey))
+                    : null;
+                // An outside send may already have opened a chat: never move off it.
+                if (id && activeRef.current === null)
                     open(id);
+                markReady();
             }
         })
             .catch(() => {
             if (!alive)
                 return;
-            restored.current = true;
             setListState("error");
+            if (!restored.current)
+                markReady();
         });
         return () => {
             alive = false;
@@ -181,9 +262,12 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
         setLive((l) => ({ ...l, [id]: {} }));
         let soFar = {};
         let ok = false;
+        let keepPartial = null;
+        const asked = [...(threadsRef.current[id] ?? [])].reverse().find((m) => m.role === "user");
         try {
             const result = await transportRef.current({
                 conversationId: temp ? null : id,
+                chatId: id,
                 temporary: temp,
                 text,
                 attachments,
@@ -194,6 +278,9 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
                     if (!controller.signal.aborted)
                         setLive((l) => (id in l ? { ...l, [id]: soFar } : l));
                 },
+                stopKeepsPartial: (keep) => {
+                    keepPartial = keep;
+                },
             });
             if (controller.signal.aborted)
                 throw new DOMException("stopped", "AbortError");
@@ -202,6 +289,8 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
             push(id, message);
             save(id, message);
             ok = true;
+            if (asked)
+                turnFiles.current.delete(asked.id);
             if (!temp && history.length === 0 && titleRef.current) {
                 void Promise.resolve(titleRef.current({ text, answer: answer.content }))
                     .then((title) => (title?.trim() ? rename(id, title.trim()) : undefined))
@@ -210,10 +299,14 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
                 });
             }
         }
-        catch {
+        catch (error) {
             if (controller.signal.aborted) {
-                // Stopped: what had arrived is kept, as the apps keep a half answer.
-                if (soFar.text?.trim()) {
+                // Stopped: what had arrived is kept, as the apps keep a half answer —
+                // unless the product says this turn's text is not fit to keep.
+                const keep = keepPartial ?? optionsRef.current.stopKeepsPartial;
+                if (keep && soFar.text?.trim()) {
+                    if (asked)
+                        turnFiles.current.delete(asked.id);
                     const message = {
                         id: newId("m"),
                         role: "assistant",
@@ -226,7 +319,14 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
                     setStopped((s) => ({ ...s, [id]: true }));
             }
             else {
-                push(id, { id: newId("m"), role: "assistant", content: "", failed: true });
+                const failure = chatTurnFailure(error, optionsRef.current.failureMessage);
+                push(id, {
+                    id: newId("m"),
+                    role: "assistant",
+                    content: failure.message ?? "",
+                    failed: true,
+                    ...(failure.message || failure.kind ? { failure } : {}),
+                });
             }
         }
         finally {
@@ -243,27 +343,33 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
             const next = queueRef.current.find((q) => q.conversation === id);
             if (next) {
                 setQueueNow((q) => q.filter((item) => item.id !== next.id));
-                void sendIn(id, next.text, next.attachments);
+                void sendIn(id, next.text, next.attachments, next.chips);
             }
         }
     };
-    const sendIn = async (id, text, attachments) => {
+    const sendIn = async (id, text, attachments, chips) => {
         const history = (threadsRef.current[id] ?? []).filter((m) => !m.failed);
         const message = {
             id: newId("m"),
             role: "user",
             content: text,
             ...(attachments.length ? { attachments: messageAttachments(attachments) } : {}),
+            ...(chips && chips.length ? { chips } : {}),
         };
+        if (attachments.length)
+            turnFiles.current.set(message.id, attachments);
         push(id, message);
         save(id, message);
         await runTurn(id, text, attachments, history);
     };
     /** Composer's onSend. Resolves false to keep the draft (nothing was sent). */
-    const send = async (text, attachments = []) => {
+    const send = async (text, attachments = [], options = {}) => {
+        const { chips } = options;
+        if (options.newChat)
+            newChat();
         let id = activeRef.current;
         if (id && controllers.current.has(id)) {
-            setQueueNow((q) => [...q, { id: newId("q"), conversation: id, text, attachments }]);
+            setQueueNow((q) => [...q, { id: newId("q"), conversation: id, text, attachments, chips }]);
             return true;
         }
         if (!id) {
@@ -284,7 +390,7 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
             setThreadsNow((t) => ({ ...t, [id]: [] }));
             select(id, temporaryRef.current);
         }
-        void sendIn(id, text, attachments);
+        void sendIn(id, text, attachments, chips);
         return true;
     };
     const stop = () => {
@@ -304,7 +410,7 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
             return;
         setThreadsNow((t) => ({ ...t, [id]: kept }));
         const history = kept.slice(0, kept.indexOf(lastUser));
-        void runTurn(id, lastUser.content, [], history);
+        void runTurn(id, lastUser.content, turnFiles.current.get(lastUser.id) ?? [], history);
     };
     const newChat = () => {
         leaveTemporary();
@@ -332,6 +438,8 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
     };
     const remove = async (id) => {
         controllers.current.get(id)?.abort();
+        for (const m of threadsRef.current[id] ?? [])
+            turnFiles.current.delete(m.id);
         setList((l) => l.filter((c) => c.id !== id));
         setThreadsNow((t) => {
             const next = { ...t };
@@ -353,6 +461,9 @@ export function useChatApp({ store, transport, makeTitle, conversationId, onConv
     return {
         list,
         listState,
+        /** The list has loaded (or failed) and the reopened chat is chosen. */
+        ready,
+        whenReady,
         reloadList: () => setReload((n) => n + 1),
         activeId,
         stored,

@@ -34,7 +34,7 @@ const ICONS = {
  * they sit under Camera · Photos · Files in the same sheet, on every pointer,
  * since a mouse cannot reach them through a file dialog.
  */
-export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_MENU_LABELS, sources = SOURCES, trigger, extra, onOpenChange, }) {
+export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_MENU_LABELS, sources = SOURCES, trigger, extra, rows, onOpenChange, }) {
     const inputs = useRef({});
     const [sheetOpen, setSheetOpen] = useState(false);
     const setOpen = (next) => {
@@ -46,8 +46,9 @@ export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_
         close();
         inputs.current[source]?.click();
     };
+    const hasRows = Boolean(extra) || (rows?.length ?? 0) > 0;
     const open = () => {
-        if (extra || (sources.length > 1 && prefersSheet()))
+        if (hasRows || (sources.length > 1 && prefersSheet()))
             setOpen(true);
         // A mouse gets the broadest picker offered: Files when it is one of the
         // sources, else the last one (Photos, for an image uploader).
@@ -59,9 +60,12 @@ export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_
                 }, type: "file", hidden: true, multiple: source !== "camera", "data-ck-source": source, ...ATTACH_SOURCE_INPUT[source], onChange: (e) => {
                     onFiles(e.target.files);
                     e.target.value = "";
-                } }, source))), _jsx("button", { type: "button", className: trigger ? "ck-attach-trigger" : "ck-icon-btn", onClick: open, disabled: disabled, "aria-label": labels.attach, "aria-haspopup": "dialog", title: labels.attach, children: trigger ?? _jsx(IconPaperclip, {}) }), _jsxs(Sheet, { open: sheetOpen, onClose: close, title: labels.title, closeLabel: labels.close, children: [_jsx("div", { className: "ck-attach-sources", children: sources.map((source) => {
+                } }, source))), _jsx("button", { type: "button", className: trigger ? "ck-attach-trigger" : "ck-icon-btn", onClick: open, disabled: disabled, "aria-label": labels.attach, "aria-haspopup": "dialog", title: labels.attach, children: trigger ?? _jsx(IconPaperclip, {}) }), _jsxs(Sheet, { open: sheetOpen, onClose: close, title: labels.title, closeLabel: labels.close, children: [sources.length > 0 && (_jsx("div", { className: "ck-attach-sources", children: sources.map((source) => {
                             const Icon = ICONS[source];
                             return (_jsxs("button", { type: "button", className: "ck-attach-source", "data-ck-source": source, onClick: () => pick(source), children: [_jsx(Icon, {}), _jsx("span", { children: labels.sources[source] })] }, source));
-                        }) }), extra && _jsx("div", { className: "ck-sheet-extra", children: extra(close) })] })] }));
+                        }) })), hasRows && (_jsxs("div", { className: sources.length > 0 ? "ck-sheet-extra" : "ck-sheet-extra ck-sheet-only", children: [rows?.map((row) => (_jsxs("button", { type: "button", className: "ck-attach-extra", "data-ck-extra": row.id, onClick: () => {
+                                    close();
+                                    row.onPick();
+                                }, children: [_jsx("span", { className: "ck-attach-extra-icon", "aria-hidden": true, children: row.icon ?? _jsx(IconPaperclip, {}) }), _jsxs("span", { className: "ck-attach-extra-text", children: [_jsx("span", { className: "ck-truncate", children: row.label }), row.detail && _jsx("small", { className: "ck-truncate", children: row.detail })] })] }, row.id))), extra?.(close)] }))] })] }));
 }
 //# sourceMappingURL=AttachMenu.js.map

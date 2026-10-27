@@ -13,18 +13,23 @@ export type {
   ComposerLabels,
   ComposerLabelOverrides,
   ComposerVoice,
+  ComposerHandle,
 } from "./Composer.js";
 export {
   ChatThread,
   ChatMessage,
   ChatReplies,
   ChatStarters,
+  starterParts,
   ThinkingRow,
   formatThinkingDuration,
   DEFAULT_THREAD_LABELS,
 } from "./Thread.js";
 export type {
   ChatMessageData,
+  ChatFailure,
+  FooterInfo,
+  MessageChip,
   ChatSpeaker,
   LiveTurn,
   Starter,
@@ -43,23 +48,30 @@ export type { CitationMap, RenderLink, RenderCitation, RenderSources } from "./M
 export { useDictation } from "./use-dictation.js";
 export type { DictationController, DictationStatus, UseDictationOptions } from "./use-dictation.js";
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
-export type { AttachMenuLabels } from "./AttachMenu.js";
-export { useAttachments } from "./use-attachments.js";
-export type { AttachmentsController } from "./use-attachments.js";
+export type { AttachExtra, AttachMenuLabels } from "./AttachMenu.js";
+export { useAttachments, readAttachmentFile } from "./use-attachments.js";
+export type { AttachmentsController, ReadAttachment } from "./use-attachments.js";
 export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "./hooks.js";
 export { RichAnswerBlock, ChartTableFigure } from "./RichBlock.js";
 export { RichRenderersContext, useRichRenderers } from "./renderers.js";
 export type { RichRenderers } from "./renderers.js";
-export { ChatApp, DEFAULT_CHAT_APP_LABELS } from "./ChatApp.js";
-export type { ChatAppProps, ChatAppLabels } from "./ChatApp.js";
+export { ChatApp, DEFAULT_CHAT_APP_LABELS, takeDeepLink } from "./ChatApp.js";
+export type {
+  ChatAppProps,
+  ChatAppLabels,
+  ChatAppHandle,
+  ChatAppFooterInfo,
+  InitialMessage,
+} from "./ChatApp.js";
 export { ChatHistory } from "./ChatHistory.js";
 export type { ChatHistoryProps } from "./ChatHistory.js";
-export { useChatApp, isTemporaryId } from "./use-chat-app.js";
+export { useChatApp, isTemporaryId, ChatTurnError, chatTurnFailure } from "./use-chat-app.js";
 export type {
   ChatTransport,
   ChatTurn,
   ChatTurnResult,
   ChatAppController,
   ChatAppProblem,
+  SendOptions,
   UseChatAppOptions,
 } from "./use-chat-app.js";

@@ -78,80 +78,19 @@ export function useAttachments(
     [maxFiles],
   );
 
-  const stageImage = useCallback(
+  const stage = useCallback(
     (file: File) => {
-      const name = file.name || "screenshot.png";
-      if (!isImageMime(file.type)) {
-        setNote(say.current.wrongType(name));
-        return;
-      }
-      const tooLarge = () =>
-        setNote(say.current.imageTooLarge(name, Math.round(maxImageBytes / 1_000_000)));
-      if (maxImageEdge > 0) {
-        // Shrink first, then judge the size: a 4 MB screenshot is fine once it
-        // is the 300 KB it needed to be.
-        shrink(file, maxImageEdge, maxImageBytes)
-          .then((dataUrl) => {
-            if (!dataUrl) {
-              tooLarge();
-              return;
-            }
-            const previewUrl = URL.createObjectURL(file);
-            previews.current.add(previewUrl);
-            add({
-              kind: "image",
-              name: name.replace(/\.(png|gif|webp|jpe?g)$/i, "") + ".jpg",
-              mimeType: "image/jpeg",
-              dataBase64: stripDataUrlBase64(dataUrl),
-              previewUrl,
-            });
-          })
-          .catch(() => setNote(say.current.unreadable(name)));
-        return;
-      }
-      if (file.size > maxImageBytes) {
-        tooLarge();
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const previewUrl = URL.createObjectURL(file);
-        previews.current.add(previewUrl);
-        add({
-          kind: "image",
-          name,
-          mimeType: file.type,
-          dataBase64: stripDataUrlBase64(String(reader.result ?? "")),
-          previewUrl,
-        });
-      };
-      reader.onerror = () => setNote(say.current.unreadable(name));
-      reader.readAsDataURL(file);
+      const limits = { maxFiles, maxImageBytes, maxImageEdge, maxTextChars };
+      void readAttachmentFile(file, limits, say.current, { preview: true }).then((read) => {
+        if (read.note !== undefined) {
+          setNote(read.note);
+          return;
+        }
+        if (read.attachment.previewUrl) previews.current.add(read.attachment.previewUrl);
+        add(read.attachment);
+      });
     },
-    [add, maxImageBytes, maxImageEdge],
-  );
-
-  const stageText = useCallback(
-    (file: File) => {
-      if (!isTextFile(file.name, file.type)) {
-        setNote(say.current.wrongType(file.name));
-        return;
-      }
-      if (file.size > maxTextChars) {
-        setNote(say.current.textTooLarge(file.name, Math.round(maxTextChars / 1000)));
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () =>
-        add({
-          kind: "text",
-          name: file.name,
-          content: String(reader.result ?? "").slice(0, maxTextChars),
-        });
-      reader.onerror = () => setNote(say.current.unreadable(file.name));
-      reader.readAsText(file);
-    },
-    [add, maxTextChars],
+    [add, maxFiles, maxImageBytes, maxImageEdge, maxTextChars],
   );
 
   const addFiles = useCallback(
@@ -164,11 +103,10 @@ export function useAttachments(
         return;
       }
       for (const file of Array.from(files).slice(0, room)) {
-        if (isImageMime(file.type)) stageImage(file);
-        else stageText(file);
+        stage(file);
       }
     },
-    [maxFiles, stageImage, stageText],
+    [maxFiles, stage],
   );
 
   const addFromPaste = useCallback(
@@ -180,11 +118,11 @@ export function useAttachments(
       setNote(null);
       for (const item of images) {
         const file = item.getAsFile();
-        if (file) stageImage(file);
+        if (file) stage(file);
       }
       return true;
     },
-    [stageImage],
+    [stage],
   );
 
   const revoke = (a: StagedAttachment) => {
@@ -222,4 +160,81 @@ export function useAttachments(
     full: attachments.length >= maxFiles,
     limits: lim,
   };
+}
+
+export type ReadAttachment =
+  { attachment: StagedAttachment; note?: undefined } | { attachment?: undefined; note: string };
+
+/**
+ * One file read the way the composer stages it: an image shrunk to
+ * `maxImageEdge` and judged by its size after that, a text file read up to
+ * `maxTextChars`, anything else refused — with the reason as a sentence from
+ * `notes`, never a throw. `preview: true` adds an object URL the caller must
+ * revoke. `useAttachments` and `ChatApp`'s `send` both read files through it.
+ */
+export async function readAttachmentFile(
+  file: File,
+  limits: Partial<AttachmentLimits> = {},
+  notes: Partial<AttachmentNotes> = {},
+  { preview = false }: { preview?: boolean } = {},
+): Promise<ReadAttachment> {
+  const { maxImageBytes, maxTextChars, maxImageEdge } = { ...DEFAULT_ATTACHMENT_LIMITS, ...limits };
+  const say = { ...DEFAULT_ATTACHMENT_NOTES, ...notes };
+  const previewOf = () => (preview ? URL.createObjectURL(file) : undefined);
+  if (isImageMime(file.type)) {
+    const name = file.name || "screenshot.png";
+    const tooLarge = { note: say.imageTooLarge(name, Math.round(maxImageBytes / 1_000_000)) };
+    try {
+      if (maxImageEdge > 0) {
+        // Shrink first, then judge the size: a 4 MB screenshot is fine once it
+        // is the 300 KB it needed to be.
+        const dataUrl = await shrink(file, maxImageEdge, maxImageBytes);
+        if (!dataUrl) return tooLarge;
+        return {
+          attachment: {
+            kind: "image",
+            name: name.replace(/\.(png|gif|webp|jpe?g)$/i, "") + ".jpg",
+            mimeType: "image/jpeg",
+            dataBase64: stripDataUrlBase64(dataUrl),
+            previewUrl: previewOf(),
+          },
+        };
+      }
+      if (file.size > maxImageBytes) return tooLarge;
+      const dataUrl = await readAs(file, "dataUrl");
+      return {
+        attachment: {
+          kind: "image",
+          name,
+          mimeType: file.type,
+          dataBase64: stripDataUrlBase64(dataUrl),
+          previewUrl: previewOf(),
+        },
+      };
+    } catch {
+      return { note: say.unreadable(name) };
+    }
+  }
+  if (!isTextFile(file.name, file.type)) return { note: say.wrongType(file.name) };
+  if (file.size > maxTextChars) {
+    return { note: say.textTooLarge(file.name, Math.round(maxTextChars / 1000)) };
+  }
+  try {
+    const content = await readAs(file, "text");
+    return {
+      attachment: { kind: "text", name: file.name, content: content.slice(0, maxTextChars) },
+    };
+  } catch {
+    return { note: say.unreadable(file.name) };
+  }
+}
+
+function readAs(file: File, as: "text" | "dataUrl"): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    if (as === "text") reader.readAsText(file);
+    else reader.readAsDataURL(file);
+  });
 }

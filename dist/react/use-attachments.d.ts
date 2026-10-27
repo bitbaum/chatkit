@@ -23,4 +23,21 @@ export type AttachmentsController = {
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
 export declare function useAttachments(limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>): AttachmentsController;
+export type ReadAttachment = {
+    attachment: StagedAttachment;
+    note?: undefined;
+} | {
+    attachment?: undefined;
+    note: string;
+};
+/**
+ * One file read the way the composer stages it: an image shrunk to
+ * `maxImageEdge` and judged by its size after that, a text file read up to
+ * `maxTextChars`, anything else refused — with the reason as a sentence from
+ * `notes`, never a throw. `preview: true` adds an object URL the caller must
+ * revoke. `useAttachments` and `ChatApp`'s `send` both read files through it.
+ */
+export declare function readAttachmentFile(file: File, limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>, { preview }?: {
+    preview?: boolean;
+}): Promise<ReadAttachment>;
 //# sourceMappingURL=use-attachments.d.ts.map

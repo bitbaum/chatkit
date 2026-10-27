@@ -271,6 +271,182 @@ try {
     );
     await context.close();
   }
+
+  // 0.19 — what the first products to adopt ChatApp had to work around. The
+  // lab page wraps ChatApp in StrictMode and puts its handle on window.ckChat.
+  for (const [name, width, height] of [
+    ["phone", 390, 844],
+    ["desktop", 1440, 900],
+  ]) {
+    const phone = width < 1024;
+    const context = await browser.newContext({ viewport: { width, height }, hasTouch: phone });
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const lab = `${url}?lab=1&delay=5`;
+    const calls = () => page.evaluate(() => window.ckCalls);
+
+    // A message handed over by another page is sent once, StrictMode or not.
+    await page.goto(`${lab}&initial=${encodeURIComponent("Hello from the home box")}`);
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=answer number 1");
+    await page.waitForTimeout(150);
+    check(
+      (await page.locator(".ck-bubble", { hasText: "Hello from the home box" }).count()) === 1 &&
+        (await calls()).length === 1,
+      `${name}: initialMessage is sent exactly once under StrictMode (${(await calls()).length})`,
+    );
+
+    // A ?q= link only fills the box, and leaves the address.
+    await page.goto(`${lab}&q=${encodeURIComponent("Words from a link")}`);
+    await page.waitForFunction(
+      () => document.querySelector(".ck-input")?.value === "Words from a link",
+    );
+    await page.waitForTimeout(150);
+    check((await calls()).length === 0, `${name}: a deep link is never sent by itself`);
+    check(!page.url().includes("q="), `${name}: and is taken off the address (${page.url()})`);
+    check(
+      (await page.locator(".ck-turn").count()) === 0,
+      `${name}: it lands in a new chat, not the one from before`,
+    );
+    await page.fill(".ck-input", "");
+
+    // Starters keep their language.
+    check(
+      (await page.locator(".ck-starter[lang='gsw']").count()) === 1,
+      `${name}: a starter keeps its lang attribute`,
+    );
+
+    // The handle sends; two failures keep their own words.
+    await page.evaluate(() => window.ckChat.send("fail: The first reason."));
+    await page.waitForSelector(".ck-failed >> text=The first reason.");
+    await page.evaluate(() => window.ckChat.send("fail: The second reason."));
+    await page.waitForSelector(".ck-failed >> text=The second reason.");
+    check(
+      (await page.locator(".ck-failed", { hasText: "The first reason." }).count()) === 1,
+      `${name}: each failed bubble keeps its own reason`,
+    );
+    await page.evaluate(() => window.ckChat.send("fail-raw"));
+    await page.waitForSelector(".ck-failed >> text=That did not go through.");
+    check(true, `${name}: a raw error shows the thread's own words, never its message`);
+
+    // Retry sends the pictures again.
+    await page.evaluate(async () => {
+      const bytes = Uint8Array.from(
+        atob(
+          "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR4nGP8z8DwnwEIGBkZGRgYAAA0BgMBCcLDvQAAAABJRU5ErkJggg==",
+        ),
+        (c) => c.charCodeAt(0),
+      );
+      await window.ckChat.send("fail: With a picture.", [
+        new File([bytes], "shot.png", { type: "image/png" }),
+      ]);
+    });
+    await page.waitForSelector(".ck-failed >> text=With a picture.");
+    check(
+      (await page.locator(".ck-turn-user .ck-turn-files img").count()) === 1,
+      `${name}: a File handed to send() shows in the person's turn`,
+    );
+    const before = (await calls()).length;
+    await page.click(".ck-turn-answer .ck-action:has-text('Try again')");
+    await page.waitForFunction((n) => window.ckCalls.length > n, before);
+    const retried = (await calls()).at(-1);
+    check(
+      retried.text === "fail: With a picture." && retried.files === 1,
+      `${name}: Retry sends the picture again (${retried.files})`,
+    );
+
+    // Stop drops a half answer the transport marked as unchecked.
+    await page.fill(".ck-input", "unchecked please");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=Half an answer");
+    await page.click(".ck-send-stop");
+    await page.waitForSelector(".ck-stopped");
+    check(
+      (await page
+        .locator(".ck-turn-answer:not(.ck-turn-pinned) .ck-md", { hasText: "Half an answer" })
+        .count()) === 0 &&
+        !(await page.locator(".ck-thread").innerText()).includes("Half an answer"),
+      `${name}: Stop drops a half answer marked unchecked`,
+    );
+
+    // Footers know the latest answer, and can send for the person.
+    await page.evaluate(() => window.ckChat.send("first real question", [], { newChat: true }));
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=answer number 1");
+    await page.evaluate(() => window.ckChat.send("second real question"));
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=answer number 2");
+    await page.waitForSelector(".ck-send:not(.ck-send-stop)");
+    check(
+      (await page.locator("[data-latest='yes']").count()) === 1 &&
+        (await page.locator("[data-latest='no']").count()) === 1,
+      `${name}: renderFooter is told which answer is the latest`,
+    );
+    await page.click("[data-latest='yes'] .ck-reply:has-text('Shorter')");
+    await page.waitForSelector(".ck-bubble >> text=Make that shorter, please.");
+    check(true, `${name}: a footer chip sends its sentence in one tap`);
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=answer number 3");
+
+    // The product's row in the attach sheet, and its chip on the sent message.
+    await page.click(".ck-composer [aria-label='Attach a screenshot or file']");
+    await page.waitForSelector(".ck-sheet .ck-attach-extra >> text=Your things");
+    const sheet = await page.evaluate(() => {
+      const row = document.querySelector(".ck-attach-extra").getBoundingClientRect();
+      const source = document.querySelector(".ck-sheet .ck-attach-source").getBoundingClientRect();
+      return {
+        h: row.height,
+        below: row.top >= source.bottom,
+        w: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+    check(
+      sheet.h >= 44 && sheet.below && sheet.w <= 0,
+      `${name}: "Your things" is a 44px row under Camera · Photos · Files (${JSON.stringify(sheet)})`,
+    );
+    await page.click(".ck-attach-extra");
+    await page.waitForSelector(".ck-sheet", { state: "hidden" });
+    await page.fill(".ck-input", "What is it worth?");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".ck-turn-user .ck-turn-chip >> text=My bike listing");
+    check(true, `${name}: the product's chip shows on the sent message at once`);
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=answer number 4");
+    await page.waitForSelector(".ck-send:not(.ck-send-stop)");
+
+    // The product's line in the chat list.
+    if (phone) await page.click("[aria-label='Open your chats']");
+    check(
+      (await page.locator(".ck-history-slot").innerText()).includes("Only on this device."),
+      `${name}: the chat list carries the product's line`,
+    );
+    {
+      const m = await layout(page);
+      check(
+        m.small.length === 0,
+        `${name}: list controls are 44px with the slot (${m.small.join(", ")})`,
+      );
+      check(m.overflow <= 0, `${name}: no sideways scroll with the slot`);
+    }
+    if (phone) await page.keyboard.press("Escape");
+
+    // A temporary chat says when it ends.
+    await page.click("[aria-label='More for this chat']");
+    await page.click("[role=menuitemcheckbox]");
+    await page.fill(".ck-input", "a temporary question");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".ck-turn-answer .ck-md >> text=answer number 1");
+    const tempId = (await calls()).at(-1).chatId;
+    await page.click(".ck-screen-header [aria-label='New chat']");
+    const ended = await page.evaluate(() => window.ckEnded);
+    check(
+      ended.length === 1 && ended[0] === tempId,
+      `${name}: onTemporaryEnd names the chat when it is left (${ended.join(",")})`,
+    );
+
+    const m = await layout(page);
+    check(m.overflow <= 0, `${name}: lab: no sideways scroll (${m.overflow}px)`);
+    check(m.broken.length === 0, `${name}: lab: no word cut (${m.broken.join(", ")})`);
+    check(m.small.length === 0, `${name}: lab: every control is 44px (${m.small.join(", ")})`);
+    check(errors.length === 0, `${name}: lab: no page errors ${errors.join(" | ")}`);
+    await context.close();
+  }
 } finally {
   await browser.close();
   server.close();

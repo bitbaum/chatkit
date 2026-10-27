@@ -174,10 +174,171 @@ reopens the chat, a picture staged above the text and removed, delete, the
 queue and Stop — and checks for sideways scroll, 44px targets and cut words
 at every step.
 
+#### What a product adds to it (0.19)
+
+The first four products to adopt ChatApp (Heidi, OrangeCat, Solon,
+Substrata) each listed what it could not do. These close those gaps; every
+one is optional, and 0.18 code keeps working unchanged.
+
+**Send from the page — the handle.** `<ChatApp ref={chat}>` gives
+`ChatAppHandle`: `send(text, attachments?, { newChat?, chips? })`,
+`fill(text, files?)`, `focus()`, `newChat()`, `openConversation(id)`.
+`send` behaves exactly like the composer's Send (queued behind a running
+answer, a chat created when none is open); `File`s are read like the
+paperclip's, and if one cannot be attached nothing is sent — the words and
+files go into the box with the reason. Never click `.ck-send` from outside.
+
+```tsx
+const chat = useRef<ChatAppHandle>(null);
+<ChatApp ref={chat} transport={transport} />;
+<button onClick={() => chat.current?.send("Check this figure", [], { newChat: true })}>Check this</button>;
+```
+
+**A message the page arrives with.** `initialMessage` is sent once, in a new
+chat, after the list has loaded (StrictMode's double mount sends it once).
+`send: false` only fills the box. Clear it from your URL or state yourself.
+
+```tsx
+<ChatApp transport={transport}
+  initialMessage={handoff ? { text: handoff.text, attachments: handoff.files } : null} />
+```
+
+**`?q=` links.** `deepLinkParam="q"` reads the parameter into a new chat's
+box and takes it off the address. A link never sends for someone: only with
+`deepLinkAutoSend` too.
+
+```tsx
+<ChatApp transport={transport} deepLinkParam="q" />
+// /chat?q=How%20do%20invoices%20expire → the box says it; the person sends.
+```
+
+**Why a turn failed, per turn.** Throw `ChatTurnError(message, { kind })`
+from the transport: that bubble shows `message` and keeps `failure.kind`
+(for a footer to link the fix). Two failures in one chat keep their own
+words. Any other error shows the `failed` label, never its raw message —
+unless `failureMessage(error)` maps it.
+
+```tsx
+import { ChatTurnError } from "@bitbaum/chatkit/react";
+if (res.status === 503) throw new ChatTurnError("The model is not set up here.", { kind: "not-configured" });
+<ChatApp transport={transport} failureMessage={(e) => (navigator.onLine ? null : "You are offline.")} />;
+```
+
+**Retry sends the pictures again.** The files of a failed turn stay with it
+until its answer lands; Retry re-sends the words and the files. Nothing to
+configure.
+
+**Stop and the half answer.** Stop keeps what had arrived (as the apps do).
+`stopKeepsPartial={false}` drops it for every turn; a transport decides per
+turn with `turn.stopKeepsPartial(keep)` — `false` while the text is unchecked.
+
+```tsx
+transport={async (turn) => {
+  turn.stopKeepsPartial(false); // the gate has not checked this text yet
+  /* … stream … */ turn.stopKeepsPartial(true); return answer; }}
+```
+
+**Starters with a language.** A starter is `string | { label, prompt?, lang? }
+| { text, label?, lang? }`; `lang` goes on the button.
+
+```tsx
+<ChatApp transport={transport}
+  starters={["Explain this word", { text: "Grüezi mitenand", lang: "gsw" }]} />
+```
+
+**The chat list's own line.** `historySlot` sits under the search box, above
+the chats; `historyEmpty` replaces "No chats yet…".
+
+```tsx
+<ChatApp transport={transport}
+  historySlot={signedOut && <a href="/login">Only in this browser · Sign in to keep it</a>}
+  historyEmpty={<p>What you ask is kept here.</p>} />
+```
+
+**Product rows in the attach sheet.** `composer.attachExtras` — `{ id,
+label, detail?, icon?, onPick }[]` — are rows under Camera · Photos · Files,
+one anatomy (icon, label, second line), in the same sheet. With `attach:
+false` the paperclip opens a sheet of only these rows. (`AttachMenu rows`
+takes the same list.)
+
+```tsx
+<ChatApp transport={transport}
+  composer={{ attachExtras: [{ id: "things", label: "Your things", onPick: openThings }],
+              heldAttachments: held.length }} />
+```
+
+**The product's things on the sent message.** `chipsFor({ text, attachments
+})` returns `MessageChip[]` (`{ label, href?, kind? }`) shown on the person's
+message the moment it is sent, and kept with it (`ChatMessageData.chips`).
+`send(…, { chips })` does the same from the handle.
+
+```tsx
+<ChatApp transport={transport}
+  chipsFor={() => held.map((r) => ({ label: r.title, href: r.url }))} />
+```
+
+**A temporary chat ended.** `onTemporaryEnd(chatId)` fires once when a
+temporary chat is left (New chat, another chat, Temporary off), the page is
+hidden, or ChatApp unmounts. `turn.chatId` is the same id, so a server row
+kept for the chat can be keyed by it and deleted here.
+
+```tsx
+<ChatApp transport={(turn) => myApi.send({ ...turn, hiddenRowKey: turn.chatId })}
+  onTemporaryEnd={(chatId) => myApi.deleteHiddenRow(chatId)} />
+```
+
+**Footers that know the latest answer, and can send.** `thread.renderFooter(m,
+{ isLatest, index, send, fill })`: put "what next" only under the latest,
+and let a chip whose label differs from its sentence send in one tap.
+
+```tsx
+thread={{ renderFooter: (m, { isLatest, send }) =>
+  isLatest && <button className="ck-reply" onClick={() => send("Make it shorter.")}>Shorter</button> }}
+```
+
+**After the last turn.** `thread.after` is drawn inside the thread, after the
+last turn (a pending action, a picker), not over the composer.
+
+`demo/app.html?lab=1` is the page these are checked on: StrictMode around
+ChatApp, the handle on `window.ckChat`. `test/browser-app.mjs` drives it at
+390px and 1440px.
+
 #### Moving a product onto ChatApp
 
 Per product, from the matrix: what goes, what stays. What stays is always
 the same two things — the transport and the words.
+
+**Workarounds 0.19 makes deletable** (each was written in an adoption PR
+because ChatApp 0.18 could not do it — bitbaum/heidi#226, bitbaum/orangecat#1447,
+bitbaum/solon#309, bitbaum/substrata#262):
+
+- **Substrata** — `lib/chat/drive-composer.ts` (types into the composer and
+  presses Send) goes: `components/portal/chat/useAutoAsk.ts` and
+  `lib/chat/handoff.ts` hand their words and pictures to `initialMessage` (or
+  `ref.send(text, files, { newChat: true })`), and `/chat?q=` becomes
+  `deepLinkParam="q"`. Retry now re-sends the pictures.
+- **OrangeCat** — in `src/components/ai-chat/ModernChatPanel/index.tsx`, the
+  bridge that sets the composer value and clicks `button.ck-send` goes (`?q=`
+  and `askCat` → the handle), and so does the ephemeral-row cleanup hung on
+  the empty state mounting and `onConversationChange` (→ `onTemporaryEnd`,
+  keyed by `turn.chatId` in `hooks/useCatTransport.ts`). "Your things" moves
+  from a second button into the sheet (`composer.attachExtras`), its staged
+  refs show on the sent bubble (`chipsFor`), `CatAnswerFooter` shows the
+  create links and upgrade nudge only under `isLatest`, and pending actions
+  move from `composer.above` to `thread.after`. `TurnFailure` reads the
+  turn's own `failure.kind` (throw `ChatTurnError`).
+- **Heidi** — in `app/[locale]/_components/chat/workspace.tsx`, the
+  latest-failure state passed as `thread.labels.failed` goes (throw
+  `ChatTurnError` from `chat-app.ts`'s transport mapping), and so does
+  `turn.update({ text: "" })` before a throw on Stop (→
+  `turn.stopKeepsPartial(false)` until the variety gate has checked the
+  text). The move and learn chips and the word pick send in one tap again
+  through `renderFooter`'s `send`; the dialect starter gets `lang`; the
+  signed-out "Sign in to keep it" line moves from `startersTitle` to
+  `historySlot`.
+- **Solon** — nothing to delete. The per-answer "Answered by <model>" fits
+  `thread.renderFooter` (it existed in 0.18; it now also gets `isLatest`).
+  ChatApp's own words still come only in English: pass `labels`.
 
 - **Loki** — goes: `ThreadRail.tsx`, the history half of
   `WorkspaceDrawers.tsx` and `WorkspaceChrome.tsx`, `ThreadTitle.tsx`,

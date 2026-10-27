@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+} from "react";
 import {
   appendTranscript,
   composerCanSend,
@@ -20,7 +28,12 @@ import {
 import { useDictation, type UseDictationOptions } from "./use-dictation.js";
 import { useAttachments, type AttachmentsController } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
-import { AttachMenu, DEFAULT_ATTACH_MENU_LABELS, type AttachMenuLabels } from "./AttachMenu.js";
+import {
+  AttachMenu,
+  DEFAULT_ATTACH_MENU_LABELS,
+  type AttachExtra,
+  type AttachMenuLabels,
+} from "./AttachMenu.js";
 import {
   IconArrowUp,
   IconCheck,
@@ -79,6 +92,18 @@ export const DEFAULT_COMPOSER_LABELS: ComposerLabels = {
 
 export type ComposerVoice = Omit<UseDictationOptions, "onText">;
 
+/** What a page can do to a composer it does not type into (`handleRef`). */
+export type ComposerHandle = {
+  /** Replace the draft with these words. */
+  setText: (text: string) => void;
+  /** Stage files exactly as the paperclip would (limits, shrinking, notes). */
+  addFiles: (files: FileList | File[]) => void;
+  /** Put the cursor in the box. */
+  focus: () => void;
+  /** Press Send: what `Enter` does, with the same checks. */
+  submit: () => Promise<void>;
+};
+
 /** Overrides: every label is optional, including each dictation and attachment note. */
 export type ComposerLabelOverrides = Partial<
   Omit<ComposerLabels, "dictation" | "attachNotes" | "attachMenu">
@@ -123,6 +148,12 @@ export type ComposerProps = {
   /** Attachments on, optionally with the app's own limits. Off by default:
    *  only offer what the app's API accepts. */
   attach?: boolean | Partial<AttachmentLimits>;
+  /** The app's own rows in the same attach sheet, under Camera · Photos ·
+   *  Files (one of the person's things, a saved note). With `attach: false`
+   *  the paperclip opens a sheet of only these rows. */
+  attachExtras?: readonly AttachExtra[];
+  /** Fill, stage, focus or send from outside the box (see `ComposerHandle`). */
+  handleRef?: Ref<ComposerHandle>;
   /** The microphone. On by default. Pass `transcribeUrl` (or `transcribe`) so
    *  it still works where the browser recogniser does not — that fallback is
    *  what makes the mic never a dead button. `false` only for a surface that
@@ -252,6 +283,8 @@ export function Composer({
   heldAttachments = 0,
   queue = false,
   attach = false,
+  attachExtras,
+  handleRef,
   voice = {},
   modes,
   mode,
@@ -341,7 +374,22 @@ export function Composer({
     attachments.clear();
   };
 
+  // The handle presses the CURRENT Send, never the one its first render saw.
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+  useImperativeHandle(handleRef, () => ({
+    setText: (next: string) => setText(next),
+    addFiles: (files: FileList | File[]) => {
+      if (attachOn) attachments.addFiles(files);
+    },
+    focus: () => textareaRef.current?.focus(),
+    submit: () => submitRef.current(),
+  }));
+
   const showModes = Boolean(modes && modes.length > 1);
+  const extras = attachExtras ?? [];
 
   // The paperclip takes recordings too (through Files), when there is
   // somewhere to send them. A voice memo is not an attachment the model reads —
@@ -472,11 +520,13 @@ export function Composer({
 
           <div className="ck-actions">
             <div className="ck-tools">
-              {attachOn && (
+              {(attachOn || extras.length > 0) && (
                 <AttachMenu
                   onFiles={onFiles}
-                  disabled={disabled || attachments.full}
+                  disabled={disabled || (attachments.full && extras.length === 0)}
                   labels={{ attach: labels.attach, ...labels.attachMenu }}
+                  sources={attachOn ? undefined : []}
+                  rows={extras}
                 />
               )}
               {voiceOn && (
