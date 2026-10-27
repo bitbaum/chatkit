@@ -40,6 +40,8 @@ export function useStickToBottom(changes, grew) {
     const followingRef = useRef(true);
     const owner = useRef(null);
     const previousTop = useRef(0);
+    const downwardIntent = useRef(false);
+    const draggingScrollbar = useRef(false);
     const cleanup = useRef(null);
     const follow = useCallback((value) => {
         followingRef.current = value;
@@ -51,9 +53,12 @@ export function useStickToBottom(changes, grew) {
             return;
         const top = el.scrollTop;
         // An upward gesture must pause even within the near-bottom threshold.
-        if (top < previousTop.current - 1)
+        if (draggingScrollbar.current && top < previousTop.current - 1) {
+            downwardIntent.current = false;
             follow(false);
-        else if (top > previousTop.current + 1)
+        }
+        else if (top > previousTop.current + 1 &&
+            (downwardIntent.current || draggingScrollbar.current))
             follow(isFollowing(el));
         previousTop.current = top;
     }, [follow]);
@@ -98,10 +103,15 @@ export function useStickToBottom(changes, grew) {
         previousTop.current = selected.scrollTop;
         setPageScroll(selected === document.scrollingElement);
         const target = selected === document.scrollingElement ? document : selected;
-        const pause = () => follow(false);
+        const pause = () => {
+            downwardIntent.current = false;
+            follow(false);
+        };
         const wheel = (event) => {
             if (event.deltaY < 0)
                 pause();
+            else if (event.deltaY > 0)
+                downwardIntent.current = true;
         };
         let touchY;
         const touchStart = (event) => {
@@ -109,8 +119,12 @@ export function useStickToBottom(changes, grew) {
         };
         const touchMove = (event) => {
             const y = event.touches[0]?.clientY;
-            if (y !== undefined && touchY !== undefined && y > touchY)
-                pause();
+            if (y !== undefined && touchY !== undefined) {
+                if (y > touchY)
+                    pause();
+                else if (y < touchY)
+                    downwardIntent.current = true;
+            }
             touchY = y;
         };
         const key = (event) => {
@@ -120,8 +134,25 @@ export function useStickToBottom(changes, grew) {
                 return;
             if (["ArrowUp", "PageUp", "Home"].includes(e.key) || (e.key === " " && e.shiftKey))
                 pause();
+            else if (["ArrowDown", "PageDown", "End"].includes(e.key) || e.key === " ")
+                downwardIntent.current = true;
         };
+        const pointer = (event) => {
+            const e = event;
+            const right = selected === document.scrollingElement
+                ? window.innerWidth
+                : selected.getBoundingClientRect().right;
+            if (e.pointerType === "mouse" && e.clientX >= right - 20) {
+                draggingScrollbar.current = true;
+                pause();
+            }
+        };
+        const releasePointer = () => {
+            draggingScrollbar.current = false;
+        };
+        window.addEventListener("pointerup", releasePointer, { passive: true });
         const events = [
+            ["pointerdown", pointer],
             ["scroll", onScroll],
             ["wheel", wheel],
             ["touchstart", touchStart],
@@ -143,6 +174,7 @@ export function useStickToBottom(changes, grew) {
             for (const [name, listener] of events)
                 target.removeEventListener(name, listener);
             observer?.disconnect();
+            window.removeEventListener("pointerup", releasePointer);
         };
     });
     useEffect(() => () => {

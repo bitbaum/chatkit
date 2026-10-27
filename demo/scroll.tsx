@@ -1,10 +1,12 @@
 // Synthetic page-scroll and nested-scroll fixtures; no customer conversation.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ChatThread, type ChatMessageData } from "../src/react/index.js";
+import { Composer, ChatThread, type ChatMessageData } from "../src/react/index.js";
 
 function ScrollFixture() {
   const [tick, setTick] = useState(0);
+  const [sending, setSending] = useState(false);
+  const complete = useRef<(() => void) | null>(null);
   const [messages, setMessages] = useState<ChatMessageData[]>([
     { id: "question", role: "user", content: "Explain the synthetic example." },
     {
@@ -43,6 +45,10 @@ function ScrollFixture() {
         >
           Send question
         </button>
+        <button id="finish-send" onClick={() => complete.current?.()}>
+          Finish pending send
+        </button>
+        <output id="fixture-sending">{String(sending)}</output>
         <output id="fixture-tick">{tick}</output>
       </div>
       <div
@@ -55,6 +61,30 @@ function ScrollFixture() {
           }
         >
           <ChatThread messages={messages} live={{ status: `Checking details ${tick}` }} />
+          <Composer
+            placeholder="Synthetic message"
+            voice={false}
+            attach={false}
+            sending={sending}
+            onSend={(text) => {
+              setSending(true);
+              setMessages((m) => [...m, { id: `u${m.length}`, role: "user", content: text }]);
+              return new Promise<boolean>((resolve) => {
+                complete.current = () => {
+                  setMessages((m) => [
+                    ...m,
+                    {
+                      id: `a${m.length}`,
+                      role: "assistant",
+                      content: "Completed synthetic reply.",
+                    },
+                  ]);
+                  setSending(false);
+                  resolve(true);
+                };
+              });
+            }}
+          />
         </div>
       </div>
     </>

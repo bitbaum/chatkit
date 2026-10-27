@@ -23,6 +23,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The browser checks drive a real Chromium — the only way to prove the
       # mic falls back, text is 16px and nothing overflows at 390px.
+      - name: Read Playwright browser revision
+        id: playwright
+        run: node -p '"version=" + require("playwright/package.json").version' >> "$GITHUB_OUTPUT"
+      - name: Cache the verified browser revision
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
       - run: pnpm exec playwright install --with-deps chromium
       # Identical to what runs locally: format, lint, types, build, unit +
       # render tests, browser checks.

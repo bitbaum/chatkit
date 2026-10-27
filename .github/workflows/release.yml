@@ -123,6 +123,14 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: Read Playwright browser revision
+        id: playwright
+        run: node -p '"version=" + require("playwright/package.json").version' >> "$GITHUB_OUTPUT"
+      - name: Cache the verified browser revision
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
       - run: pnpm exec playwright install --with-deps chromium
 
       # Inputs reach the shell as environment variables, never pasted into the

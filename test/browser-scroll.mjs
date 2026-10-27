@@ -113,6 +113,22 @@ try {
         );
         await cdp.detach();
       }
+      await page.locator(".ck-input").fill("A pending synthetic question.");
+      await page.locator(".ck-input").press("Enter");
+      await page.waitForFunction(
+        () => document.getElementById("fixture-sending").textContent === "true",
+      );
+      await page.mouse.move(width / 2, 400);
+      await page.mouse.wheel(0, -420);
+      await page.waitForTimeout(400);
+      const pendingReading = await position();
+      await page.evaluate(() => document.getElementById("finish-send").click());
+      await page.waitForFunction(() => document.querySelector(".ck-input").value === "");
+      await page.waitForTimeout(400);
+      assert.ok(
+        Math.abs((await position()).top - pendingReading.top) < 4,
+        `${owner} ${width}: reply completion and focused draft clear preserve reading`,
+      );
       assert.deepEqual(errors, [], `${owner} ${width}: no browser errors`);
       await page.close();
       console.log(

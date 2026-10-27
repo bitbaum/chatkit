@@ -79,6 +79,16 @@ jobs:
 
       # verify includes the real-browser test (test/browser.mjs), as in ci.yml;
       # without the browser the v0.2.1 publish failed before reaching npm.
+      - name: Read Playwright browser revision
+        if: steps.check.outputs.publish == 'true'
+        id: playwright
+        run: node -p '"version=" + require("playwright/package.json").version' >> "$GITHUB_OUTPUT"
+      - name: Cache the verified browser revision
+        if: steps.check.outputs.publish == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
       - if: steps.check.outputs.publish == 'true'
         run: pnpm exec playwright install --with-deps chromium
 
