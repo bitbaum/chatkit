@@ -20,4 +20,7 @@ export { useAttachments } from "./use-attachments.js";
 export { useClipboard, useStickToBottom, useViewportHeight, useAutoGrow } from "./hooks.js";
 export { RichAnswerBlock, ChartTableFigure } from "./RichBlock.js";
 export { RichRenderersContext, useRichRenderers } from "./renderers.js";
+export { ChatApp, DEFAULT_CHAT_APP_LABELS } from "./ChatApp.js";
+export { ChatHistory } from "./ChatHistory.js";
+export { useChatApp, isTemporaryId } from "./use-chat-app.js";
 //# sourceMappingURL=index.js.map

@@ -58,6 +58,8 @@
 }
 
 .ck-screen,
+.ck-app,
+.ck-app-drawer,
 .ck-composer-wrap,
 .ck-thread-wrap,
 .ck-starters,
@@ -67,6 +69,8 @@
 }
 
 .ck-screen *,
+.ck-app *,
+.ck-app-drawer *,
 .ck-composer-wrap *,
 .ck-thread-wrap *,
 .ck-starters *,
@@ -1937,4 +1941,409 @@ details.ck-thinking[open] > summary svg {
   right: 1rem;
   bottom: 1rem;
   z-index: 10;
+}
+
+/* ── ChatApp: the whole app ─────────────────────────────────────────────
+   The chat list is a drawer from the left edge on a phone (a native <dialog>:
+   Escape, the focus trap and focus restore come from the browser) and a rail
+   beside the chat from a wide screen. One row anatomy in the list: title,
+   date, one "…". demo/app.html is the reference at 390px and 1440px. */
+.ck-app {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--ck-page);
+}
+.ck-app-viewport {
+  height: var(--ck-viewport-height, 100dvh);
+}
+.ck-app-screen {
+  flex: 1;
+}
+.ck-app-rail {
+  display: flex;
+  flex: 0 0 18rem;
+  flex-direction: column;
+  width: 18rem;
+  min-height: 0;
+  border-right: 1px solid var(--ck-line);
+  background: var(--ck-bg);
+}
+.ck-app-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(20rem, 88vw);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+}
+.ck-app-drawer::backdrop {
+  background: color-mix(in srgb, #000 40%, transparent);
+}
+.ck-app-drawer[open] .ck-app-drawer-panel {
+  animation: ck-slide-in 0.2s ease-out;
+}
+@keyframes ck-slide-in {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
+}
+.ck-app-drawer-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.ck-history {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 0.75rem;
+}
+.ck-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--ck-target);
+}
+.ck-history-title {
+  padding-inline: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.ck-history-close {
+  border-color: transparent;
+  background: transparent;
+}
+.ck-history-new,
+.ck-history-search {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  font-size: 0.9375rem;
+}
+.ck-history-new {
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font-family: inherit;
+  cursor: pointer;
+}
+.ck-history-new:hover {
+  border-color: var(--ck-line-2);
+}
+.ck-history-search {
+  background: var(--ck-bg);
+  color: var(--ck-fg-3);
+}
+.ck-history-search:focus-within {
+  border-color: var(--ck-line-2);
+}
+.ck-history-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--ck-target);
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+}
+.ck-history-list {
+  flex: 1;
+  min-height: 0;
+  margin-inline: -0.25rem;
+  padding-inline: 0.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ck-history-group-title {
+  margin: 0.875rem 0.5rem 0.25rem;
+  color: var(--ck-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.ck-history-group ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-history-row {
+  border-radius: var(--ck-radius-sm);
+}
+.ck-history-row-active {
+  background: var(--ck-raised);
+}
+.ck-history-line {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.ck-history-open {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: var(--ck-target);
+  padding: 0.5rem;
+  border: 0;
+  border-radius: var(--ck-radius-sm);
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ck-history-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ck-history-date {
+  flex: none;
+  color: var(--ck-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.ck-history-more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--ck-target);
+  height: var(--ck-target);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg-3);
+  cursor: pointer;
+}
+.ck-history-open:hover,
+.ck-history-more:hover {
+  background: color-mix(in srgb, var(--ck-line) 60%, transparent);
+}
+.ck-history-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+.ck-history-pair > button,
+.ck-history-retry {
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.ck-history-pair > button:hover,
+.ck-history-retry:hover {
+  border-color: var(--ck-line-2);
+}
+.ck-history-pair > .ck-history-danger,
+.ck-app-menu-item.ck-history-danger {
+  color: var(--ck-danger);
+}
+.ck-history-confirm p,
+.ck-app-confirm p {
+  margin: 0.25rem 0.5rem 0;
+  font-size: 0.9375rem;
+}
+.ck-history-rename {
+  padding: 0.25rem 0.5rem 0;
+}
+.ck-history-rename .ck-history-pair {
+  padding-inline: 0;
+}
+.ck-history-rename input,
+.ck-app-rename input {
+  width: 100%;
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+}
+.ck-history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1.5rem 0.5rem;
+  color: var(--ck-fg-3);
+  font-size: 0.9375rem;
+}
+.ck-history-empty p {
+  margin: 0;
+}
+.ck-history-new:focus-visible,
+.ck-history-open:focus-visible,
+.ck-history-more:focus-visible,
+.ck-history-pair > button:focus-visible,
+.ck-history-retry:focus-visible,
+.ck-app-menu-item:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: -2px;
+}
+
+/* The header: Chats · title · New chat · More, as frosted pills. */
+.ck-app-icon {
+  flex: none;
+  width: var(--ck-target);
+  padding: 0;
+  font-size: 1.125rem;
+}
+.ck-app-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
+.ck-app-title-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.ck-app-title-note {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ck-muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ck-app-rename {
+  width: 100%;
+  max-width: 24rem;
+}
+.ck-app-menu-wrap {
+  position: relative;
+  flex: none;
+}
+.ck-app-menu {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 14rem;
+  padding: 0.375rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-bg);
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.35);
+}
+.ck-app-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: var(--ck-radius-sm);
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ck-app-menu-item:hover {
+  background: var(--ck-raised);
+}
+.ck-app-menu-check {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--ck-fg);
+}
+
+/* Above the composer: a delete to confirm, the messages queued behind a turn. */
+.ck-app-confirm {
+  padding-top: 0.5rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-bg);
+}
+.ck-app-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-app-queue li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--ck-bg) 90%, transparent);
+}
+.ck-app-queue-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.9375rem;
+}
+.ck-app-queue-text small {
+  color: var(--ck-muted);
+  font-size: 0.75rem;
+}
+
+/* What the person sent with their words, above their bubble. */
+.ck-turn-files {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: min(85%, 42rem);
+  margin-bottom: 0.375rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-app-drawer[open] .ck-app-drawer-panel {
+    animation: none;
+  }
 }

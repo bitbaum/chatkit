@@ -82,6 +82,155 @@ The reading column is `--ck-measure` (48rem) wide with `--ck-gutter` (1rem)
 to the edge; the page behind it is `--ck-page`. `demo/screen.html` is the
 reference: look at it at 390px before changing any of this.
 
+### The whole app — `ChatApp`
+
+`ChatScreen`, `Composer` and `ChatThread` are the pieces. Until 0.18 every
+product built the app around them itself — the chat list, New chat, Temporary
+chat, titles, rename and delete, what a reload reopens — and each did it a
+little differently (`docs/fleet-chat-matrix.md` has the table). `ChatApp` is
+that app, once: what a person sees in the Claude or ChatGPT phone app, set by
+this package and changed only through props.
+
+```tsx
+import { ChatApp } from "@bitbaum/chatkit/react";
+import { httpConversationStore, localConversationStore } from "@bitbaum/chatkit";
+
+const store = signedIn
+  ? httpConversationStore({ baseUrl: "/api/conversations" })
+  : localConversationStore({ key: "heidi-chat" });
+
+<ChatApp
+  name="Heidi"
+  store={store}
+  transport={async ({ text, attachments, history, signal, update }) => {
+    const answer = await streamFromMyApi({ text, attachments, history, signal, onText: (t) => update({ text: t }) });
+    return answer; // a string, or { content, replies?, citations?, thinking? }
+  }}
+  composer={{ voice: { transcribeUrl: "/api/transcribe" } }}
+  starters={["Explain this word", "Translate a message"]}
+/>;
+```
+
+What it owns, so no product writes it again:
+
+- **The header**: frosted pills — Chats (a phone; from `railQuery`, default
+  64rem, the list is a rail beside the chat instead) · the chat's title ·
+  New chat · "…" with Temporary chat, Share this chat (with `onShare`),
+  Rename and Delete. `headerStart` / `headerEnd` take the product's own
+  controls (a model picker, a back link).
+- **The chat list**: a full-height drawer on a phone (a native `<dialog>`:
+  Escape, the focus trap and focus restore come from the browser; it opens on
+  its close button, never on the search box, so no keyboard jumps up), a rail
+  on a wide screen. New chat, a search box (every word, accents ignored — or
+  your `search`, e.g. searchkit), Today / Yesterday / Earlier, and rows with
+  ONE anatomy: title, date (or "Answering…"), one "…" that opens Rename ·
+  Delete as two equal cells; Delete asks once, in the row. An empty list and a
+  failed load each say so, the second with Try again.
+- **New chat and Temporary chat.** A temporary chat is never written to the
+  store and ends when it is left; the transport gets `temporary: true` and
+  `conversationId: null`, so a server that persists turns itself knows not to.
+- **Titles**: the first message names a chat (`deriveTitle`, Heidi's rule);
+  `makeTitle({ text, answer })` renames it after the first answer if you have
+  something better.
+- **Reload**: the open chat comes back (`rememberKey`, device storage — never
+  a temporary one), unless it was deleted elsewhere. A product that keeps the
+  chat in its URL passes `conversationId` and `onConversationChange` instead.
+- **Turns**: one per conversation, and a turn keeps running when the person
+  opens another chat (its row says "Answering…"). Stop keeps what had arrived.
+  A failed turn shows Retry. A message sent while an answer runs is queued
+  above the composer, with its own ×, and goes when the answer lands.
+- **The composer**: attachments ON (Camera · Photos · Files, thumbnails above
+  the text, each with its ×, shown in the sent turn too), the microphone,
+  suggested replies, and the screen's visual-viewport sizing (`fill`).
+
+**The transport** is the product's one job: `(turn) => Promise<answer>`.
+`turn` is `{ conversationId, temporary, text, attachments, history, signal,
+update }`; call `update({ text, status, steps })` as the answer streams (the
+whole text each time); throw for a failed turn.
+
+**The store** is an adapter — six methods, `ConversationStore`:
+`list() · get(id) · create({ title }) · append(id, message) · rename(id,
+title) · remove(id)`. Two come with the package:
+
+- `localConversationStore({ key })` — the device. Versioned (`<key>:v1`),
+  one key per chat; never throws: storage that is missing, blocked (private
+  mode) or full degrades to memory for the page, and a full quota drops the
+  OLDEST chats first. Pictures are kept by name, not bytes.
+- `httpConversationStore({ baseUrl })` — the product's server, over
+  Heidi's shape: `GET {base}` → `{ conversations }`, `POST {base}` →
+  `{ conversation }`, `GET {base}/{id}` → `{ conversation, messages }` (404 =
+  gone), `POST {base}/{id}/messages` `{ message }`, `PATCH {base}/{id}`
+  `{ title }`, `DELETE {base}/{id}`. `serverWritesTurns: true` when the
+  product's chat route already stores each turn, so nothing is written twice.
+
+Signed out on the device, signed in on the server: pass the store for who is
+there. `copyConversations(local, server)` moves the device's chats into the
+account on sign-in.
+
+`demo/app.html` is the reference — look at it at 390px and 1440px.
+`test/browser-app.mjs` drives it at both widths: send, the drawer (focus in
+and back out), New chat, a temporary chat that leaves no row, a reload that
+reopens the chat, a picture staged above the text and removed, delete, the
+queue and Stop — and checks for sideways scroll, 44px targets and cut words
+at every step.
+
+#### Moving a product onto ChatApp
+
+Per product, from the matrix: what goes, what stays. What stays is always
+the same two things — the transport and the words.
+
+- **Loki** — goes: `ThreadRail.tsx`, the history half of
+  `WorkspaceDrawers.tsx` and `WorkspaceChrome.tsx`, `ThreadTitle.tsx`,
+  `hooks/use-temporary-chat.ts`, `hooks/use-new-chat.ts`,
+  `hooks/use-send-queue.ts` + `QueuedMessages.tsx`, the history-pin storage.
+  Stays: `use-loki-stream` as the transport (its `ephemeral` flag from
+  `turn.temporary`), `ModelPicker` and the project chip in `composer.tools`,
+  the dispatch and handoff cards in `thread.renderFooter`,
+  `httpConversationStore({ baseUrl: "/api/conversations", serverWritesTurns:
+  true })`, `?c=` through `conversationId`. Not in ChatApp yet, so ask for it
+  here first: pinned chats, the "needs me first" line and by-project view,
+  hands-free voice conversation.
+- **OrangeCat** — goes: `ConversationRail.tsx`, `hooks/useConversations.ts`
+  (incl. its temporary chat), `hooks/useChatHistory.ts`, the header row of
+  `ChatHeader.tsx`. Stays: the Cat's stream as the transport,
+  `ComposerAddMenu` (the person's own things) in `composer.tools` with
+  `heldAttachments`, tool chips and pending actions in `thread.renderFooter`,
+  the quota meter in `headerEnd`. Its conversation routes are not the REST
+  shape above: a six-method store over `API_ROUTES.CAT`, or align the routes.
+  Gains: reopening the chat after a reload, rename, search.
+- **Heidi** — goes: `conversation-list.tsx`, `new-chat-button.tsx`, the
+  header and drawer state in `workspace.tsx`, the storage half of
+  `use-conversation.ts`, the signed-out draft restore (`use-draft`) →
+  `localConversationStore`. Stays: `transports.ts` (its `Transport` maps onto
+  this one: `onText` → `update`, a `status: "error"` result → a throw), the composer labels and picture limits, the answer view
+  and word pick in `thread.renderFooter`, the model sheet in `headerEnd`.
+  Store: `httpConversationStore({ baseUrl: "/api/conversations",
+  serverWritesTurns: true })` signed in. Gains: a temporary chat.
+- **Substrata** — goes: the `ChatScreen` + `Composer` + `ChatThread`
+  assembly in `ResearchChat.tsx`, `lib/ask-thread.ts` (the tab handoff →
+  `conversationId` + the device store). Stays: `useChatSession` as the
+  transport, `AskTools` / `ComposerBeside` in `composer.tools` and
+  `footnote`, `chartRenderers`, `AnswerFooter`. Decide: attachments are ON in
+  ChatApp; `/api/chat` takes no files today, so either keep
+  `composer={{ attach: false }}` or accept pictures there.
+- **Diplodoctor** — goes: the assembly in `app/[locale]/ask/page.tsx`.
+  Stays: the redacting `ask()` as the transport, the labels. Gains: a chat
+  list and reload. Needs: a transcription route (voice is off today) and an
+  API that takes files before `attach` is turned on.
+- **Causius** — stays as it is for now. A matter is a case with documents,
+  participants and steps, not a chat; its list is the matters page.
+  `ChatThread` + `IntakeComposer` remain the right pieces.
+- **evig** — goes: the header and Clear in `HirnChat.tsx` and
+  `HirnChatPanel.tsx`. Stays: `/api/hirn/chat` as the transport, the action
+  cards in `thread.renderFooter`, `useChatLabels`. Store: the Hirn history
+  route is per session, not the REST shape — a six-method store, or the
+  device store for the panel.
+- **Solon** — goes: the header, "New conversation" and the React-state
+  history in `governance-chat.tsx` and `law-chat.tsx`. Stays: the SSE read as
+  the transport, the starters, `renderLink`. Gains: chats that survive a
+  reload (the footnote promises "stays in this tab" and today nothing does).
+  Signed out keeps its own "Sign in to ask Solon" screen instead of ChatApp.
+
 ### The microphone
 
 `voice` is on by default. Give it a server leg so it works everywhere:
@@ -440,6 +589,9 @@ on `Composer`, `labels` on `ChatThread`.
 9. Nothing overflows at 320–390px.
 10. In `ChatScreen`, the conversation fills the display and opens at the
     latest message, with its end above the composer, not behind it.
+11. In `ChatApp`, the same app everywhere: one chat list with one row
+    anatomy, New chat, Temporary chat that writes nothing, the open chat
+    back after a reload, attachments on, a queue behind a running answer.
 
 `pnpm run verify` proves all of it: unit and render tests, then
 `test/browser.mjs` drives Chromium through the demo at desktop and 390px, light

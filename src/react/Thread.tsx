@@ -13,7 +13,8 @@ import {
 } from "./AnswerActions.js";
 import type { AnswerFeedback } from "../review.js";
 import type { RichRenderers } from "./renderers.js";
-import { IconArrowDown, IconChevron, IconRetry, IconStop } from "./icons.js";
+import type { MessageAttachment } from "../conversations.js";
+import { IconArrowDown, IconChevron, IconFile, IconRetry, IconStop } from "./icons.js";
 
 export type ChatSpeaker = {
   /** Shown above the message when more than one agent can answer. */
@@ -30,6 +31,9 @@ export type ChatMessageData = {
   citations?: CitationMap;
   /** The turn failed: shown as a failure with Retry, never as silence. */
   failed?: boolean;
+  /** What the person sent with their words: pictures drawn small above the
+   *  bubble, other files as their name. */
+  attachments?: readonly MessageAttachment[];
   /**
    * What the person is likely to say next, as one-tap buttons under the
    * latest answer. Leave it out and a `quick_replies` block in `content` is
@@ -139,7 +143,21 @@ export function ChatMessage({
   if (message.role === "user") {
     return (
       <div className="ck-turn ck-turn-user">
-        <div className="ck-bubble">{message.content}</div>
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="ck-turn-files">
+            {message.attachments.map((a, i) =>
+              a.kind === "image" && a.previewUrl ? (
+                <img key={i} src={a.previewUrl} alt={a.name} className="ck-attach-thumb" />
+              ) : (
+                <span key={i} className="ck-attach-file">
+                  <IconFile />
+                  <span className="ck-truncate">{a.name}</span>
+                </span>
+              ),
+            )}
+          </div>
+        )}
+        {message.content && <div className="ck-bubble">{message.content}</div>}
       </div>
     );
   }

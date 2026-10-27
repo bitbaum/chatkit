@@ -216,3 +216,50 @@ export const IconThumbDown = () => (
     <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" />
   </Svg>
 );
+
+// ChatApp's header and chat list.
+export const IconMenu = () => (
+  <Svg>
+    <path d="M4 6h16" />
+    <path d="M4 12h16" />
+    <path d="M4 18h10" />
+  </Svg>
+);
+export const IconNewChat = () => (
+  <Svg>
+    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
+  </Svg>
+);
+export const IconMore = () => (
+  <Svg>
+    <circle cx="5" cy="12" r="1" />
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+  </Svg>
+);
+export const IconGhost = () => (
+  <Svg>
+    <path d="M9 10h.01" />
+    <path d="M15 10h.01" />
+    <path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z" />
+  </Svg>
+);
+export const IconTrash = () => (
+  <Svg>
+    <path d="M3 6h18" />
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </Svg>
+);
+export const IconSearch = () => (
+  <Svg>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </Svg>
+);
+export const IconPencil = () => (
+  <Svg>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+  </Svg>
+);

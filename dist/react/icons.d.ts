@@ -22,4 +22,11 @@ export declare const StackIconSvg: ({ name }: {
 export declare const IconChevron: () => import("react").JSX.Element;
 export declare const IconThumbUp: () => import("react").JSX.Element;
 export declare const IconThumbDown: () => import("react").JSX.Element;
+export declare const IconMenu: () => import("react").JSX.Element;
+export declare const IconNewChat: () => import("react").JSX.Element;
+export declare const IconMore: () => import("react").JSX.Element;
+export declare const IconGhost: () => import("react").JSX.Element;
+export declare const IconTrash: () => import("react").JSX.Element;
+export declare const IconSearch: () => import("react").JSX.Element;
+export declare const IconPencil: () => import("react").JSX.Element;
 //# sourceMappingURL=icons.d.ts.map

@@ -92,6 +92,9 @@ export type ComposerProps = {
     /** Inside the box, under the controls. */
     footer?: ReactNode;
     hint?: string;
+    /** Where staged pictures and files sit: under the text (the default) or
+     *  above it, as the ChatGPT and Claude apps draw them. ChatApp uses above. */
+    stagedPosition?: "above" | "below";
     labels?: ComposerLabelOverrides;
     autoFocus?: boolean;
 };
@@ -103,5 +106,5 @@ export type ComposerProps = {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
+export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, stagedPosition, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
 //# sourceMappingURL=Composer.d.ts.map
