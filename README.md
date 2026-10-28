@@ -51,6 +51,13 @@ import "@bitbaum/chatkit/styles.css";
 />
 ```
 
+For an embedded composer/thread that does not render `ChatApp`, use
+`@bitbaum/chatkit/styles/chat.css` in place of `styles.css`. It contains the
+same shared composer, thread, reply, attachment and message styles while
+omitting the full-screen app's conversation rail and drawer. The narrower
+stylesheet is generated from `styles.css` during the package build, so shared
+chat styles have one source and do not drift.
+
 ### The whole screen — `ChatScreen`
 
 A chat page is the conversation, edge to edge and top to bottom, as in the
