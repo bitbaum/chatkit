@@ -58,8 +58,6 @@
 }
 
 .ck-screen,
-.ck-app,
-.ck-app-drawer,
 .ck-composer-wrap,
 .ck-thread-wrap,
 .ck-starters,
@@ -69,8 +67,6 @@
 }
 
 .ck-screen *,
-.ck-app *,
-.ck-app-drawer *,
 .ck-composer-wrap *,
 .ck-thread-wrap *,
 .ck-starters *,
@@ -1994,6 +1990,15 @@ details.ck-thinking[open] > summary svg {
    Escape, the focus trap and focus restore come from the browser) and a rail
    beside the chat from a wide screen. One row anatomy in the list: title,
    date, one "…". demo/app.html is the reference at 390px and 1440px. */
+.ck-app,
+.ck-app-drawer {
+  font-family: var(--ck-font);
+  color: var(--ck-fg);
+}
+.ck-app *,
+.ck-app-drawer * {
+  box-sizing: border-box;
+}
 .ck-app {
   position: relative;
   display: flex;

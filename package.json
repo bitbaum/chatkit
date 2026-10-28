@@ -38,7 +38,8 @@
   "files": [
     "dist",
     "bin",
-    "styles.css"
+    "styles.css",
+    "styles/chat.css"
   ],
   "bin": {
     "chatkit-check-file-inputs": "./bin/chatkit-check-file-inputs.mjs",
@@ -65,10 +66,11 @@
       "types": "./dist/pdf.d.ts",
       "default": "./dist/pdf.js"
     },
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./styles/chat.css": "./styles/chat.css"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "build": "node scripts/build-chat-css.mjs && rm -rf dist && tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test test/*.test.js",

@@ -1,0 +1,1986 @@
+/*
+ * @bitbaum/chatkit — the look of the one chat.
+ *
+ * Every colour, radius and face is a --ck-* variable. By default they read
+ * @bitbaum/design-tokens' HSL-triplet variables, so apps on those tokens match
+ * without doing anything. An app whose variables are full colours (loki's are
+ * OKLCH under the same names) maps them once — `:root { --ck-bg:
+ * var(--surface-base); … }` — and any other app sets --ck-* to keep its own
+ * look. The BEHAVIOUR is what is shared, and it is not configurable.
+ *
+ * Non-negotiable, and why:
+ *  - 16px text in the input and the messages: under 16px iOS zooms the whole
+ *    page when the input is focused (loki globals.css).
+ *  - 44px touch targets on every control (WCAG 2.5.8, loki's audit).
+ *  - Nothing wider than its container at 320px (min-width: 0 on flex rows —
+ *    heidi composer.tsx).
+ */
+
+:where(:root) {
+  /* Defaults at ZERO specificity on the root: an app's own :root (or any
+     container) rule setting a --ck-* variable always wins. Declaring these on
+     the chat's elements instead would silently override the app. */
+  --ck-page: hsl(var(--surface-page, 0 0% 99%));
+  --ck-bg: hsl(var(--surface-base, 0 0% 100%));
+  --ck-raised: hsl(var(--surface-raised, 0 0% 96%));
+  --ck-overlay: hsl(var(--surface-overlay, 0 0% 98%));
+  --ck-fg: hsl(var(--text-primary, 0 0% 10%));
+  --ck-fg-2: hsl(var(--text-secondary, 0 0% 30%));
+  --ck-fg-3: hsl(var(--text-tertiary, 0 0% 42%));
+  --ck-muted: hsl(var(--text-muted, 0 0% 50%));
+  --ck-line: hsl(var(--border-subtle, 0 0% 90%));
+  --ck-line-2: hsl(var(--border-default, 0 0% 82%));
+  --ck-accent: var(--accent-primary, #ff5c00);
+  --ck-on-accent: hsl(var(--on-accent, 0 0% 8%));
+  --ck-accent-soft: color-mix(in srgb, var(--ck-accent) 14%, transparent);
+  --ck-danger: hsl(var(--status-negative, 0 65% 50%));
+  --ck-danger-soft: color-mix(in srgb, var(--ck-danger) 12%, transparent);
+  --ck-on-danger: #fff;
+  --ck-warning: hsl(var(--status-warning, 38 92% 45%));
+  --ck-radius: 1rem;
+  --ck-radius-sm: var(--radius-control, 0.5rem);
+  --ck-font: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  --ck-mono: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  --ck-text: 1rem;
+  --ck-leading: 1.6;
+  --ck-target: 2.75rem;
+  /* ChatScreen: the reading column, and the margin it keeps from the edge. */
+  --ck-measure: 48rem;
+  --ck-gutter: 1rem;
+  /* ChatScreen measures the floating header and dock into these; with no
+     ChatScreen they are 0. --ck-viewport-height is set by useViewportHeight. */
+  --ck-top-inset: 0px;
+  --ck-bottom-inset: 0px;
+  --ck-viewport-height: 100dvh;
+  /* The person's own words. Neutral, not the accent: the accent is for the
+     one thing to press, and a column of tinted pills spent it on every turn. */
+  --ck-bubble: var(--ck-raised);
+}
+
+.ck-screen,
+.ck-composer-wrap,
+.ck-thread-wrap,
+.ck-starters,
+.ck-replies {
+  font-family: var(--ck-font);
+  color: var(--ck-fg);
+}
+
+.ck-screen *,
+.ck-composer-wrap *,
+.ck-thread-wrap *,
+.ck-starters *,
+.ck-replies * {
+  box-sizing: border-box;
+}
+
+/* ── composer ───────────────────────────────────────────────────────────── */
+.ck-composer-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ck-composer-frame {
+  position: relative;
+  min-width: 0;
+}
+.ck-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.75rem 0.75rem 0.625rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-bg);
+  transition: border-color 0.15s ease;
+}
+.ck-composer:focus-within {
+  border-color: var(--ck-line-2);
+}
+.ck-composer-compact {
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border-radius: calc(var(--ck-radius) * 0.75);
+}
+.ck-input {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  max-height: 15rem;
+  resize: none;
+  overflow-y: auto;
+  padding: 0.375rem 0.25rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+  line-height: var(--ck-leading);
+}
+.ck-input::placeholder {
+  color: var(--ck-muted);
+  /* One line, always: an empty box is one row high on every phone, and a
+     long placeholder is cut at the edge rather than wrapped into a second
+     line that the box then clips in half (320px, 2026-10-21). */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ck-input:placeholder-shown {
+  overflow: hidden;
+}
+.ck-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ck-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.ck-submit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.ck-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ck-muted);
+  font-size: 0.8125rem;
+}
+@media (max-width: 480px) {
+  .ck-hint {
+    display: none;
+  }
+}
+.ck-icon-btn,
+.ck-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+.ck-icon-btn {
+  border: 1px solid var(--ck-line);
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+}
+.ck-icon-btn:hover:not(:disabled) {
+  border-color: var(--ck-line-2);
+  color: var(--ck-fg);
+}
+.ck-mic-on {
+  border-color: var(--ck-danger);
+  background: var(--ck-danger-soft);
+  color: var(--ck-danger);
+}
+.ck-send {
+  border: 0;
+  background: var(--ck-accent);
+  color: var(--ck-on-accent);
+}
+.ck-send:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.ck-send:disabled,
+.ck-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.ck-send:disabled {
+  background: var(--ck-raised);
+  color: var(--ck-muted);
+  opacity: 1;
+}
+.ck-send-stop {
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  border: 1px solid var(--ck-line-2);
+}
+:where(.ck-composer-wrap, .ck-thread-wrap, .ck-starters, .ck-replies) button:focus-visible,
+.ck-input:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+.ck-input:focus-visible {
+  outline: none;
+}
+.ck-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.ck-mode {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg-2);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ck-mode[aria-pressed="true"] {
+  border-color: var(--ck-accent);
+  background: var(--ck-accent-soft);
+  color: var(--ck-fg);
+}
+
+/* voice: the bar covers the box while a take is live, so what is happening —
+   and how to keep or throw it away — is unmissable */
+.ck-voice-bar {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: var(--ck-radius);
+  background: var(--ck-bg);
+  color: var(--ck-fg-2);
+}
+.ck-voice-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--ck-danger);
+  animation: ck-pulse 1.2s ease-in-out infinite;
+}
+.ck-voice-wave {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: 1.75rem;
+  min-width: 0;
+  overflow: hidden;
+}
+.ck-voice-wave > span {
+  width: 0.25rem;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ck-accent);
+  transform: scaleY(0.3);
+  animation: ck-wave 1s ease-in-out infinite;
+}
+.ck-voice-wave > span:nth-child(2n) {
+  animation-delay: -0.3s;
+}
+.ck-voice-wave > span:nth-child(3n) {
+  animation-delay: -0.6s;
+}
+.ck-voice-wave > span:nth-child(5n) {
+  animation-delay: -0.8s;
+}
+/* the words as they are heard: one line, its end always in view, the start
+   fading out — the person reads the newest words, not the oldest */
+.ck-voice-live {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--ck-fg);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 1.75rem);
+  mask-image: linear-gradient(to right, transparent, #000 1.75rem);
+}
+.ck-voice-live-dim {
+  color: var(--ck-fg-3);
+}
+.ck-voice-timer {
+  flex-shrink: 0;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+.ck-voice-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  border: 0;
+  border-radius: 999px;
+  background: var(--ck-danger);
+  color: var(--ck-on-danger);
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+.ck-problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--ck-warning) 40%, transparent);
+  border-radius: var(--ck-radius-sm);
+  color: var(--ck-fg-2);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.ck-problem > span {
+  flex: 1;
+  min-width: 0;
+}
+.ck-problem-detail {
+  color: var(--ck-muted);
+}
+.ck-problem-retry {
+  flex-shrink: 0;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ck-problem-retry:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ck-problem-x {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 0.125rem;
+  border: 0;
+  background: transparent;
+  color: var(--ck-muted);
+  cursor: pointer;
+}
+
+/* attachments */
+.ck-attach-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ck-attach-item {
+  position: relative;
+}
+.ck-attach-thumb {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+}
+.ck-attach-file {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 11rem;
+  height: 3.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-size: 0.8125rem;
+}
+.ck-attach-remove {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-overlay);
+  color: var(--ck-fg-2);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.ck-attach-remove::after {
+  content: "";
+  position: absolute;
+  inset: -0.625rem;
+}
+.ck-note {
+  border: 0;
+  background: transparent;
+  color: var(--ck-warning);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ck-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── thread ─────────────────────────────────────────────────────────────── */
+.ck-thread-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.ck-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  /* Embedded threads must allow gestures to reach the page scroll owner. */
+  overscroll-behavior: auto;
+  padding: 0.5rem 0;
+}
+.ck-thread-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: auto;
+  min-width: 0;
+}
+.ck-thread-loading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  color: var(--ck-muted);
+}
+.ck-turn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ck-turn-user {
+  align-items: flex-end;
+}
+.ck-bubble {
+  max-width: min(85%, 42rem);
+  padding: 0.625rem 1rem;
+  border-radius: calc(var(--ck-radius) * 1.25);
+  background: var(--ck-bubble);
+  color: var(--ck-fg);
+  font-size: var(--ck-text);
+  line-height: var(--ck-leading);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ck-speaker {
+  margin-bottom: 0.25rem;
+  color: var(--ck-fg-3);
+  font-family: var(--ck-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ck-turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+/* Each action is one word on one line and a full-size target: "Nochmals
+   versuchen" broke across two lines at 390px, and the row sat at 36px while
+   every other control in the chat is 44. */
+.ck-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  justify-content: center;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  border: 0;
+  border-radius: var(--ck-radius-sm);
+  background: transparent;
+  color: var(--ck-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ck-action:hover {
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+}
+@media (hover: hover) {
+  .ck-turn-answer .ck-turn-actions {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .ck-turn-answer:hover .ck-turn-actions,
+  .ck-turn-answer:focus-within .ck-turn-actions,
+  .ck-turn-pinned .ck-turn-actions {
+    opacity: 1;
+  }
+}
+.ck-failed {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--ck-danger) 35%, transparent);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-danger-soft);
+  color: var(--ck-fg);
+  font-size: var(--ck-text);
+}
+.ck-live {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--ck-fg-3);
+  font-size: var(--ck-text);
+}
+.ck-dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.ck-dots > span {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--ck-muted);
+  animation: ck-dot 1.2s ease-in-out infinite;
+}
+.ck-dots > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.ck-dots > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.ck-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  align-self: flex-start;
+  min-height: var(--ck-target);
+  margin-top: 0.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg-3);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ck-stopped {
+  margin: 0;
+  color: var(--ck-muted);
+}
+.ck-jump {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ck-target);
+  height: var(--ck-target);
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-overlay);
+  color: var(--ck-fg-2);
+  font-size: 1.125rem;
+  cursor: pointer;
+  box-shadow: 0 6px 20px -8px rgb(0 0 0 / 0.35);
+}
+
+/* ── screen ─────────────────────────────────────────────────────────────
+   The whole display is the conversation; header and composer float over it.
+   --ck-top-inset / --ck-bottom-inset are measured by ChatScreen. */
+.ck-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--ck-page);
+}
+.ck-screen-viewport {
+  height: var(--ck-viewport-height, 100dvh);
+}
+.ck-screen-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+/* Words pass under the header and fade as they do: the page colour at the
+   very top, nothing by the bottom of the row. No bar, no border. */
+.ck-screen-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  /* Mostly page behind the row itself, so a title in it stays one line of
+     text and not two on top of each other; the words only show through
+     dimly, and the fade runs out in the strip below the row. */
+  padding: env(safe-area-inset-top, 0px) var(--ck-gutter) 0.75rem;
+  background: linear-gradient(
+    to bottom,
+    var(--ck-page) 0%,
+    color-mix(in srgb, var(--ck-page) 88%, transparent) 55%,
+    color-mix(in srgb, var(--ck-page) 55%, transparent) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.ck-screen-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 3.5rem;
+  padding-block: 0.375rem;
+}
+.ck-screen-header-row > * {
+  pointer-events: auto;
+}
+.ck-screen-dock {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
+  padding: 1.5rem var(--ck-gutter) calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--ck-page) 0%, var(--ck-page) 40%, transparent 100%);
+  pointer-events: none;
+}
+.ck-screen-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: var(--ck-measure);
+  margin-inline: auto;
+  pointer-events: auto;
+}
+.ck-screen-footnote {
+  margin: 0;
+  color: var(--ck-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+/* The composer as a floating pill: see-through enough to show the words
+   passing under it, solid enough to type on. */
+.ck-screen-dock .ck-composer {
+  border-color: color-mix(in srgb, var(--ck-line-2) 70%, transparent);
+  border-radius: 1.75rem;
+  background: color-mix(in srgb, var(--ck-bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: 0 6px 28px -12px rgb(0 0 0 / 0.28);
+}
+.ck-screen-dock .ck-voice-bar {
+  border-radius: 1.75rem;
+}
+/* With no header, the words still fade at the top edge instead of being cut
+   off mid-line. */
+.ck-screen:not(:has(> .ck-screen-header)) .ck-thread {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.5rem);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 1.5rem);
+}
+/* The thread scrolls the full width (the scrollbar sits at the screen's
+   edge, and a swipe anywhere moves it); its column keeps a reading measure. */
+.ck-screen .ck-thread {
+  overscroll-behavior: contain;
+  padding: var(--ck-top-inset, 0px) var(--ck-gutter) calc(var(--ck-bottom-inset, 0px) + 0.75rem);
+  scroll-padding-top: var(--ck-top-inset, 0px);
+  scroll-padding-bottom: var(--ck-bottom-inset, 0px);
+}
+.ck-screen .ck-thread-inner {
+  width: 100%;
+  max-width: var(--ck-measure);
+  margin-inline: auto;
+}
+.ck-screen .ck-jump {
+  bottom: calc(var(--ck-bottom-inset, 0px) + 0.5rem);
+  z-index: 4;
+}
+.ck-screen-body > .ck-starters,
+.ck-screen-body > .ck-thread-loading {
+  flex: 1;
+  justify-content: center;
+  width: 100%;
+  max-width: calc(var(--ck-measure) + 2 * var(--ck-gutter));
+  margin-inline: auto;
+  padding: var(--ck-top-inset, 0px) var(--ck-gutter) var(--ck-bottom-inset, 0px);
+  overflow-y: auto;
+}
+
+/* A control floating over the conversation: a frosted pill, the way the
+   header buttons sit over the words in the ChatGPT app. For an app's own
+   header buttons inside ChatScreen. */
+.ck-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ck-line-2) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ck-bg) 70%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 2px 10px -4px rgb(0 0 0 / 0.18);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.ck-glass:hover {
+  background: color-mix(in srgb, var(--ck-bg) 88%, transparent);
+}
+.ck-glass:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ck-glass,
+  .ck-screen-dock .ck-composer {
+    background: var(--ck-bg);
+  }
+}
+
+/* markdown: 16px, readable measure, no leaked ** or > */
+.ck-md {
+  min-width: 0;
+  color: var(--ck-fg);
+  font-size: var(--ck-text);
+  line-height: var(--ck-leading);
+  overflow-wrap: anywhere;
+}
+.ck-md > * {
+  margin: 0;
+}
+.ck-md > * + * {
+  margin-top: 0.75em;
+}
+.ck-md ul,
+.ck-md ol {
+  padding-left: 1.25em;
+}
+.ck-md li + li {
+  margin-top: 0.25em;
+}
+.ck-md-h {
+  margin: 0;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.ck-md > .ck-md-h + * {
+  margin-top: 0.5em;
+}
+/* Headings with air above them, large enough to be the signposts of a long
+   answer — the ChatGPT app's "4. The complete architecture" is a heading you
+   can find again while scrolling, not a bold line. */
+.ck-md > * + .ck-md-h {
+  margin-top: 1.75em;
+}
+.ck-md-h1 {
+  font-size: 1.5em;
+  letter-spacing: -0.01em;
+}
+.ck-md-h2 {
+  font-size: 1.375em;
+  letter-spacing: -0.01em;
+}
+.ck-md-h3 {
+  font-size: 1.125em;
+}
+.ck-md > p + p {
+  margin-top: 0.9em;
+}
+.ck-md ul ul,
+.ck-md ol ul {
+  margin-top: 0.25em;
+}
+.ck-task {
+  list-style: none;
+  margin-left: -1.25em;
+}
+.ck-task > input {
+  margin: 0 0.5em 0 0;
+  vertical-align: -0.1em;
+  accent-color: var(--ck-accent);
+  pointer-events: none;
+}
+.ck-hr {
+  height: 1px;
+  margin: 1.25em 0;
+  border: 0;
+  background: var(--ck-line);
+}
+.ck-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.25em 0;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+}
+
+/* A list of named things, as cards: a badge, the name, the body. The row is
+   a grid so a long name wraps under itself, never under the badge. */
+.ck-cards {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Each option is its own card: a hairline between them, room around each,
+   the badge the size of a tile and the name a size up — the ChatGPT app's
+   option list, which reads as three things to choose from, not a list. */
+.ck-card {
+  display: grid;
+  grid-template-columns: 2.75em minmax(0, 1fr);
+  gap: 0.875em;
+  align-items: start;
+  padding: 1em 0;
+}
+.ck-card + .ck-card {
+  border-top: 1px solid var(--ck-line);
+}
+.ck-cards > .ck-card:first-child {
+  padding-top: 0.25em;
+}
+.ck-card-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75em;
+  height: 2.75em;
+  border-radius: 0.75em;
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font-size: 1em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ck-card-tag {
+  display: inline-block;
+  margin-top: 0.4em;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ck-accent) 14%, transparent);
+  color: var(--ck-fg);
+  font-size: 0.8125em;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.ck-cards:not(.ck-cards-numbered) .ck-card-badge:not(.ck-card-icon) {
+  font-size: 1.5em;
+  line-height: 1;
+}
+.ck-card-icon {
+  font-size: 1.25em;
+}
+.ck-card-body {
+  min-width: 0;
+  padding-top: 0.2em;
+}
+.ck-card-title {
+  font-size: 1.125em;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.ck-card-text {
+  margin-top: 0.4em;
+  color: var(--ck-fg);
+}
+.ck-card-body > ul {
+  margin-top: 0.375em;
+}
+
+/* A table that scrolls sideways on a phone instead of breaking the page, and
+   never breaks a word to fit. `.ck-md` sets overflow-wrap: anywhere so a long
+   URL cannot push the thread wider, but `anywhere` also lowers a cell's
+   minimum width to ONE LETTER, so a three-column answer squeezed its first
+   column into "Di / re / ct / or / y" (Substrata at 390px, 2026-10-22).
+   Inside a table a word is the smallest thing a column can be: columns share
+   the width by wrapping at spaces, and when even the words do not fit the
+   wrapper scrolls, with a shadow on the edge that has more. */
+.ck-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, var(--ck-bg) 30%, transparent) left center / 1.5rem 100% no-repeat
+      local,
+    linear-gradient(to left, var(--ck-bg) 30%, transparent) right center / 1.5rem 100% no-repeat
+      local,
+    radial-gradient(
+        farthest-side at 0 50%,
+        color-mix(in srgb, var(--ck-fg) 14%, transparent),
+        transparent
+      )
+      left center / 0.625rem 100% no-repeat scroll,
+    radial-gradient(
+        farthest-side at 100% 50%,
+        color-mix(in srgb, var(--ck-fg) 14%, transparent),
+        transparent
+      )
+      right center / 0.625rem 100% no-repeat scroll;
+}
+.ck-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375em;
+  line-height: 1.45;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+}
+.ck-table th,
+.ck-table td {
+  min-width: 4.5rem;
+  padding: 0.5em 0.75em 0.5em 0;
+  border-bottom: 1px solid var(--ck-line);
+  text-align: left;
+  vertical-align: top;
+}
+.ck-table th {
+  color: var(--ck-fg);
+  font-weight: 650;
+}
+.ck-table td {
+  color: var(--ck-fg);
+}
+.ck-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The sources an answer cites, once, under it: a label and a chip each. */
+.ck-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 1em;
+}
+.ck-sources-label {
+  margin-right: 0.25rem;
+  color: var(--ck-muted);
+  font-size: 0.8125rem;
+}
+.ck-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375em;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+a.ck-source:hover {
+  border-color: var(--ck-line-2);
+  color: var(--ck-fg);
+}
+.ck-source-id {
+  font-family: var(--ck-mono);
+  font-size: 0.75em;
+  color: var(--ck-muted);
+}
+.ck-source-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ck-md blockquote {
+  padding-left: 0.875em;
+  border-left: 3px solid var(--ck-line-2);
+  color: var(--ck-fg-2);
+}
+/* A callout (`> [!CAUTION]`): a quiet panel, the word above it. Only warning
+   and caution take a status colour, and only on the rule and the word. */
+.ck-md .ck-alert {
+  display: grid;
+  gap: 0.25em;
+  padding: 0.75em 0.875em;
+  border-left: 3px solid var(--ck-line-2);
+  border-radius: 0 var(--ck-radius-sm) var(--ck-radius-sm) 0;
+  background: var(--ck-raised);
+}
+.ck-md .ck-alert p {
+  margin: 0;
+}
+.ck-md .ck-alert-label {
+  font-size: 0.8125em;
+  font-weight: 650;
+  color: var(--ck-fg-2);
+}
+.ck-md .ck-alert-warning {
+  border-left-color: var(--ck-warning);
+}
+.ck-md .ck-alert-warning .ck-alert-label {
+  color: var(--ck-warning);
+}
+.ck-md .ck-alert-caution {
+  border-left-color: var(--ck-danger);
+}
+.ck-md .ck-alert-caution .ck-alert-label {
+  color: var(--ck-danger);
+}
+.ck-md strong {
+  font-weight: 650;
+}
+.ck-code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.3em;
+  background: var(--ck-raised);
+  font-family: var(--ck-mono);
+  font-size: 0.875em;
+}
+.ck-pre {
+  overflow-x: auto;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-raised);
+  font-family: var(--ck-mono);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.ck-pre code {
+  white-space: pre;
+}
+.ck-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--ck-accent);
+  text-underline-offset: 0.18em;
+}
+.ck-link-out {
+  text-decoration-style: dotted;
+}
+.ck-link-arrow {
+  margin-left: 0.15em;
+  font-size: 0.8em;
+  color: var(--ck-fg-3);
+}
+/* The citation as a chip after the sentence: the first source's name and how
+   many more stand behind it ("NVIDIA De… +3"). */
+.ck-cite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 11em;
+  margin-left: 0.3em;
+  padding: 0.1em 0.55em;
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-size: 0.8125em;
+  line-height: 1.5;
+  text-decoration: none;
+  vertical-align: 0.1em;
+  cursor: help;
+}
+a.ck-cite:hover {
+  color: var(--ck-fg);
+}
+.ck-cite-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ck-cite-more {
+  flex: none;
+  color: var(--ck-fg-3);
+}
+
+/* starters */
+.ck-starters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.ck-starters-title {
+  color: var(--ck-fg-2);
+  font-size: var(--ck-text);
+}
+.ck-starters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ck-starter {
+  min-height: var(--ck-target);
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: calc(var(--ck-radius) * 0.75);
+  background: var(--ck-bg);
+  color: var(--ck-fg-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ck-starter:hover {
+  border-color: var(--ck-accent);
+  color: var(--ck-fg);
+}
+
+/* suggested replies — under the latest answer, one tap sends */
+.ck-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-top: 0.75rem;
+}
+.ck-reply {
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  max-width: 100%;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.ck-reply:hover {
+  border-color: var(--ck-accent);
+}
+/* The first reply is the recommended next step: the same pill, drawn as the
+   lead — a firmer line and the reading colour — so the eye lands on it. */
+.ck-reply-lead {
+  border-color: var(--ck-line-2);
+  background: var(--ck-raised);
+  font-weight: 500;
+}
+.ck-reply:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* On a phone the replies are ONE row that scrolls sideways, with a fade
+   where it runs on, never a box of pills that wraps into "two and an orphan"
+   wherever the words run out. The lead reply is first, so it is always on
+   screen. From 40rem up there is room for all of them on a line or two. */
+@media (max-width: 40rem) {
+  .ck-replies {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-inline-end: 2.5rem;
+    scroll-padding-inline: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  .ck-replies::-webkit-scrollbar {
+    display: none;
+  }
+  .ck-reply {
+    flex: 0 0 auto;
+    max-width: 85vw;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+.ck-spin {
+  animation: ck-spin 0.9s linear infinite;
+}
+@keyframes ck-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ck-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes ck-wave {
+  50% {
+    transform: scaleY(1);
+  }
+}
+@keyframes ck-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-spin,
+  .ck-voice-dot,
+  .ck-voice-wave > span,
+  .ck-dots > span {
+    animation: none;
+  }
+}
+
+/* attach sheet: Camera / Photos / Files, from the bottom edge on a phone —
+   where the thumb already is after tapping the paperclip. A native <dialog>
+   in the top layer, so no panel around the composer can clip it. */
+.ck-sheet {
+  width: 100%;
+  max-width: 32rem;
+  max-height: none;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ck-fg);
+  font-family: var(--ck-font);
+}
+.ck-sheet::backdrop {
+  background: color-mix(in srgb, #000 40%, transparent);
+}
+.ck-sheet[open] .ck-sheet-panel {
+  animation: ck-rise 0.18s ease-out;
+}
+.ck-sheet-panel {
+  padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  border: 1px solid var(--ck-line);
+  border-bottom: 0;
+  border-radius: var(--ck-radius) var(--ck-radius) 0 0;
+  background: var(--ck-bg);
+}
+.ck-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.ck-sheet-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.ck-sheet-close {
+  border-color: transparent;
+  background: transparent;
+}
+.ck-attach-sources {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+.ck-attach-source {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 5rem;
+  padding: 0.75rem 0.25rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.ck-attach-source > svg {
+  font-size: 1.375rem;
+  color: var(--ck-fg-2);
+}
+.ck-attach-source:hover {
+  border-color: var(--ck-line-2);
+}
+.ck-attach-source:focus-visible,
+.ck-sheet-close:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+.ck-attach-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: var(--ck-target);
+  padding: 0 1rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.ck-attach-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+/* An app's own rows under Camera · Photos · Files in the attach sheet. */
+.ck-sheet-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--ck-line);
+}
+
+.ck-sheet-only {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+/* One anatomy for every app row: icon, what it adds, an optional second line. */
+.ck-attach-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: var(--ck-target);
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: var(--ck-radius-sm);
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ck-attach-extra:hover {
+  background: var(--ck-raised);
+}
+.ck-attach-extra:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+.ck-attach-extra-icon {
+  display: inline-flex;
+  flex: none;
+  font-size: 1.25rem;
+  color: var(--ck-fg-2);
+}
+.ck-attach-extra-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.ck-attach-extra-text small {
+  color: var(--ck-muted);
+  font-size: 0.8125rem;
+}
+
+/* while an answer is read aloud: Stop, a quiet wave, the time so far */
+.ck-player {
+  align-items: center;
+}
+.ck-action-stop {
+  color: var(--ck-fg);
+}
+.ck-player-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 1rem;
+}
+.ck-player-wave > span {
+  display: block;
+  width: 2px;
+  height: 0.375rem;
+  border-radius: 1px;
+  background: var(--ck-fg-2);
+  animation: ck-wave 1s ease-in-out infinite;
+}
+.ck-player-wave > span:nth-child(2n) {
+  animation-delay: 0.15s;
+}
+.ck-player-wave > span:nth-child(3n) {
+  animation-delay: 0.3s;
+}
+@keyframes ck-wave {
+  50% {
+    height: 1rem;
+  }
+}
+.ck-player-time {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ck-fg-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-player-wave > span {
+    animation: none;
+    height: 0.75rem;
+  }
+}
+
+/* the sources sheet on a touch screen: one row per record */
+.ck-sources-open {
+  cursor: pointer;
+  font: inherit;
+}
+.ck-sources-open > svg {
+  font-size: 1rem;
+}
+.ck-source-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: var(--ck-target);
+  padding: 0.625rem 0.25rem;
+  border-top: 1px solid var(--ck-line);
+  color: var(--ck-fg);
+  text-decoration: none;
+}
+.ck-source-list > li:first-child .ck-source-row {
+  border-top: 0;
+}
+.ck-source-row .ck-source-id {
+  margin-top: 0.125rem;
+}
+.ck-source-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.ck-source-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ck-source-detail {
+  font-size: 0.8125rem;
+  color: var(--ck-fg-2);
+  overflow-wrap: anywhere;
+}
+a.ck-source-row:hover .ck-source-title {
+  text-decoration: underline;
+}
+
+@keyframes ck-rise {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-sheet[open] .ck-sheet-panel {
+    animation: none;
+  }
+}
+
+/* Visual answers share the app's palette, with a quiet editorial hierarchy. */
+.ck-rich {
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 1.5rem 0;
+  color: var(--ck-fg);
+  overflow-wrap: anywhere;
+}
+.ck-rich * {
+  box-sizing: border-box;
+  min-width: 0;
+}
+.ck-rich-title {
+  display: block;
+  font-size: 1.05em;
+  font-weight: 650;
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+.ck-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.ck-gallery-grid figure {
+  margin: 0;
+}
+.ck-photo {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: var(--ck-target);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  cursor: zoom-in;
+  font: inherit;
+  text-align: start;
+}
+.ck-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.ck-photo-label {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875em;
+}
+.ck-gallery-grid figcaption {
+  padding: 0.5rem 0;
+  font-size: 0.875em;
+  color: var(--ck-fg-2);
+}
+.ck-photo-full {
+  display: block;
+  max-width: 100%;
+  max-height: 70dvh;
+  object-fit: contain;
+  margin: auto;
+}
+.ck-callout {
+  padding: 1.25rem;
+  border-inline-start: 3px solid var(--ck-fg);
+  background: var(--ck-raised);
+  border-radius: 0 var(--ck-radius-sm) var(--ck-radius-sm) 0;
+}
+.ck-callout .ck-rich-title {
+  margin-bottom: 0.5rem;
+}
+.ck-rich p {
+  margin: 0.25rem 0 0;
+}
+.ck-diagram {
+  padding: 1.25rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-raised);
+}
+.ck-md .ck-diagram-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+  margin: 0;
+}
+.ck-diagram-nodes li {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--ck-bg);
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+}
+.ck-diagram-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--ck-fg);
+  color: var(--ck-bg);
+  font-size: 0.875em;
+}
+.ck-diagram-nodes p {
+  font-size: 0.875em;
+  color: var(--ck-fg-2);
+}
+.ck-md .ck-diagram-edges {
+  padding: 0.75rem 0 0;
+  margin: 0;
+  list-style: none;
+}
+.ck-diagram-edges li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--ck-line);
+  padding: 0.75rem 0;
+}
+.ck-diagram-arrow {
+  color: var(--ck-fg-3);
+}
+.ck-diagram-edges small {
+  flex-basis: 100%;
+  color: var(--ck-fg-2);
+}
+.ck-choice fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.ck-choice legend {
+  padding: 0;
+}
+.ck-choice-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--ck-target);
+  padding: 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+.ck-choice-option:has(:checked) {
+  border-color: var(--ck-fg);
+  background: var(--ck-raised);
+}
+.ck-choice-option input {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--ck-fg);
+}
+.ck-choice-submit {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: var(--ck-target);
+  border: 0;
+  border-radius: var(--ck-radius);
+  background: var(--ck-fg);
+  color: var(--ck-bg);
+  padding: 0.75rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ck-choice-submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+/* A layered figure: boxes stacked top to bottom in one bordered card, a
+   row of tiles where a layer has parts, and the words that cross each arrow. */
+.ck-stack {
+  padding: 1rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  background: var(--ck-bg);
+}
+.ck-stack-layers {
+  display: flex;
+  flex-direction: column;
+}
+/* Tiles share a row, and a row wraps rather than cut a word: each tile asks
+   for its share of the width (--ck-n tiles) but never less than its longest
+   word, so on a narrow screen "3 across" becomes "2 and 1" or one under the
+   other. The old grid forced N equal columns and cut "Manufacture" into
+   pieces at 320px (2026-10-22). */
+.ck-stack-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+.ck-stack-node {
+  display: flex;
+  flex: 1 1 calc((100% - (var(--ck-n, 1) - 1) * 0.625rem) / var(--ck-n, 1));
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: min-content;
+  padding: 1rem 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: calc(var(--ck-radius) * 0.75);
+  background: var(--ck-raised);
+  text-align: center;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.ck-stack-accent {
+  border-color: color-mix(in srgb, var(--ck-accent) 35%, var(--ck-line));
+  background: color-mix(in srgb, var(--ck-accent) 9%, var(--ck-bg));
+}
+.ck-stack-icon {
+  width: 1.5em;
+  height: 1.5em;
+  margin-bottom: 0.25rem;
+  color: var(--ck-fg);
+}
+.ck-stack-kicker {
+  color: var(--ck-fg-2);
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ck-stack-label {
+  font-size: 1.0625em;
+  font-weight: 650;
+  line-height: 1.3;
+}
+/* Tiles in a row share the width: tighter padding and smaller words, so
+   "Manufacture, move, inspect" fits three across on a 390px phone. */
+.ck-stack-row:not([data-n="1"]) .ck-stack-node {
+  padding: 0.875rem 0.5rem;
+}
+.ck-stack-row:not([data-n="1"]) .ck-stack-label {
+  font-size: 1em;
+}
+.ck-stack-row:not([data-n="1"]) .ck-stack-detail {
+  font-size: 0.8125em;
+}
+.ck-stack-detail {
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  line-height: 1.4;
+}
+.ck-stack-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  text-align: center;
+}
+.ck-stack-arrow {
+  font-size: 1.25em;
+  line-height: 1;
+  color: var(--ck-fg-3);
+}
+.ck-stack-caption {
+  margin: 0.875rem 0 0;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  text-align: center;
+}
+
+/* A chart in an answer (0.15). The drawing is the app's (an injected
+   renderer); chatkit gives it the same place in the column as the stack
+   figure, and draws the fallback — the caption and a table of the data —
+   itself. Numbers are right-aligned tabular figures that never wrap. */
+.ck-chart {
+  max-width: 100%;
+}
+.ck-chart > * {
+  max-width: 100%;
+}
+.ck-chart-table .ck-table-wrap {
+  margin: 0;
+}
+.ck-chart-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ck-chart-table .ck-table th:last-child,
+.ck-chart-table .ck-table td:last-child {
+  padding-right: 0;
+}
+.ck-chart-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ck-accent) 60%, transparent);
+  text-underline-offset: 0.15em;
+}
+.ck-chart-caption {
+  margin: 0.875rem 0 0;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+  text-align: center;
+}
+
+/* Thumbs under an answer, and the sheet that asks why. */
+.ck-action-on {
+  color: var(--ck-fg);
+  background: var(--ck-raised);
+}
+.ck-feedback-thanks {
+  align-self: center;
+  color: var(--ck-fg-2);
+  font-size: 0.875em;
+}
+.ck-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ck-feedback-reason {
+  min-height: var(--ck-target);
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: calc(var(--ck-radius) * 0.75);
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ck-feedback-reason-on {
+  border-color: var(--ck-fg);
+  background: var(--ck-raised);
+}
+.ck-feedback-more {
+  min-height: var(--ck-target);
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: calc(var(--ck-radius) * 0.75);
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+  resize: vertical;
+}
+.ck-feedback-send {
+  min-height: var(--ck-target);
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ck-accent);
+  color: var(--ck-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* "Thought for 3m 38s ›": one quiet line above the answer, opening to the
+   steps; open and ticking while the turn runs. */
+.ck-thinking {
+  margin: 0 0 0.75em;
+  color: var(--ck-fg-2);
+  font-size: 0.9375em;
+}
+.ck-thinking-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 2rem;
+  cursor: default;
+  list-style: none;
+}
+details.ck-thinking > summary {
+  min-height: var(--ck-target);
+  cursor: pointer;
+}
+details.ck-thinking > summary::-webkit-details-marker {
+  display: none;
+}
+details.ck-thinking > summary svg {
+  transition: transform 0.15s ease;
+}
+details.ck-thinking[open] > summary svg {
+  transform: rotate(90deg);
+}
+.ck-thinking-body {
+  padding: 0.25em 0 0.5em 0.75em;
+  border-left: 2px solid var(--ck-line);
+}
+.ck-thinking-body p {
+  margin: 0 0 0.5em;
+}
+.ck-thinking-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-thinking-steps li {
+  display: flex;
+  flex-direction: column;
+  padding: 0.2em 0;
+}
+.ck-thinking-steps small {
+  color: var(--ck-fg-3);
+}
+.ck-thinking-now {
+  color: var(--ck-fg);
+}
+.ck-thinking-live .ck-dots {
+  margin-right: 0.25em;
+}
+
+.ck-rich button:focus-visible,
+.ck-rich input:focus-visible {
+  outline: 2px solid var(--ck-fg);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .ck-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ck-audio audio {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 12px 0;
+}
+.ck-audio p {
+  margin: 6px 0;
+  color: var(--ck-muted);
+}
+.ck-audio a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+
+/* Embedded page threads keep the return-to-latest action in the viewport. */
+.ck-jump-page {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+}
