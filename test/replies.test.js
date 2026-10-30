@@ -49,6 +49,20 @@ test("replies: one per line is accepted when the model skips the JSON", () => {
   assert.deepEqual(replies, ["Yes", "No"]);
 });
 
+test("replies: a bare JSON array the model ends on, with no fence, is the replies", () => {
+  const text =
+    'Under Swiss law a dismissal during sick leave is not automatically void.\n\n["Ask if notice was respected", "Learn about abusive dismissal", "Consult a lawyer"]';
+  assert.deepEqual(extractReplies(text), {
+    text: "Under Swiss law a dismissal during sick leave is not automatically void.",
+    replies: ["Ask if notice was respected", "Learn about abusive dismissal", "Consult a lawyer"],
+  });
+  // Not while streaming: the array may still be growing.
+  assert.deepEqual(extractReplies(text, { streaming: true }).replies, []);
+  // An array that is part of the answer (code, data) stays text.
+  const code = "The config is a list:\n\n[1, 2, 3]";
+  assert.deepEqual(extractReplies(code), { text: code, replies: [] });
+});
+
 test("replies: malformed JSON yields no buttons and no raw text", () => {
   const { text, replies } = extractReplies('Ok.\n```quick_replies\n{"a": 1}\n```');
   assert.equal(text, "Ok.");
