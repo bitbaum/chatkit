@@ -34,6 +34,9 @@ export const REPLIES_INSTRUCTION = [
     "Rules: write them in the person's language, in their voice (what THEY would say, not what you would). Each under 40 characters. Each must make sense sent on its own. Never repeat what they already said. Put the block last, after everything else. Do not write any heading or label before it (no Quick replies, Follow-up questions or the like, in any language): the replies are drawn as buttons. Leave it out only when the conversation is over (a goodbye, a thanks with nothing left to do).",
 ].join("\n");
 const COMPLETE = new RegExp("\\n?```" + REPLIES_FENCE + "\\s*([\\s\\S]*?)```", "i");
+// A complete JSON array of short strings as the answer's last paragraph, with
+// no fence around it: `["Yes, do it", "Show me first"]` on its own line.
+const BARE_TAIL = /\n\s*(\[\s*"[^"\n]{1,60}"(?:\s*,\s*"[^"\n]{1,60}"){0,5}\s*\])\s*$/;
 // Still streaming: the fence has opened (or is opening) and not yet closed.
 const OPEN_TAIL = new RegExp("\\n?```(?:" + REPLIES_FENCE + "[\\s\\S]*|q[a-z_]*)?$", "i");
 // A label the model writes over its replies: "**Quick follow-up options**",
@@ -161,6 +164,16 @@ export function extractReplies(text, options = {}) {
         const after = text.slice(match.index + match[0].length);
         const rest = ((replies.length > 0 ? dropReplyLabel(before) : before) + after).trimEnd();
         return { text: rest, replies };
+    }
+    // A model that forgets the fence and ends on the bare JSON array instead
+    // (seen on Causius's answers in OrangeCat's companions home, 2026-10-30):
+    // the array is the replies all the same, never text to show.
+    const bare = BARE_TAIL.exec(text);
+    if (bare && !options.streaming) {
+        const replies = clean(bare[1] ?? "", options);
+        if (replies.length > 0) {
+            return { text: dropReplyLabel(text.slice(0, bare.index)).trimEnd(), replies };
+        }
     }
     const tail = OPEN_TAIL.exec(text);
     // A bare ``` at the end may be the start of an ordinary code block; only
