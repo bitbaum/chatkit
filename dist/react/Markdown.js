@@ -75,8 +75,12 @@ function Inline({ spans, citations, renderLink, renderCitation, }) {
                 case "image":
                     return _jsx("img", { className: "ck-img", src: s.src, alt: s.alt, loading: "lazy" }, i);
                 case "cite": {
-                    const known = s.ids.filter((id) => citations?.[id]);
-                    if (known.length === 0 || !citations)
+                    // Without a citation map the text is not a grounded answer, and
+                    // "[A1]" is just words: shown as written.
+                    if (!citations)
+                        return _jsxs("span", { children: ["[", s.ids.join(", "), "]"] }, i);
+                    const known = s.ids.filter((id) => citations[id]);
+                    if (known.length === 0)
                         return null;
                     return (_jsx("span", { children: renderCitation({ ids: known, citations, className: "ck-cite" }) }, i));
                 }

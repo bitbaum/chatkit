@@ -19,9 +19,10 @@ import {
   type AlertKind,
 } from "../markdown.js";
 
-/** What a grounded answer's `[F8]` / `[D1]` handle refers to. Unknown handles
- *  are dropped rather than shown bare: a dangling `[F8]` implies a source the
- *  reader cannot reach. */
+/** What a grounded answer's handle refers to: a letter or two and a number,
+ *  `[F8]`, `[D1]`, `[L3]`, `[W12]`, whatever the product numbers its sources
+ *  by. Unknown handles in a grounded answer are dropped rather than shown
+ *  bare: a dangling `[F8]` implies a source the reader cannot reach. */
 export type CitationMap = Record<string, { label: string; detail: string; href?: string }>;
 
 export type RenderLink = (link: {
@@ -251,8 +252,11 @@ function Inline({
           case "image":
             return <img key={i} className="ck-img" src={s.src} alt={s.alt} loading="lazy" />;
           case "cite": {
-            const known = s.ids.filter((id) => citations?.[id]);
-            if (known.length === 0 || !citations) return null;
+            // Without a citation map the text is not a grounded answer, and
+            // "[A1]" is just words: shown as written.
+            if (!citations) return <span key={i}>[{s.ids.join(", ")}]</span>;
+            const known = s.ids.filter((id) => citations[id]);
+            if (known.length === 0) return null;
             return (
               <span key={i}>{renderCitation({ ids: known, citations, className: "ck-cite" })}</span>
             );
