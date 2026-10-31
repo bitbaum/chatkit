@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.5 — A sheet taller than the screen scrolls inside it
+
+- `Sheet` had no height cap (the native `<dialog>` cap is overridden so a bottom sheet can reach the edge), so a panel taller than the viewport grew past the top of the screen: OrangeCat's New bot sheet, a shelf of five bots over the name, shape and colour form, opened with its title, its close button and its first row cut off above the viewport on a phone and on a 900px desktop (found 2026-10-31). The dialog and its panel are now capped at the viewport and the panel scrolls, with its head in view and the page behind it not scrolling along. Checked in the browser test with a sheet made 3,000px tall.
+
 ## 0.21.4 — Any product's source handle is a chip
 
 - Citation handles were read only as `[F1]` and `[D1]`. A product that numbers its sources by its own letter showed the bare handle in the answer, with no chip, no link and no sources row: Solon's law answers (`[L1]`, every answer since the law chat shipped) and Substrata's web sources (`[W12]`), found 2026-10-31. A handle is now one or two capital letters and a number, the same pattern `speakableText` already dropped for Listen. Without a citation map, an answer is not grounded and `[A1]` is just words, so it is shown as written; in a grounded answer an unknown handle is still dropped.
