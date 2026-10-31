@@ -6,7 +6,7 @@
 
 ## 0.21.4 — Any product's source handle is a chip
 
-- Citation handles were read only as `[F1]` and `[D1]`. A product that numbers its sources by its own letter showed the bare handle in the answer, with no chip, no link and no sources row: Solon's law answers (`[L1]`, every answer since the law chat shipped) and Substrata's web sources (`[W12]`), found 2026-10-31. A handle is now one or two capital letters and a number, the same pattern `speakableText` already dropped for Listen. Without a citation map, an answer is not grounded and `[A1]` is just words, so it is shown as written; in a grounded answer an unknown handle is still dropped.
+- Citation handles were read only as `[F1]` and `[D1]`. A product that numbers its sources by its own letter showed the bare handle in the answer, with no chip, no link and no sources row: Solon's law answers (`[L1]`, every answer since the law chat shipped), found 2026-10-31. Substrata had met the same limit and rewrites its `[W12]` to `[D12]` before display (`lib/chat/web-citations.ts`); that rewrite is no longer needed. A handle is now one or two capital letters and a number, the same pattern `speakableText` already dropped for Listen. Without a citation map, an answer is not grounded and `[A1]` is just words, so it is shown as written; in a grounded answer an unknown handle is still dropped.
 
 ## 0.21.3 — A bare reply array, with no fence, is still the replies
 
