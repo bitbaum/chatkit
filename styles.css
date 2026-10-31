@@ -1276,7 +1276,13 @@ a.ck-cite:hover {
 .ck-sheet {
   width: 100%;
   max-width: 32rem;
-  max-height: none;
+  /* The sheet never outgrows the screen: a panel taller than the viewport
+     (OrangeCat's New bot, a shelf over a form, 2026-10-31) scrolls inside
+     its frame with its head in view, instead of its top being cut off above
+     the viewport. The native cap is overridden on purpose, so the cap is
+     set here. */
+  max-height: 100vh;
+  max-height: 100dvh;
   margin: auto auto 0;
   padding: 0;
   border: 0;
@@ -1291,6 +1297,11 @@ a.ck-cite:hover {
   animation: ck-rise 0.18s ease-out;
 }
 .ck-sheet-panel {
+  box-sizing: border-box;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
   border: 1px solid var(--ck-line);
   border-bottom: 0;

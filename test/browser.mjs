@@ -294,6 +294,29 @@ try {
       `thumb down asks why: ${reasons.length} reasons, each >= 44px`,
     );
     check(got.length === 0, "nothing is sent before the person sends it");
+    // A sheet taller than the screen (OrangeCat's New bot: a shelf over a
+    // form, 2026-10-31) keeps its head on screen and scrolls inside, instead
+    // of its top being cut off above the viewport.
+    const tall = await page.evaluate(() => {
+      const panel = document.querySelector(".ck-sheet[open] .ck-sheet-panel");
+      const filler = document.createElement("div");
+      filler.style.height = "3000px";
+      panel.append(filler);
+      const r = panel.getBoundingClientRect();
+      const head = panel.querySelector(".ck-sheet-head").getBoundingClientRect();
+      const out = {
+        top: r.top,
+        bottom: r.bottom,
+        scrolls: panel.scrollHeight > panel.clientHeight,
+        headTop: head.top,
+      };
+      filler.remove();
+      return out;
+    });
+    check(
+      tall.top >= 0 && tall.bottom <= 844 && tall.scrolls && tall.headTop >= 0,
+      `a sheet taller than the screen stays on it and scrolls (top ${Math.round(tall.top)}, bottom ${Math.round(tall.bottom)}, head ${Math.round(tall.headTop)})`,
+    );
     await page.locator(".ck-sheet[open] .ck-feedback-reason").nth(1).click();
     await page.locator(".ck-sheet[open] .ck-feedback-send").click();
     await page.waitForTimeout(100);
