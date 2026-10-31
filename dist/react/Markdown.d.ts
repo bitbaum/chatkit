@@ -1,9 +1,10 @@
 import { type ReactNode } from "react";
 import type { RichRenderers } from "./renderers.js";
 import { type AlertKind } from "../markdown.js";
-/** What a grounded answer's `[F8]` / `[D1]` handle refers to. Unknown handles
- *  are dropped rather than shown bare: a dangling `[F8]` implies a source the
- *  reader cannot reach. */
+/** What a grounded answer's handle refers to: a letter or two and a number,
+ *  `[F8]`, `[D1]`, `[L3]`, `[W12]`, whatever the product numbers its sources
+ *  by. Unknown handles in a grounded answer are dropped rather than shown
+ *  bare: a dangling `[F8]` implies a source the reader cannot reach. */
 export type CitationMap = Record<string, {
     label: string;
     detail: string;

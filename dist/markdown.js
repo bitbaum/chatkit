@@ -186,7 +186,7 @@ export function listLead(text) {
     // name becomes a pill under it, the way the ChatGPT app marks the option it
     // recommends. Only a short word or two; a citation handle is not a tag.
     let tag;
-    const tagged = /^\[(?![FD]\d)([^\]\n]{1,24})\]\s*([\s\S]*)$/.exec(rest);
+    const tagged = /^\[(?![A-Z]{1,2}\d)([^\]\n]{1,24})\]\s*([\s\S]*)$/.exec(rest);
     if (tagged) {
         tag = tagged[1].trim();
         rest = (tagged[2] ?? "").trim();
@@ -196,7 +196,7 @@ export function listLead(text) {
 export function isCardList(items) {
     return items.length >= 2 && items.every((it) => listLead(it.text) !== null);
 }
-const INLINE_RE = /(`[^`]+`|!\[[^\]]*\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)\s]+\)|\[[FD]\d+(?:,\s*[FD]\d+)*\]|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
+const INLINE_RE = /(`[^`]+`|!\[[^\]]*\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)\s]+\)|\[[A-Z]{1,2}\d{1,3}(?:,\s*[A-Z]{1,2}\d{1,3})*\]|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 export function parseInline(text) {
     const out = parseInlineRaw(text);
     // A citation a model writes before the full stop (`… tools [F2].`) is
@@ -227,7 +227,7 @@ function parseInlineRaw(text) {
     for (const part of text.split(INLINE_RE)) {
         if (!part)
             continue;
-        if (/^\[[FD]\d+(?:,\s*[FD]\d+)*\]$/.test(part)) {
+        if (/^\[[A-Z]{1,2}\d{1,3}(?:,\s*[A-Z]{1,2}\d{1,3})*\]$/.test(part)) {
             out.push({ kind: "cite", ids: part.slice(1, -1).split(/,\s*/) });
         }
         else if (part.startsWith("`") && part.endsWith("`") && part.length > 1) {
@@ -271,7 +271,7 @@ function parseInlineRaw(text) {
 /** Every citation handle an answer uses, in order of first use. */
 export function citedIds(text) {
     const ids = [];
-    for (const m of text.matchAll(/\[([FD]\d+(?:,\s*[FD]\d+)*)\]/g)) {
+    for (const m of text.matchAll(/\[([A-Z]{1,2}\d{1,3}(?:,\s*[A-Z]{1,2}\d{1,3})*)\]/g)) {
         for (const id of (m[1] ?? "").split(/,\s*/))
             if (!ids.includes(id))
                 ids.push(id);

@@ -337,3 +337,14 @@ test("screen: the footnote may hold block content — it is not wrapped in a par
   const footnote = /<div class="ck-screen-footnote">([\s\S]*?)<\/div><\/div><\/div>/.exec(html);
   assert.ok(footnote, "the footnote is the last block of the dock");
 });
+
+test("markdown: any product's handle is a chip; with no sources it stays words", () => {
+  const citations = { L1: { label: "SteG Art. 61", detail: "Steuersatz", href: "/law/x#art_61" } };
+  const cited = renderToStaticMarkup(h(Markdown, { text: "It is 12.5 % [L1].", citations }));
+  assert.match(cited, /class="ck-cite"[^>]*href="\/law\/x#art_61"/);
+  assert.doesNotMatch(cited, /\[L1\]/);
+  const unknown = renderToStaticMarkup(h(Markdown, { text: "It is 12.5 % [L9].", citations }));
+  assert.doesNotMatch(unknown, /L9/, "a dangling handle in a grounded answer is dropped");
+  const prose = renderToStaticMarkup(h(Markdown, { text: "Put the total in cell [A1]." }));
+  assert.match(prose, /\[A1\]/, "without sources, a bracketed code is just words");
+});

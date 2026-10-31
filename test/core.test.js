@@ -201,6 +201,8 @@ test("markdown: images are web images only; citations are listed once, in order"
   const [notImg] = parseInline("![x](javascript:alert(1))");
   assert.equal(notImg.kind, "text");
   assert.deepEqual(citedIds("See [F2] and [F1, F2] then [D1]."), ["F2", "F1", "D1"]);
+  // A product numbers its sources by its own letter: the law's [L1], the web's [W12].
+  assert.deepEqual(citedIds("Due by April [L1] and [W12, L1]."), ["L1", "W12"]);
 });
 
 test("markdown: a streaming, unclosed code fence still renders as code", () => {
