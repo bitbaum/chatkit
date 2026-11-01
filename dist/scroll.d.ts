@@ -10,4 +10,15 @@ export declare function isFollowing(el: {
     scrollTop: number;
     clientHeight: number;
 }, threshold?: number): boolean;
+/**
+ * Close enough to the bottom that nothing is left to jump to: a finger's
+ * lift-off wobble, sub-pixel rounding. Far tighter than the follow threshold,
+ * so a deliberate small scroll up still pauses following.
+ */
+export declare const AT_BOTTOM_PX = 16;
+export declare function isAtBottom(el: {
+    scrollHeight: number;
+    scrollTop: number;
+    clientHeight: number;
+}, slack?: number): boolean;
 //# sourceMappingURL=scroll.d.ts.map

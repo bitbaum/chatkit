@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.1 — Back at the bottom by hand, the jump button goes
+
+- A finger rocks back a pixel or two as it lifts. `useStickToBottom` read that last touchmove as "scrolling up" and paused following, so a reader who scrolled back down to the latest message by hand was left with the jump button sitting over the reply chips, and a tap on it did nothing: there was nowhere to jump to. Found 2026-11-01 in OrangeCat's Diplodoctor chat on Android. Where the gesture ends now decides: a touch that lifts at the very bottom (`isAtBottom`, 16px — far tighter than the follow threshold, so a deliberate small scroll up still pauses), or any downward scroll that arrives there (a fling running on after the finger lifted), is following again.
+- Checked in `test/browser-scroll.mjs` on `ChatScreen` at 390px with real touch input: read up, come back down by hand with a 2px lift-off wobble, the button is gone; read up again, a TAP (not a scripted click) on the button lands at the latest message. The test fails on 0.22.0.
+
 ## 0.22.0 — The microphone listens until you press done, in every product
 
 - With a server leg (`transcribe` or `transcribeUrl`) and no `prefer`, a press of the microphone now records until the person presses done, and the server transcribes. It used to start on the browser's recogniser, which on Android ends the take at the first pause whatever `continuous` says. Found 2026-11-01 in OrangeCat's bot chats: the composer there passed no `prefer`, so a person speaking to Causius was cut off after one or two seconds, while the Cat's composer (`prefer: "server"`) in the same app listened to the end. The same microphone now works the same way wherever it has a server leg. `prefer: "browser"` keeps the old order for an app that wants it; with no server leg nothing changes.

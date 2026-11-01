@@ -140,6 +140,77 @@ try {
       );
     }
 
+  // ChatScreen on a phone, driven by a finger (OrangeCat's Diplodoctor chat,
+  // 2026-11-01). Read up, come back down by hand: a finger rocks back a
+  // pixel or two as it lifts, and that last move used to read as "scrolling
+  // up", so the jump button stayed on screen at the bottom with nowhere to
+  // go. Then the button itself, TAPPED, not clicked from script.
+  {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 780 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(`http://localhost:${server.address().port}/demo/screen.html`);
+    await page.waitForSelector(".ck-screen .ck-thread");
+    await page.waitForTimeout(400);
+    const state = () =>
+      page.evaluate(() => {
+        const t = document.querySelector(".ck-screen .ck-thread");
+        return {
+          gap: Math.round(t.scrollHeight - t.scrollTop - t.clientHeight),
+          jump: !!document.querySelector(".ck-screen .ck-jump"),
+        };
+      });
+    const cdp = await page.context().newCDPSession(page);
+    const swipe = async (from, to, wobble = 0) => {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: 120, y: from }],
+      });
+      const step = from < to ? 30 : -30;
+      let y;
+      for (y = from + step; step > 0 ? y <= to : y >= to; y += step) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: 120, y }],
+        });
+        await page.waitForTimeout(16);
+      }
+      if (wobble)
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: 120, y: y - step + wobble }],
+        });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForTimeout(500);
+    };
+    await swipe(200, 560);
+    await swipe(200, 560);
+    const up = await state();
+    assert.ok(up.gap > 300 && up.jump, `screen: reading up shows the jump button (${up.gap})`);
+    for (let i = 0; i < 12 && (await state()).gap > 0; i++) await swipe(500, 150, 2);
+    const down = await state();
+    assert.ok(down.gap <= 16, `screen: a hand scroll reaches the bottom (${down.gap})`);
+    assert.ok(!down.jump, "screen: back at the bottom by hand, the jump button is gone");
+    await swipe(200, 560);
+    const box = await page.locator(".ck-screen .ck-jump").boundingBox();
+    assert.ok(box, "screen: reading up again shows the jump button");
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(900);
+    const tapped = await state();
+    assert.ok(
+      tapped.gap <= 2 && !tapped.jump,
+      `screen: a tap on it lands at the latest message (${tapped.gap})`,
+    );
+    await cdp.detach();
+    assert.deepEqual(errors, [], "screen: no browser errors");
+    await page.close();
+    console.log("PASS screen 390: hand scroll back down hides the jump button; a tap on it jumps");
+  }
+
   // Reproduce DOM implementations where document.scrollingElement is absent.
   // Start with a real thread scroll owner, then remove its scrollability so
   // the hook must safely replace a stale owner with no document fallback.

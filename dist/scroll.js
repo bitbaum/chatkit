@@ -8,4 +8,13 @@ export const FOLLOW_THRESHOLD_PX = 120;
 export function isFollowing(el, threshold = FOLLOW_THRESHOLD_PX) {
     return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
 }
+/**
+ * Close enough to the bottom that nothing is left to jump to: a finger's
+ * lift-off wobble, sub-pixel rounding. Far tighter than the follow threshold,
+ * so a deliberate small scroll up still pauses following.
+ */
+export const AT_BOTTOM_PX = 16;
+export function isAtBottom(el, slack = AT_BOTTOM_PX) {
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= slack;
+}
 //# sourceMappingURL=scroll.js.map

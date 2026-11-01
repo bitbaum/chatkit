@@ -9,7 +9,7 @@ import {
   type DependencyList,
   type RefObject,
 } from "react";
-import { isFollowing } from "../scroll.js";
+import { isAtBottom, isFollowing } from "../scroll.js";
 
 /**
  * Copy + a checkmark that resets. Failures are swallowed on purpose (insecure
@@ -75,6 +75,10 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
       (downwardIntent.current || draggingScrollbar.current)
     )
       follow(isFollowing(el));
+    // Arriving at the very bottom by any downward scroll (a fling that runs
+    // on after the finger lifted, a scroll anchored by the browser) is being
+    // back at the latest message, whatever the last touch event said.
+    else if (top > previousTop.current + 1 && isAtBottom(el)) follow(true);
     previousTop.current = top;
   }, [follow]);
   const pin = useCallback((smooth = false) => {
@@ -145,6 +149,14 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
     const touchStart = (event: Event) => {
       touchY = (event as TouchEvent).touches[0]?.clientY;
     };
+    // A finger rocks back a pixel or two as it lifts. That last touchmove
+    // reads as "scrolling up" and paused following at the bottom, leaving
+    // the jump button on screen with nowhere to jump to (OrangeCat on
+    // Android, 2026-11-01). Where the gesture ENDS decides: at the very
+    // bottom, the reader is following again.
+    const touchEnd = (event: Event) => {
+      if ((event as TouchEvent).touches.length === 0 && isAtBottom(selected)) follow(true);
+    };
     const touchMove = (event: Event) => {
       const y = (event as TouchEvent).touches[0]?.clientY;
       if (y !== undefined && touchY !== undefined) {
@@ -182,6 +194,8 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
       ["wheel", wheel],
       ["touchstart", touchStart],
       ["touchmove", touchMove],
+      ["touchend", touchEnd],
+      ["touchcancel", touchEnd],
       ["keydown", key],
     ];
     for (const [name, listener] of events)
