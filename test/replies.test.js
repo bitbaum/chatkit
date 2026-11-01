@@ -131,6 +131,12 @@ test("replies: the instruction forbids a heading over the replies", () => {
 test("replies: the instruction makes the model lead — every answer, best reply first", () => {
   assert.match(REPLIES_INSTRUCTION, /End every answer/);
   assert.match(REPLIES_INSTRUCTION, /FIRST/);
+  // A question asked is answered by the chips (Diplodoctor, 2026-11-01:
+  // "I have more info" under four questions answered none of them).
+  assert.match(
+    REPLIES_INSTRUCTION,
+    /ends on a question to them, the replies are short answers to that question/,
+  );
 });
 
 test("replies: the instruction teaches the same fence the parser reads", () => {
