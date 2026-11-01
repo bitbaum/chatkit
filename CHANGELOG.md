@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.22.1 — Back at the bottom by hand, the jump button goes
+## 0.22.1 — Back at the bottom by hand, the jump button goes; chips answer the question
+
+- `REPLIES_INSTRUCTION`: when an answer ends on a question to the person, the replies are short answers to it, never the question repeated and not next steps. Found 2026-11-01 on Diplodoctor's live model: under four questions about a sore finger, the chips were "I have more info" and "Consult a doctor", and a tap answered nothing (2 of 9 chip sets were answers; 7 of 9 with this sentence added).
 
 - A finger rocks back a pixel or two as it lifts. `useStickToBottom` read that last touchmove as "scrolling up" and paused following, so a reader who scrolled back down to the latest message by hand was left with the jump button sitting over the reply chips, and a tap on it did nothing: there was nowhere to jump to. Found 2026-11-01 in OrangeCat's Diplodoctor chat on Android. Where the gesture ends now decides: a touch that lifts at the very bottom (`isAtBottom`, 16px — far tighter than the follow threshold, so a deliberate small scroll up still pauses), or any downward scroll that arrives there (a fling running on after the finger lifted), is following again.
 - Checked in `test/browser-scroll.mjs` on `ChatScreen` at 390px with real touch input: read up, come back down by hand with a 2px lift-off wobble, the button is gone; read up again, a TAP (not a scripted click) on the button lands at the latest message. The test fails on 0.22.0.

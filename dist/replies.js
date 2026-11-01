@@ -31,7 +31,7 @@ export const REPLIES_INSTRUCTION = [
     "```" + REPLIES_FENCE,
     '["Yes, do it", "Show me first", "Not now"]',
     "```",
-    "Rules: write them in the person's language, in their voice (what THEY would say, not what you would). Each under 40 characters. Each must make sense sent on its own. Never repeat what they already said. Put the block last, after everything else. Do not write any heading or label before it (no Quick replies, Follow-up questions or the like, in any language): the replies are drawn as buttons. Leave it out only when the conversation is over (a goodbye, a thanks with nothing left to do).",
+    'Rules: write them in the person\'s language, in their voice (what THEY would say, not what you would). Each under 40 characters. Each must make sense sent on its own. Never repeat what they already said. When your answer ends on a question to them, the replies are short answers to that question ("About two weeks", "After a fall"), never your own question repeated and not next steps. Put the block last, after everything else. Do not write any heading or label before it (no Quick replies, Follow-up questions or the like, in any language): the replies are drawn as buttons. Leave it out only when the conversation is over (a goodbye, a thanks with nothing left to do).',
 ].join("\n");
 const COMPLETE = new RegExp("\\n?```" + REPLIES_FENCE + "\\s*([\\s\\S]*?)```", "i");
 // A complete JSON array of short strings as the answer's last paragraph, with
