@@ -517,19 +517,25 @@ try {
   await page.goto(base);
   const box = page.locator("#empty");
   await box.locator(".ck-mic").click();
+  await box
+    .locator(".ck-voice-bar")
+    .waitFor({ timeout: 2000 })
+    .catch(() => {});
   check(await box.locator(".ck-voice-bar").isVisible(), "mic: pressing it shows the recording bar");
-  // Past the silent-recogniser watchdog (4 s): it must now be recording.
+  // A pause longer than Android's recogniser would allow (it ended the take
+  // after one or two seconds, 2026-11-01): the take is still recording.
   await page.waitForTimeout(5500);
+  check(
+    await box.locator(".ck-voice-bar").isVisible(),
+    "mic: with a server leg the take outlasts a pause and ends only on done",
+  );
   await box.locator(".ck-voice-confirm").click();
   await page
     .waitForFunction(() => document.querySelector("#empty .ck-input")?.value !== "", null, {
       timeout: 5000,
     })
     .catch(() => {});
-  check(
-    posted > 0,
-    `mic: a silent recogniser falls back to recording and posts the audio (${posted} bytes)`,
-  );
+  check(posted > 0, `mic: the recording is posted to the server leg (${posted} bytes)`);
   check(
     (await box.locator(".ck-input").inputValue()) === "hello from the mic",
     "mic: the spoken sentence lands in the input",
@@ -615,7 +621,7 @@ try {
       window.webkitSpeechRecognition = FakeRecognition;
       window.SpeechRecognition = FakeRecognition;
     });
-    await page.goto(base);
+    await page.goto(`${base}?prefer=browser`);
     const box = page.locator("#empty");
     await box.locator(".ck-mic").click();
     await page.waitForTimeout(600);

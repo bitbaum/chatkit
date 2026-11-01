@@ -9,17 +9,21 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const server = createServer(async (req, res) => {
   const path = normalize(join(root, new URL(req.url, "http://localhost").pathname));
   if (!path.startsWith(root)) return res.writeHead(403).end();
+  // Read before the head is written: a missing file (or a directory) answers
+  // 404 instead of throwing "headers already sent" and taking the run down.
+  let body;
   try {
-    res
-      .writeHead(200, {
-        "content-type":
-          { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" }[extname(path)] ??
-          "application/octet-stream",
-      })
-      .end(await readFile(path));
+    body = await readFile(path);
   } catch {
-    res.writeHead(404).end();
+    return res.writeHead(404).end();
   }
+  res
+    .writeHead(200, {
+      "content-type":
+        { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" }[extname(path)] ??
+        "application/octet-stream",
+    })
+    .end(body);
 }).listen(0);
 const browser = await chromium.launch(
   process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},

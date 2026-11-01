@@ -407,14 +407,20 @@ bitbaum/solon#309, bitbaum/substrata#262):
   and answering `{ text }` — implement it with `ai-kit`'s `transcribe()`.
 - or `transcribe: (audio, locale) => Promise<string>` for a custom call.
 
-The browser's own recogniser is tried first (free, instant). Where it is
-missing, **or accepts `start()` and then says nothing** — Chromium without
-Google's speech service does exactly that — the same press records and the
-server transcribes. The dead recogniser is remembered for 30 days so the next
-press records immediately. Every failure is shown in words (blocked mic,
-nothing heard, not available), never as a button that does nothing.
-`prefer: "server"` skips the browser leg (one model everywhere, language
-detected by the model). `rememberKey: null` stores nothing on the device.
+With a server leg, a press **records until the person presses done**, and the
+server transcribes (one model everywhere, language detected by the model).
+That is the default since 0.22.0 and every product gets it without a prop: the
+browser's own recogniser ends the take at the first pause on Android, so a
+person who stopped to think lost the rest of the sentence, and the same
+microphone behaved differently from one product to the next.
+
+Without a server leg, or with `prefer: "browser"`, the browser's recogniser
+listens (free, instant). Where it is missing, **or accepts `start()` and then
+says nothing** — Chromium without Google's speech service does exactly that —
+the same press records and the server transcribes. The dead recogniser is
+remembered for 30 days so the next press records immediately. Every failure is
+shown in words (blocked mic, nothing heard, not available), never as a button
+that does nothing. `rememberKey: null` stores nothing on the device.
 
 ### Suggested replies
 
