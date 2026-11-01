@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, fallbackCanRescue, heardFromResults, liveWords, problemFor, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
+import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, dictationLeg, fallbackCanRescue, heardFromResults, liveWords, problemFor, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
 function recogniser() {
     if (typeof window === "undefined")
         return undefined;
@@ -60,16 +60,18 @@ async function postAudio(url, audio, locale) {
 /**
  * Speaking instead of typing — with a microphone that is never a dead button.
  *
- * Browser recogniser first (unless `prefer: "server"`); when it is missing, or
- * accepts `start()` and then says nothing (heidi measured nine silent seconds
- * on a real Chromium), the same press RECORDS and the server transcribes. A
+ * With a server leg, a press RECORDS until the person presses done and the
+ * server transcribes (`dictationLeg`). Without one, or with `prefer:
+ * "browser"`, the browser recogniser listens; when it is missing, or accepts
+ * `start()` and then says nothing (heidi measured nine silent seconds on a
+ * real Chromium), the same press records instead. A
  * failure always ends as a `problem` the composer shows in words.
  *
  * Every microphone track is stopped on every exit path. A mic left open on
  * someone's device because a request failed is the worst bug a chat can have.
  */
 export function useDictation(opts) {
-    const { prefer = "browser", maxRecordingMs = MAX_RECORDING_MS, maxAudioFileBytes = MAX_AUDIO_FILE_BYTES, } = opts;
+    const { prefer, maxRecordingMs = MAX_RECORDING_MS, maxAudioFileBytes = MAX_AUDIO_FILE_BYTES, } = opts;
     const rememberKey = opts.rememberKey === undefined ? DEFAULT_REMEMBER_KEY : opts.rememberKey;
     const hasServer = Boolean(opts.transcribe || opts.transcribeUrl);
     const supported = useSyncExternalStore(noSubscribe, () => Boolean(recogniser()) || (hasServer && canRecord()), () => false);
@@ -384,13 +386,17 @@ export function useDictation(opts) {
         if (status !== "idle")
             return;
         const Ctor = recogniser();
-        const serverFirst = prefer === "server" && canRecord() && hasServer;
-        if (Ctor && !serverFirst && !readDead(rememberKey))
+        const leg = dictationLeg({
+            prefer,
+            hasServer,
+            canRecord: canRecord(),
+            hasRecogniser: Boolean(Ctor),
+            recogniserDead: readDead(rememberKey),
+        });
+        if (leg === "browser" && Ctor)
             listen(Ctor);
-        else if (canRecord() && hasServer)
+        else if (leg === "server")
             void record();
-        else if (Ctor)
-            listen(Ctor);
         else
             setProblem("unavailable");
     }, [hasServer, listen, prefer, record, rememberKey, status]);

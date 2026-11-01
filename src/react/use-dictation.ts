@@ -9,6 +9,7 @@ import {
   START_TIMEOUT_MS,
   audioFileName,
   deadRecogniserStillTrusted,
+  dictationLeg,
   fallbackCanRescue,
   heardFromResults,
   liveWords,
@@ -65,8 +66,10 @@ export type UseDictationOptions = {
    *  `<html lang>`, then the browser's. The server leg receives its first part
    *  as `locale` and may detect the language itself. */
   lang?: string;
-  /** Which path first. Default `browser` (free, instant); `server` for one
-   *  model everywhere. Each falls back to the other when it cannot work. */
+  /** Which path first. Default `server` when there is a server leg (the take
+   *  lasts until the person presses done), `browser` when there is not. The
+   *  browser recogniser is free and instant but ends the take at the first
+   *  pause on Android. Each falls back to the other when it cannot work. */
   prefer?: DictationPreference;
   /** Server leg: POST multipart `{ audio, locale }` → `{ text }`. */
   transcribeUrl?: string;
@@ -164,9 +167,11 @@ async function postAudio(url: string, audio: Blob, locale: string): Promise<stri
 /**
  * Speaking instead of typing — with a microphone that is never a dead button.
  *
- * Browser recogniser first (unless `prefer: "server"`); when it is missing, or
- * accepts `start()` and then says nothing (heidi measured nine silent seconds
- * on a real Chromium), the same press RECORDS and the server transcribes. A
+ * With a server leg, a press RECORDS until the person presses done and the
+ * server transcribes (`dictationLeg`). Without one, or with `prefer:
+ * "browser"`, the browser recogniser listens; when it is missing, or accepts
+ * `start()` and then says nothing (heidi measured nine silent seconds on a
+ * real Chromium), the same press records instead. A
  * failure always ends as a `problem` the composer shows in words.
  *
  * Every microphone track is stopped on every exit path. A mic left open on
@@ -174,7 +179,7 @@ async function postAudio(url: string, audio: Blob, locale: string): Promise<stri
  */
 export function useDictation(opts: UseDictationOptions): DictationController {
   const {
-    prefer = "browser",
+    prefer,
     maxRecordingMs = MAX_RECORDING_MS,
     maxAudioFileBytes = MAX_AUDIO_FILE_BYTES,
   } = opts;
@@ -489,10 +494,15 @@ export function useDictation(opts: UseDictationOptions): DictationController {
   const start = useCallback(() => {
     if (status !== "idle") return;
     const Ctor = recogniser();
-    const serverFirst = prefer === "server" && canRecord() && hasServer;
-    if (Ctor && !serverFirst && !readDead(rememberKey)) listen(Ctor);
-    else if (canRecord() && hasServer) void record();
-    else if (Ctor) listen(Ctor);
+    const leg = dictationLeg({
+      prefer,
+      hasServer,
+      canRecord: canRecord(),
+      hasRecogniser: Boolean(Ctor),
+      recogniserDead: readDead(rememberKey),
+    });
+    if (leg === "browser" && Ctor) listen(Ctor);
+    else if (leg === "server") void record();
     else setProblem("unavailable");
   }, [hasServer, listen, prefer, record, rememberKey, status]);
 

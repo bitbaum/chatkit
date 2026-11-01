@@ -5,7 +5,7 @@
 // "why why exactly why exactly is …".
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { heardFromResults, liveWords } from "../dist/index.js";
+import { dictationLeg, heardFromResults, liveWords } from "../dist/index.js";
 
 /** One result the way the browser hands it over: array-like alternatives. */
 const r = (transcript, isFinal = true) => Object.assign([{ transcript }], { isFinal });
@@ -125,4 +125,29 @@ test("a result with no isFinal: settled for the browser leg, a guess for the pre
   const preview = heardFromResults(list);
   assert.equal(preview.text, "");
   assert.equal(preview.interim, "hello");
+});
+
+// Where a press of the microphone starts. OrangeCat's bot chats passed no
+// `prefer` and got Android's recogniser, which ended the take at the first
+// pause; the Cat said `server` and listened to the end (2026-11-01).
+const phone = { hasServer: true, canRecord: true, hasRecogniser: true, recogniserDead: false };
+
+test("with a server leg and no preference, a press records until done", () => {
+  assert.equal(dictationLeg(phone), "server");
+});
+
+test("an app that asks for the browser recogniser still gets it", () => {
+  assert.equal(dictationLeg({ ...phone, prefer: "browser" }), "browser");
+  assert.equal(dictationLeg({ ...phone, prefer: "browser", recogniserDead: true }), "server");
+});
+
+test("without a server leg the recogniser listens, and nothing at all is said so", () => {
+  assert.equal(dictationLeg({ ...phone, hasServer: false }), "browser");
+  assert.equal(dictationLeg({ ...phone, hasServer: false, recogniserDead: true }), "browser");
+  assert.equal(dictationLeg({ ...phone, hasServer: false, hasRecogniser: false }), "none");
+});
+
+test("a server leg that cannot record falls back to the recogniser", () => {
+  assert.equal(dictationLeg({ ...phone, canRecord: false }), "browser");
+  assert.equal(dictationLeg({ ...phone, canRecord: false, hasRecogniser: false }), "none");
 });

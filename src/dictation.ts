@@ -27,6 +27,37 @@ export type DictationProblem = "mic" | "silence" | "unavailable" | "fileTooLarge
  *  the other when it cannot work. */
 export type DictationPreference = "browser" | "server";
 
+/** Which leg a press of the microphone starts on. */
+export type DictationLeg = "browser" | "server" | "none";
+
+/**
+ * Where a take starts. With a server leg the default is to RECORD: a take
+ * then lasts until the person presses done (or the cap). The browser
+ * recogniser on Android ends the take at the first pause however `continuous`
+ * is set, so someone who stops to think for a second loses the rest of their
+ * sentence. Found 2026-11-01 in OrangeCat's bot chats, whose composer had no
+ * `prefer` while the Cat's said `server`: the same microphone stopped after
+ * one or two seconds in one screen and listened to the end in the other.
+ * `prefer: "browser"` still asks for the recogniser first where an app wants
+ * it, and either leg is used when the other cannot work.
+ */
+export function dictationLeg(opts: {
+  prefer?: DictationPreference;
+  hasServer: boolean;
+  canRecord: boolean;
+  hasRecogniser: boolean;
+  recogniserDead: boolean;
+}): DictationLeg {
+  const server = opts.hasServer && opts.canRecord;
+  const recogniser = opts.hasRecogniser;
+  const prefer = opts.prefer ?? (opts.hasServer ? "server" : "browser");
+  if (prefer === "server" && server) return "server";
+  if (recogniser && !opts.recogniserDead) return "browser";
+  if (server) return "server";
+  if (recogniser) return "browser";
+  return "none";
+}
+
 /**
  * Which recogniser failures the fallback can rescue: only "unavailable" — the
  * recogniser cannot do this (no speech service, network refused, language

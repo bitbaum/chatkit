@@ -14,6 +14,13 @@ import {
   type RichRenderers,
 } from "../src/react/index.js";
 
+// `?prefer=browser` asks for the recogniser first; the browser test uses it to
+// drive the recogniser leg, which is no longer the default with a server leg.
+const demoPrefer =
+  new URLSearchParams(location.search).get("prefer") === "browser"
+    ? ("browser" as const)
+    : undefined;
+
 // What an app injects: here a stub that draws bars and nothing else, so the
 // screen shows both paths — a bars block through the renderer, a line block
 // through chatkit's own fallback (the caption and a table). Substrata hands
@@ -315,7 +322,7 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
       sending={sending}
       onStop={() => setSending(false)}
       attach
-      voice={{ transcribeUrl: "/api/transcribe" }}
+      voice={{ transcribeUrl: "/api/transcribe", prefer: demoPrefer }}
     />
   );
   if (screen) {
@@ -372,7 +379,7 @@ function Demo({ empty, failed, screen }: { empty?: boolean; failed?: boolean; sc
         sending={sending}
         onStop={() => setSending(false)}
         attach={{ maxImageEdge: 1024 }}
-        voice={{ transcribeUrl: "/api/transcribe" }}
+        voice={{ transcribeUrl: "/api/transcribe", prefer: demoPrefer }}
         hint="Enter sends · Shift+Enter new line"
       />
     </div>
