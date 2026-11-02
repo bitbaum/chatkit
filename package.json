@@ -82,7 +82,7 @@
     "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs && node test/browser-app.mjs && node test/browser-pdf.mjs"
   },
   "devDependencies": {
-    "@bitbaum/design-tokens": "^1.3.0",
+    "@bitbaum/design-tokens": "github:bitbaum/design-tokens#e72a32f1d40b3318e4008b95d4672231253541c2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",
