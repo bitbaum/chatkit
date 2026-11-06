@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.0 — Any text box has the microphone; a thread of comments
+
+Owner, 2026-11-06: every product installs the chat package and the text boxes people actually type in are still made by hand, with no microphone. A package that is installed and not used is no package. This release gives the other two shapes of "a person types words" a component, so there is nothing to build locally.
+
+- `DictationField`: a labelled text area (or one line) with the composer's microphone — Web Speech, the recording fallback, the take shown with its timer and kept for a retry — appending to what is there; 16px text, 44px targets. Optional `improve={{ run, suggestions }}`: one tap on a suggestion, or say or type what to change; working, failure and **Undo** in words, the person's text untouched on failure. No model call and no prompt in chatkit: `run` is the app's.
+- `CommentThread`: the conversation under anything. Oldest first, the box is `Composer` (mic, 16px, Enter sends), a `transport` the app implements (`post`, optional `remove`), optimistic removal rolled back with a message on failure, a refused post keeps the draft, comments shown as text with their line breaks, a sign-in link for a signed-out reader, times in a stated `timeZone` so server and browser markup agree.
+- `VoiceBar` and `VoiceProblem` are now one implementation inside the package: `Composer` and `DictationField` draw the same take and the same failure line. `Composer` behaves as before (its existing browser checks pass unchanged).
+- Styles for both are in `styles.css`, after the ChatApp boundary, so the embedded `styles/chat.css` keeps its size budget (10,464 bytes gzipped, unchanged).
+- `test/browser-field.mjs`, on a new fixture page: a mic in every field and in the comment box at 390/320/1280px light and dark, 16px, no control under 44px, no sideways scroll, mic words appended to typed text, Improve in one tap, Undo, an improve failure that keeps the text and the instruction, a comment posted, listed, removed, and a refused one that keeps its draft.
+
 ## 0.22.1 — Back at the bottom by hand, the jump button goes; chips answer the question
 
 - `REPLIES_INSTRUCTION`: when an answer ends on a question to the person, the replies are short answers to it, never the question repeated and not next steps. Found 2026-11-01 on Diplodoctor's live model: under four questions about a sore finger, the chips were "I have more info" and "Consult a doctor", and a tap answered nothing (2 of 9 chip sets were answers; 7 of 9 with this sentence added).

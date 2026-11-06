@@ -2426,3 +2426,235 @@ a.ck-turn-chip:hover {
     animation: none;
   }
 }
+
+/* ── field and comments: after the ChatApp boundary on purpose ─────────────
+   DictationField and CommentThread. Not a chat surface, so not in the
+   embedded styles/chat.css (the widget's budget is for the chat). The same
+   frame, 16px text, mic and voice bar as the composer, for everything that is
+   not a conversation. */
+.ck-field-wrap,
+.ck-comments {
+  font-family: var(--ck-font);
+  color: var(--ck-fg);
+  min-width: 0;
+}
+.ck-field-wrap *,
+.ck-comments * {
+  box-sizing: border-box;
+}
+.ck-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.ck-field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ck-fg-2);
+}
+.ck-field-frame {
+  position: relative;
+  min-width: 0;
+}
+.ck-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.5rem 0.625rem 0.5rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-bg);
+  transition: border-color 0.15s ease;
+}
+.ck-field:focus-within {
+  border-color: var(--ck-line-2);
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 1px;
+}
+.ck-field-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  resize: none;
+  padding: 0.25rem 0.125rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+  line-height: var(--ck-leading);
+}
+.ck-field-input::placeholder {
+  color: var(--ck-muted);
+}
+.ck-field-input:disabled {
+  opacity: 0.6;
+}
+/* A multiline field: the controls sit under the text, on the right. */
+.ck-field-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  min-height: 0;
+}
+.ck-field-actions:empty {
+  display: none;
+}
+/* A one-line field: the controls sit beside the text. */
+.ck-field-single {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.375rem;
+}
+.ck-field-single .ck-field-input {
+  flex: 1;
+}
+.ck-field-improve,
+.ck-field-apply,
+.ck-field-suggestion {
+  min-height: var(--ck-target);
+  padding: 0 0.875rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ck-field-improve[aria-expanded="true"] {
+  border-color: var(--ck-accent);
+  background: var(--ck-accent-soft);
+}
+.ck-field-improve:disabled,
+.ck-field-apply:disabled,
+.ck-field-suggestion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ck-field-improve-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem;
+  border: 1px solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-overlay);
+}
+/* Suggestions are a few choices: an even grid, never wrapping pills. */
+.ck-field-suggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+.ck-field-suggestion {
+  min-width: 0;
+  text-align: center;
+  line-height: 1.25;
+  padding-block: 0.5rem;
+}
+.ck-field-improve-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+.ck-field-improve-row > .ck-field-wrap {
+  flex: 1;
+}
+.ck-field-undo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--ck-fg-2);
+}
+.ck-field-hint {
+  font-size: 0.875rem;
+  color: var(--ck-muted);
+}
+:where(.ck-field-wrap, .ck-comments) button:focus-visible,
+.ck-comment-signin-link:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+
+/* ── comments: the conversation under anything ──────────────────────────── */
+.ck-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ck-comments-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.ck-comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ck-comment {
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--ck-line);
+}
+.ck-comment:first-child {
+  border-top: 0;
+}
+.ck-comment-meta {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--ck-muted);
+}
+.ck-comment-meta strong {
+  color: var(--ck-fg);
+}
+.ck-comment-body {
+  margin: 0;
+  font-size: max(16px, var(--ck-text));
+  line-height: var(--ck-leading);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ck-comment-remove {
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ck-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ck-comment-signin {
+  margin: 0;
+}
+.ck-comment-signin-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ck-target);
+  padding: 0 1rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (max-width: 380px) {
+  .ck-field-suggestions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ck-field-improve-row {
+    flex-direction: column;
+  }
+  .ck-field-improve-row > .ck-field-wrap {
+    width: 100%;
+  }
+}

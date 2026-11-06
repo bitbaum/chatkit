@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as reactMod from "../dist/react/index.js";
-const { Composer, ChatThread, ChatStarters, Markdown } = reactMod;
+const { Composer, ChatThread, ChatStarters, Markdown, DictationField, CommentThread } = reactMod;
 import { AttachMenu, ATTACH_SOURCE_INPUT, shrinkImage } from "../dist/react/attach.js";
 
 test("composer: textarea, send, and 16px guaranteed by the stylesheet", () => {
@@ -347,4 +347,95 @@ test("markdown: any product's handle is a chip; with no sources it stays words",
   assert.doesNotMatch(unknown, /L9/, "a dangling handle in a grounded answer is dropped");
   const prose = renderToStaticMarkup(h(Markdown, { text: "Put the total in cell [A1]." }));
   assert.match(prose, /\[A1\]/, "without sources, a bracketed code is just words");
+});
+
+test("DictationField: a labelled text area by default, an input when one line, and it renders on the server", () => {
+  const area = renderToStaticMarkup(
+    h(DictationField, {
+      value: "hi",
+      onValueChange: () => {},
+      label: "Note",
+      placeholder: "Write",
+    }),
+  );
+  assert.match(area, /<label[^>]*class="ck-field-label"[^>]*>Note<\/label>/);
+  assert.match(area, /<textarea[^>]*class="ck-field-input"[^>]*>hi<\/textarea>/);
+  const label = /<label[^>]*for="([^"]+)"/.exec(area)?.[1];
+  assert.ok(label && area.includes(`id="${label}"`), "the label points at the field");
+  const line = renderToStaticMarkup(
+    h(DictationField, { value: "", onValueChange: () => {}, ariaLabel: "Title", multiline: false }),
+  );
+  assert.match(
+    line,
+    /<input[^>]*type="text"[^>]*class="ck-field-input"|class="ck-field-input"[^>]*type="text"/,
+  );
+  assert.match(line, /ck-field-single/);
+  assert.match(line, /aria-label="Title"/);
+});
+
+test("DictationField: Improve is offered only when there is text and a way to improve it", () => {
+  const run = async () => "x";
+  const withText = renderToStaticMarkup(
+    h(DictationField, {
+      value: "some text",
+      onValueChange: () => {},
+      ariaLabel: "n",
+      improve: { run },
+    }),
+  );
+  assert.match(withText, /class="ck-field-improve"/);
+  const empty = renderToStaticMarkup(
+    h(DictationField, { value: "", onValueChange: () => {}, ariaLabel: "n", improve: { run } }),
+  );
+  assert.doesNotMatch(empty, /ck-field-improve/);
+  const none = renderToStaticMarkup(
+    h(DictationField, { value: "some text", onValueChange: () => {}, ariaLabel: "n" }),
+  );
+  assert.doesNotMatch(none, /ck-field-improve/);
+});
+
+test("CommentThread: count heading, oldest first, text not markup, and a way to sign in", () => {
+  const comments = [
+    { id: "1", author: "Ana", body: "<b>first</b>", createdAt: "2026-11-05T10:00:00Z" },
+    { id: "2", author: "Ben", body: "second", createdAt: "2026-11-05T11:00:00Z" },
+  ];
+  const signedOut = renderToStaticMarkup(
+    h(CommentThread, {
+      comments,
+      viewer: null,
+      signInHref: "/in",
+      transport: { post: async () => comments[0] },
+    }),
+  );
+  assert.match(signedOut, /<h2[^>]*class="ck-comments-title"[^>]*>2 comments<\/h2>/);
+  assert.ok(signedOut.indexOf("Ana") < signedOut.indexOf("Ben"), "oldest first");
+  assert.match(signedOut, /&lt;b&gt;first&lt;\/b&gt;/, "a comment is text, never markup");
+  assert.match(
+    signedOut,
+    /<a[^>]*class="ck-comment-signin-link"[^>]*href="\/in"|href="\/in"[^>]*class="ck-comment-signin-link"/,
+  );
+  assert.doesNotMatch(signedOut, /<textarea/, "a signed-out reader is not offered a box");
+  const signedIn = renderToStaticMarkup(
+    h(CommentThread, {
+      comments: [],
+      viewer: { name: "Cy" },
+      transport: { post: async () => comments[0] },
+    }),
+  );
+  assert.match(signedIn, />No comments yet<\/h2>/);
+  assert.match(signedIn, /<textarea[^>]*class="ck-input"/);
+  assert.match(signedIn, /Posted as Cy\./);
+  const removable = renderToStaticMarkup(
+    h(CommentThread, {
+      comments,
+      viewer: { name: "Cy" },
+      canRemove: (c) => c.id === "2",
+      transport: { post: async () => comments[0], remove: async () => {} },
+    }),
+  );
+  assert.equal(
+    (removable.match(/ck-comment-remove/g) ?? []).length,
+    1,
+    "Remove only where allowed",
+  );
 });

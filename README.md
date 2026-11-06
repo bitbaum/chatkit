@@ -422,6 +422,68 @@ remembered for 30 days so the next press records immediately. Every failure is
 shown in words (blocked mic, nothing heard, not available), never as a button
 that does nothing. `rememberKey: null` stores nothing on the device.
 
+### Any other text box — `DictationField` (0.23)
+
+A text box that is not a conversation — a note, a title, a bio, a message to a
+seller — is still a place a person would rather speak than type. Every such
+box is this component, not a `<textarea>` made by hand:
+
+```tsx
+<DictationField
+  label="Note"
+  value={note}
+  onValueChange={setNote}
+  voice={{ transcribeUrl: "/api/transcribe" }}   // the same server leg as Composer
+  improve={{                                       // optional: writing help
+    suggestions: ["Make it tighter", "Fix the grammar"],
+    run: async (text, instruction) => (await askYourModel(text, instruction)) ?? null,
+  }}
+/>
+<DictationField label="Title" value={title} onValueChange={setTitle} multiline={false} />
+```
+
+The microphone is `Composer`'s: Web Speech first, recording when the browser's
+recogniser is silent, a take shown with its timer and kept for a retry when
+transcription fails. Dictation appends to what is there. 16px text, 44px
+targets, a visible label wired to the field.
+
+`improve` is chatkit's half of writing help only: how a person asks (one tap on
+a suggestion, or say or type what to change), that it is working, that it
+failed — in words, with their text untouched — and **Undo** until the next edit.
+Chatkit ships no model call and no prompt: `run` is yours (or
+`@bitbaum/writingkit`'s `assist`). Return `null` when it could not be done.
+
+Single-line fields (`multiline={false}`) keep the controls beside the text. Colour
+and radius follow the same `--ck-*` variables as the composer. The styles are
+in `styles.css` (not in the embedded `styles/chat.css`: this is not a chat
+surface).
+
+### Comments — `CommentThread` (0.23)
+
+The conversation under anything: an article, a page, a listing.
+
+```tsx
+<CommentThread
+  comments={loaded}                       // oldest first; re-mount with a key to reload
+  viewer={user ? { name: user.name } : null}
+  signInHref="/sign-in?next=/articles/1"  // a signed-out reader is shown the way in
+  canRemove={(c) => c.authorId === user?.id || user?.id === article.authorId}
+  transport={{
+    post: async (text) => (await api.post(text)),    // returns the stored comment
+    remove: async (id) => { await api.remove(id); },
+  }}
+  voice={{ transcribeUrl: "/api/transcribe" }}
+  timeZone="Europe/Zurich"
+/>
+```
+
+The component owns the list, the optimistic removal (rolled back, in words, if
+it fails) and every failure message; the box is `Composer`, so it has the
+microphone, 16px text and Enter-to-send; a refused post keeps the draft in the
+box. A comment is shown as text, never as markup, with its line breaks. Times
+render in `timeZone` (UTC by default, so the server's and the browser's markup
+agree), or through your own `formatTime`.
+
 ### Suggested replies
 
 The two to four things the person is likely to say next, as buttons under the
@@ -849,6 +911,12 @@ on `Composer`, `labels` on `ChatThread`.
 11. In `ChatApp`, the same app everywhere: one chat list with one row
     anatomy, New chat, Temporary chat that writes nothing, the open chat
     back after a reload, attachments on, a queue behind a running answer.
+
+12. Any other text box is `DictationField`: the same microphone, 16px text and
+    44px targets as the composer, and an optional Improve with Undo.
+13. A conversation under an item is `CommentThread`: oldest first, the same box
+    with the microphone, remove your own, a way to sign in for a reader who
+    cannot yet write.
 
 `pnpm run verify` proves all of it: unit and render tests, then
 `test/browser.mjs` drives Chromium through the demo at desktop and 390px, light

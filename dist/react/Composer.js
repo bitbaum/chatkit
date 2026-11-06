@@ -1,14 +1,15 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useImperativeHandle, useRef, useState, } from "react";
-import { appendTranscript, composerCanSend, composerOutgoingText, formatElapsed, shouldClearDraft, } from "../composer.js";
+import { appendTranscript, composerCanSend, composerOutgoingText, shouldClearDraft, } from "../composer.js";
 import { DEFAULT_DICTATION_MESSAGES, isAudioFile } from "../dictation.js";
 import { DEFAULT_ATTACHMENT_NOTES, } from "../attachments.js";
 import { useDictation } from "./use-dictation.js";
+import { VoiceBar, VoiceProblem } from "./Voice.js";
 import { useAttachments } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
 import { AttachMenu, DEFAULT_ATTACH_MENU_LABELS, } from "./AttachMenu.js";
-import { IconArrowUp, IconCheck, IconFile, IconMic, IconSpinner, IconStop, IconX, } from "./icons.js";
+import { IconArrowUp, IconFile, IconMic, IconSpinner, IconStop, IconX } from "./icons.js";
 export const DEFAULT_COMPOSER_LABELS = {
     send: "Send",
     stop: "Stop generating",
@@ -38,31 +39,6 @@ function AttachmentStrip({ attachments, labels, }) {
                 const key = attachments.keyOf(a);
                 return (_jsxs("div", { className: "ck-attach-item", children: [a.kind === "image" && a.previewUrl ? (_jsx("img", { src: a.previewUrl, alt: a.name, className: "ck-attach-thumb" })) : (_jsxs("span", { className: "ck-attach-file", children: [_jsx(IconFile, {}), _jsx("span", { className: "ck-truncate", children: a.name })] })), _jsx("button", { type: "button", className: "ck-attach-remove", onClick: () => attachments.remove(key), "aria-label": labels.remove(a.name), title: labels.remove(a.name), children: _jsx(IconX, {}) })] }, key));
             }), attachments.note && (_jsx("button", { type: "button", className: "ck-note", onClick: attachments.clearNote, children: attachments.note }))] }));
-}
-/**
- * The words as they are heard, one line, always showing its end: the
- * newest words are what the person is checking. Scrolled by hand rather
- * than laid out right-to-left, so punctuation stays where the language
- * puts it.
- */
-function LiveWords({ text, dim }) {
-    const ref = useRef(null);
-    useEffect(() => {
-        const el = ref.current;
-        if (el)
-            el.scrollLeft = el.scrollWidth;
-    }, [text]);
-    return (_jsx("span", { ref: ref, className: dim ? "ck-voice-live ck-voice-live-dim" : "ck-voice-live", children: text }));
-}
-function Elapsed({ since }) {
-    const [now, setNow] = useState(() => Date.now());
-    useEffect(() => {
-        if (since === null)
-            return;
-        const t = setInterval(() => setNow(Date.now()), 250);
-        return () => clearInterval(t);
-    }, [since]);
-    return (_jsx("span", { className: "ck-voice-timer", children: formatElapsed(since === null ? 0 : (now - since) / 1000) }));
 }
 /**
  * THE composer: write words — or say them, or paste a screenshot — and send
@@ -176,7 +152,7 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
             })();
         }
     };
-    return (_jsxs("div", { className: "ck-composer-wrap", children: [above, _jsxs("div", { className: "ck-composer-frame", children: [(listening || transcribing) && (_jsx("div", { className: "ck-voice-bar", role: "status", "aria-live": "polite", children: listening ? (_jsxs(_Fragment, { children: [_jsx("span", { className: "ck-voice-dot", "aria-hidden": true }), dictation.liveText ? (_jsx(LiveWords, { text: dictation.liveText })) : (_jsx("span", { className: "ck-voice-wave", "aria-hidden": true, children: Array.from({ length: 9 }).map((_, i) => (_jsx("span", {}, i))) })), _jsx(Elapsed, { since: dictation.startedAt }), _jsx("button", { type: "button", className: "ck-icon-btn", onClick: dictation.cancel, "aria-label": labels.cancelRecording, title: labels.cancelRecording, children: _jsx(IconX, {}) }), _jsx("button", { type: "button", className: "ck-voice-confirm", onClick: dictation.stop, "aria-label": labels.confirmRecording, title: labels.confirmRecording, children: _jsx(IconCheck, {}) })] })) : (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), dictation.liveText ? (_jsx(LiveWords, { text: dictation.liveText, dim: true })) : (_jsx("span", { className: "ck-voice-timer", children: labels.transcribing }))] })) })), _jsxs("div", { className: density === "compact" ? "ck-composer ck-composer-compact" : "ck-composer", children: [showModes && (_jsx("div", { className: "ck-modes", role: "group", children: modes.map((m) => (_jsx("button", { type: "button", className: "ck-mode", "aria-pressed": m.id === mode, title: m.hint, onClick: () => onModeChange?.(m.id), children: m.label }, m.id))) })), header, attachOn && stagedPosition === "above" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsx("textarea", { ref: textareaRef, className: "ck-input", rows: 1, value: text, autoFocus: autoFocus, disabled: disabled || transcribing, placeholder: listening ? labels.listening : sending && queue ? labels.queue : placeholder, "aria-label": ariaLabel ?? placeholder, enterKeyHint: "send", onChange: (e) => {
+    return (_jsxs("div", { className: "ck-composer-wrap", children: [above, _jsxs("div", { className: "ck-composer-frame", children: [_jsx(VoiceBar, { dictation: dictation, labels: labels }), _jsxs("div", { className: density === "compact" ? "ck-composer ck-composer-compact" : "ck-composer", children: [showModes && (_jsx("div", { className: "ck-modes", role: "group", children: modes.map((m) => (_jsx("button", { type: "button", className: "ck-mode", "aria-pressed": m.id === mode, title: m.hint, onClick: () => onModeChange?.(m.id), children: m.label }, m.id))) })), header, attachOn && stagedPosition === "above" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsx("textarea", { ref: textareaRef, className: "ck-input", rows: 1, value: text, autoFocus: autoFocus, disabled: disabled || transcribing, placeholder: listening ? labels.listening : sending && queue ? labels.queue : placeholder, "aria-label": ariaLabel ?? placeholder, enterKeyHint: "send", onChange: (e) => {
                                     const next = e.target.value;
                                     if (onEmptySlash && next === "/" && text === "") {
                                         onEmptySlash();
@@ -191,6 +167,6 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
                                         e.preventDefault();
                                         void submit();
                                     }
-                                } }), attachOn && stagedPosition === "below" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsxs("div", { className: "ck-actions", children: [_jsxs("div", { className: "ck-tools", children: [(attachOn || extras.length > 0) && (_jsx(AttachMenu, { onFiles: onFiles, disabled: disabled || (attachments.full && extras.length === 0), labels: { attach: labels.attach, ...labels.attachMenu }, sources: attachOn ? undefined : [], rows: extras })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) })), tools, hint && _jsx("span", { className: "ck-hint", children: hint })] }), _jsxs("div", { className: "ck-submit", children: [trailing, sending && onStop ? (_jsxs(_Fragment, { children: [queue && canSend && (_jsx("button", { type: "button", className: "ck-send", onClick: () => void submit(), "aria-label": labels.send, title: labels.send, children: _jsx(IconArrowUp, {}) })), _jsx("button", { type: "button", className: "ck-send ck-send-stop", onClick: onStop, "aria-label": labels.stop, title: labels.stop, children: _jsx(IconStop, {}) })] })) : (!listening && (_jsx("button", { type: "button", className: "ck-send", disabled: !canSend, onClick: () => void submit(), "aria-label": labels.send, title: sendBlockedReason ?? labels.send, children: sending ? _jsx(IconSpinner, {}) : _jsx(IconArrowUp, {}) })))] })] }), footer] })] }), dictation.problem && (_jsxs("p", { className: "ck-problem", role: "status", children: [_jsxs("span", { children: [labels.dictation[dictation.problem], dictation.problemDetail && (_jsxs("span", { className: "ck-problem-detail", children: [" ", dictation.problemDetail] }))] }), dictation.canRetry && (_jsx("button", { type: "button", className: "ck-problem-retry", onClick: () => void dictation.retry(), disabled: dictation.status !== "idle", children: labels.retryTake })), _jsx("button", { type: "button", className: "ck-problem-x", onClick: dictation.clearProblem, "aria-label": labels.dismiss, children: _jsx(IconX, {}) })] }))] }));
+                                } }), attachOn && stagedPosition === "below" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsxs("div", { className: "ck-actions", children: [_jsxs("div", { className: "ck-tools", children: [(attachOn || extras.length > 0) && (_jsx(AttachMenu, { onFiles: onFiles, disabled: disabled || (attachments.full && extras.length === 0), labels: { attach: labels.attach, ...labels.attachMenu }, sources: attachOn ? undefined : [], rows: extras })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) })), tools, hint && _jsx("span", { className: "ck-hint", children: hint })] }), _jsxs("div", { className: "ck-submit", children: [trailing, sending && onStop ? (_jsxs(_Fragment, { children: [queue && canSend && (_jsx("button", { type: "button", className: "ck-send", onClick: () => void submit(), "aria-label": labels.send, title: labels.send, children: _jsx(IconArrowUp, {}) })), _jsx("button", { type: "button", className: "ck-send ck-send-stop", onClick: onStop, "aria-label": labels.stop, title: labels.stop, children: _jsx(IconStop, {}) })] })) : (!listening && (_jsx("button", { type: "button", className: "ck-send", disabled: !canSend, onClick: () => void submit(), "aria-label": labels.send, title: sendBlockedReason ?? labels.send, children: sending ? _jsx(IconSpinner, {}) : _jsx(IconArrowUp, {}) })))] })] }), footer] })] }), _jsx(VoiceProblem, { dictation: dictation, labels: labels })] }));
 }
 //# sourceMappingURL=Composer.js.map
