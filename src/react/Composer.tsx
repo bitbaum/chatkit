@@ -13,7 +13,6 @@ import {
   appendTranscript,
   composerCanSend,
   composerOutgoingText,
-  formatElapsed,
   shouldClearDraft,
   type ComposerMode,
   type ComposerSendResult,
@@ -26,6 +25,7 @@ import {
   type AttachmentNotes,
 } from "../attachments.js";
 import { useDictation, type UseDictationOptions } from "./use-dictation.js";
+import { VoiceBar, VoiceProblem } from "./Voice.js";
 import { useAttachments, type AttachmentsController } from "./use-attachments.js";
 import { useAutoGrow } from "./hooks.js";
 import {
@@ -34,15 +34,7 @@ import {
   type AttachExtra,
   type AttachMenuLabels,
 } from "./AttachMenu.js";
-import {
-  IconArrowUp,
-  IconCheck,
-  IconFile,
-  IconMic,
-  IconSpinner,
-  IconStop,
-  IconX,
-} from "./icons.js";
+import { IconArrowUp, IconFile, IconMic, IconSpinner, IconStop, IconX } from "./icons.js";
 
 export type ComposerLabels = {
   send: string;
@@ -233,39 +225,6 @@ function AttachmentStrip({
 }
 
 /**
- * The words as they are heard, one line, always showing its end: the
- * newest words are what the person is checking. Scrolled by hand rather
- * than laid out right-to-left, so punctuation stays where the language
- * puts it.
- */
-function LiveWords({ text, dim }: { text: string; dim?: boolean }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [text]);
-  return (
-    <span ref={ref} className={dim ? "ck-voice-live ck-voice-live-dim" : "ck-voice-live"}>
-      {text}
-    </span>
-  );
-}
-
-function Elapsed({ since }: { since: number | null }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (since === null) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [since]);
-  return (
-    <span className="ck-voice-timer">
-      {formatElapsed(since === null ? 0 : (now - since) / 1000)}
-    </span>
-  );
-}
-
-/**
  * THE composer: write words — or say them, or paste a screenshot — and send
  * them. Enter sends, Shift+Enter breaks the line, an IME composition never
  * sends half a word. 16px text, so iOS never zooms the page on focus.
@@ -416,52 +375,7 @@ export function Composer({
     <div className="ck-composer-wrap">
       {above}
       <div className="ck-composer-frame">
-        {(listening || transcribing) && (
-          <div className="ck-voice-bar" role="status" aria-live="polite">
-            {listening ? (
-              <>
-                <span className="ck-voice-dot" aria-hidden />
-                {dictation.liveText ? (
-                  <LiveWords text={dictation.liveText} />
-                ) : (
-                  <span className="ck-voice-wave" aria-hidden>
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <span key={i} />
-                    ))}
-                  </span>
-                )}
-                <Elapsed since={dictation.startedAt} />
-                <button
-                  type="button"
-                  className="ck-icon-btn"
-                  onClick={dictation.cancel}
-                  aria-label={labels.cancelRecording}
-                  title={labels.cancelRecording}
-                >
-                  <IconX />
-                </button>
-                <button
-                  type="button"
-                  className="ck-voice-confirm"
-                  onClick={dictation.stop}
-                  aria-label={labels.confirmRecording}
-                  title={labels.confirmRecording}
-                >
-                  <IconCheck />
-                </button>
-              </>
-            ) : (
-              <>
-                <IconSpinner />
-                {dictation.liveText ? (
-                  <LiveWords text={dictation.liveText} dim />
-                ) : (
-                  <span className="ck-voice-timer">{labels.transcribing}</span>
-                )}
-              </>
-            )}
-          </div>
-        )}
+        <VoiceBar dictation={dictation} labels={labels} />
 
         <div className={density === "compact" ? "ck-composer ck-composer-compact" : "ck-composer"}>
           {showModes && (
@@ -594,34 +508,7 @@ export function Composer({
           {footer}
         </div>
       </div>
-      {dictation.problem && (
-        <p className="ck-problem" role="status">
-          <span>
-            {labels.dictation[dictation.problem]}
-            {dictation.problemDetail && (
-              <span className="ck-problem-detail"> {dictation.problemDetail}</span>
-            )}
-          </span>
-          {dictation.canRetry && (
-            <button
-              type="button"
-              className="ck-problem-retry"
-              onClick={() => void dictation.retry()}
-              disabled={dictation.status !== "idle"}
-            >
-              {labels.retryTake}
-            </button>
-          )}
-          <button
-            type="button"
-            className="ck-problem-x"
-            onClick={dictation.clearProblem}
-            aria-label={labels.dismiss}
-          >
-            <IconX />
-          </button>
-        </p>
-      )}
+      <VoiceProblem dictation={dictation} labels={labels} />
     </div>
   );
 }

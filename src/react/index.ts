@@ -37,6 +37,15 @@ export type {
   ThinkingStep,
   ThreadLabels,
 } from "./Thread.js";
+export { DictationField, DEFAULT_DICTATION_FIELD_LABELS } from "./DictationField.js";
+export type { DictationFieldProps, DictationFieldLabels, ImproveRun } from "./DictationField.js";
+export { CommentThread, DEFAULT_COMMENT_THREAD_LABELS } from "./CommentThread.js";
+export type {
+  CommentItem,
+  CommentTransport,
+  CommentThreadProps,
+  CommentThreadLabels,
+} from "./CommentThread.js";
 export { ChatScreen } from "./Screen.js";
 export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
 export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";

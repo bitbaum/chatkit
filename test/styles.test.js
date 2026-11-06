@@ -18,6 +18,25 @@ test("embedded stylesheet includes shared chat surfaces and excludes ChatApp chr
     assert.ok(embedded.includes(selector), `${selector} remains styled`);
   }
   assert.ok(!embedded.includes(".ck-app-rail"), "the full app's history rail is not embedded");
+  assert.ok(
+    !embedded.includes(".ck-field-wrap"),
+    "DictationField is not a chat surface: not embedded",
+  );
+  assert.ok(
+    !embedded.includes(".ck-comments"),
+    "CommentThread is not a chat surface: not embedded",
+  );
+  for (const selector of [
+    ".ck-field-wrap",
+    ".ck-field-input",
+    ".ck-comments",
+    ".ck-comment-body",
+  ]) {
+    assert.ok(
+      source.slice(appBoundary).includes(selector),
+      `${selector} is styled in the full sheet`,
+    );
+  }
   assert.ok(source.slice(appBoundary).includes(".ck-app-rail"), "full ChatApp styling remains");
 });
 
