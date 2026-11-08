@@ -10,7 +10,7 @@ importers:
     dependencies:
       pdfjs-dist:
         specifier: ^6.4.299
-        version: 6.4.299
+        version: 6.5.438
     devDependencies:
       '@bitbaum/design-tokens':
         specifier: ^1.5.2
@@ -659,8 +659,8 @@ packages:
     resolution: {integrity: sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==}
     engines: {node: '>=8'}
 
-  pdfjs-dist@6.4.299:
-    resolution: {integrity: sha512-AVl138zALtfaAPvADulE0PZThbYzCBS79nL4pOSL/6Sm/4AH5A21BD9VHt97OlCuzJuCpmeZtAtkinisF4Vb1g==}
+  pdfjs-dist@6.5.438:
+    resolution: {integrity: sha512-vg8Pw1x+AFKy4AMDvhuWl5cOYV8d698UoEANoFFhc79hqXDnZQqnOXoxw3HG907WHOg1JYOvLhP756boddFxpA==}
     engines: {node: '>=22.13.0 || >=24'}
 
   picomatch@4.0.7:
@@ -1310,7 +1310,7 @@ snapshots:
 
   path-key@3.1.1: {}
 
-  pdfjs-dist@6.4.299:
+  pdfjs-dist@6.5.438:
     optionalDependencies:
       '@napi-rs/canvas': 1.0.13
 
