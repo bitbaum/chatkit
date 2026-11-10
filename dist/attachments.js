@@ -4,6 +4,10 @@
  * From loki `lib/loki/attachments.ts`. The limits are defaults, not law — an
  * app passes its own to `useAttachments` when its model or API differs.
  */
+/** Whether pictures can be attached under these options' `sources`. */
+export function acceptsImages(sources) {
+    return !sources || sources.includes("camera") || sources.includes("photos");
+}
 export const DEFAULT_ATTACHMENT_LIMITS = {
     maxFiles: 5,
     maxTextChars: 100_000,

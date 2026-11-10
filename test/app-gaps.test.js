@@ -290,3 +290,22 @@ test("attach.readFile: the app's reader decides first, declines with undefined, 
   const none = await readAttachmentFiles(pdf);
   assert.match(none.note, /deck\.pdf/);
 });
+
+test("attach.sources: a text-only app refuses a picture with the wrongType note", async () => {
+  const { readAttachmentFiles } = await import("../dist/react/index.js");
+  const { acceptsImages } = await import("../dist/index.js");
+  assert.equal(acceptsImages(undefined), true);
+  assert.equal(acceptsImages(["camera", "files"]), true);
+  assert.equal(acceptsImages(["files"]), false);
+  const png = new File([new Uint8Array(8)], "shot.png", { type: "image/png" });
+  const notes = { wrongType: (n) => `${n}: text only` };
+  const refused = await readAttachmentFiles(png, {}, notes, { noImages: true });
+  assert.deepEqual(refused, { attachments: [], note: "shot.png: text only" });
+  // Not a picture: it takes the normal path (FileReader is the browser's; the
+  // browser checks cover a real text file).
+  const pdf = new File(["%PDF"], "a.pdf", { type: "application/pdf" });
+  assert.equal(
+    (await readAttachmentFiles(pdf, {}, notes, { noImages: true })).note,
+    "a.pdf: text only",
+  );
+});

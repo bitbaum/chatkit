@@ -441,7 +441,9 @@ export function Composer({
                   onFiles={onFiles}
                   disabled={disabled || (attachments.full && extras.length === 0)}
                   labels={{ attach: labels.attach, ...labels.attachMenu }}
-                  sources={attachOn ? undefined : []}
+                  sources={
+                    attachOn ? (typeof attach === "object" ? attach.sources : undefined) : []
+                  }
                   rows={extras}
                 />
               )}

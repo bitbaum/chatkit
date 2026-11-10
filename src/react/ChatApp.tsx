@@ -9,7 +9,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { DEFAULT_ATTACHMENT_LIMITS, type Attachment, type AttachOptions } from "../attachments.js";
+import {
+  DEFAULT_ATTACHMENT_LIMITS,
+  acceptsImages,
+  type Attachment,
+  type AttachOptions,
+} from "../attachments.js";
 import type { ConversationStore, ConversationSummary } from "../conversations.js";
 import { localConversationStore } from "../stores.js";
 import type { Speaker } from "../speech.js";
@@ -371,13 +376,14 @@ export const ChatApp = forwardRef<ChatAppHandle, ChatAppProps>(function ChatApp(
     );
     // One at a time, like the box: a reader that makes pictures out of a PDF
     // must see how many the files before it left room for.
-    const { readFile, ...limits } = attachOptions;
+    const { readFile, sources, ...limits } = attachOptions;
     const read: { attachments: Attachment[]; note?: string }[] = [];
     let images = wire.filter((a) => a.kind === "image").length;
     let room = (limits.maxFiles ?? DEFAULT_ATTACHMENT_LIMITS.maxFiles) - wire.length;
     for (const f of files) {
       const r = await readAttachmentFiles(f, limits, composer?.labels?.attachNotes, {
         readFile,
+        noImages: !acceptsImages(sources),
         images,
         room,
       });

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { shrinkImage as shrink } from "../image.js";
-import { DEFAULT_ATTACHMENT_LIMITS, DEFAULT_ATTACHMENT_NOTES, attachmentKey, isImageMime, isTextFile, stripDataUrlBase64, toWire, } from "../attachments.js";
+import { DEFAULT_ATTACHMENT_LIMITS, DEFAULT_ATTACHMENT_NOTES, attachmentKey, acceptsImages, isImageMime, isTextFile, stripDataUrlBase64, toWire, } from "../attachments.js";
 /**
  * Staging screenshots and text files for a composer — paste-to-attach
  * included, because on a phone that is how a screenshot arrives. Preview URLs
@@ -9,13 +9,14 @@ import { DEFAULT_ATTACHMENT_LIMITS, DEFAULT_ATTACHMENT_NOTES, attachmentKey, isI
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
 export function useAttachments(options = {}, notes = {}) {
-    const { readFile, ...given } = options;
+    const { readFile, sources, ...given } = options;
     const lim = { ...DEFAULT_ATTACHMENT_LIMITS, ...given };
     const { maxFiles, maxImageBytes, maxTextChars, maxImageEdge } = lim;
     // Mirrored in a ref so a new `notes` or `readFile` object every render does
     // not rebuild every callback below.
     const say = useRef(DEFAULT_ATTACHMENT_NOTES);
     const reader = useRef(undefined);
+    const imagesOk = acceptsImages(sources);
     useEffect(() => {
         say.current = { ...DEFAULT_ATTACHMENT_NOTES, ...notes };
         reader.current = readFile;
@@ -52,6 +53,7 @@ export function useAttachments(options = {}, notes = {}) {
         const read = await readAttachmentFiles(file, limits, say.current, {
             preview: true,
             readFile: reader.current,
+            noImages: !imagesOk,
             images: staged.current.filter((a) => a.kind === "image").length,
             room: maxFiles - staged.current.length,
             progress: setNote,
@@ -218,6 +220,8 @@ export async function readAttachmentFiles(file, limits = {}, notes = {}, options
             return { attachments: [], note: say.unreadable(file.name) };
         }
     }
+    if (options.noImages && isImageMime(file.type))
+        return { attachments: [], note: say.wrongType(file.name) };
     const one = await readAttachmentFile(file, full, say, { preview: options.preview });
     return one.note !== undefined
         ? { attachments: [], note: one.note }
