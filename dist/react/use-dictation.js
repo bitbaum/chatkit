@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, dictationLeg, fallbackCanRescue, heardFromResults, liveWords, problemFor, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
+import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, dictationLeg, fallbackCanRescue, heardFromResults, liveWords, problemFor, problemForTranscription, retryableProblem, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
 function recogniser() {
     if (typeof window === "undefined")
         return undefined;
@@ -87,14 +87,14 @@ export function useDictation(opts) {
     const setProblem = useCallback((next) => {
         setProblemState(next);
         setProblemDetail(null);
-        if (next === null || next !== "unavailable") {
+        if (!retryableProblem(next)) {
             failedTake.current = null;
             setCanRetry(false);
         }
     }, []);
     const failTake = useCallback((audio, error) => {
-        setProblemState("unavailable");
-        setProblemDetail(reasonOf(error));
+        setProblemState(problemForTranscription(error));
+        setProblemDetail(optsRef.current.showServerDetail ? reasonOf(error) : null);
         failedTake.current = audio;
         setCanRetry(true);
     }, []);
