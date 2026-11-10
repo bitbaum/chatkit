@@ -21,6 +21,9 @@ import {
   reasonFromBody,
   reasonOf,
   TranscriptionError,
+  problemForStatus,
+  problemForTranscription,
+  retryableProblem,
   problemForRecording,
   safeHref,
   shouldClearDraft,
@@ -517,4 +520,27 @@ test("markdown: a table that lost its header row is still a table", () => {
   assert.equal(blocks[0].kind, "table");
   assert.deepEqual(blocks[0].head, []);
   assert.deepEqual(blocks[0].rows[1], ["Grid", "Bonds"]);
+});
+
+// A refused transcription is a localized problem, never the server's sentence.
+test("a refused transcription maps its status to a problem", () => {
+  assert.equal(problemForStatus(401), "signIn");
+  assert.equal(problemForStatus(403), "signIn");
+  assert.equal(problemForStatus(429), "busy");
+  assert.equal(problemForStatus(413), "fileTooLarge");
+  assert.equal(problemForStatus(503), "unavailable");
+  assert.equal(problemForStatus(null), "unavailable");
+  assert.equal(
+    problemForTranscription(new TranscriptionError("Sign in to dictate.", 401)),
+    "signIn",
+  );
+  assert.equal(problemForTranscription(Object.assign(new Error("x"), { status: 429 })), "busy");
+  assert.equal(problemForTranscription(new Error("network")), "unavailable");
+  assert.equal(retryableProblem("busy"), true);
+  assert.equal(retryableProblem("unavailable"), true);
+  assert.equal(retryableProblem("signIn"), false);
+  assert.equal(retryableProblem(null), false);
+  for (const k of ["signIn", "busy"]) {
+    assert.ok(DEFAULT_DICTATION_MESSAGES[k], `${k} has a default label`);
+  }
 });

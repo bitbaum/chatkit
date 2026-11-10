@@ -17,6 +17,31 @@
  * tested properties rather than behaviour buried in a timeout.
  */
 /**
+ * Which problem a refused transcription is, from its HTTP status alone — the
+ * server's sentence is never what the person reads (it is in the server's
+ * language, not the page's). 401/403 → signIn, 429 → busy, 413 → fileTooLarge,
+ * anything else → unavailable.
+ */
+export function problemForStatus(status) {
+    if (status === 401 || status === 403)
+        return "signIn";
+    if (status === 429)
+        return "busy";
+    if (status === 413)
+        return "fileTooLarge";
+    return "unavailable";
+}
+/** The problem for whatever a server leg threw: a `status` (ours, or set by an
+ *  app's own `transcribe`) decides; no status is `unavailable`. */
+export function problemForTranscription(error) {
+    const status = error?.status;
+    return problemForStatus(typeof status === "number" ? status : null);
+}
+/** Problems a second try can fix; the others need the person to act. */
+export function retryableProblem(p) {
+    return p === "unavailable" || p === "busy";
+}
+/**
  * Where a take starts. With a server leg the default is to RECORD: a take
  * then lasts until the person presses done (or the cap). The browser
  * recogniser on Android ends the take at the first pause however `continuous`
@@ -332,6 +357,8 @@ export const DEFAULT_DICTATION_MESSAGES = {
     mic: "The microphone is blocked. Allow it for this site and try again.",
     silence: "Nothing was heard. Try again, a little closer to the mic.",
     unavailable: "Voice input is not available right now. Type instead, or try again later.",
+    signIn: "Sign in to use voice input.",
+    busy: "Voice input is busy right now. Try again in a moment.",
     fileTooLarge: `That recording is too large to transcribe here (max ${Math.round(MAX_AUDIO_FILE_BYTES / 1024 / 1024)} MB).`,
 };
 //# sourceMappingURL=dictation.js.map

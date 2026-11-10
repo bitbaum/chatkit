@@ -541,7 +541,7 @@ try {
     "mic: the spoken sentence lands in the input",
   );
 
-  // A failed transcription keeps the take: the server's reason is shown and
+  // A failed transcription keeps the take: the problem is named from the status and
   // "Try again" sends the same audio (OrangeCat, 2026-10-07: "check your
   // connection" while the server had said it was busy, and the words gone).
   const sizes = [];
@@ -567,9 +567,12 @@ try {
   await box.locator(".ck-voice-confirm").click();
   const retry = box.locator(".ck-problem-retry");
   await retry.waitFor({ timeout: 5000 }).catch(() => {});
+  const shown = (await box.locator(".ck-problem").textContent()) ?? "";
   check(
-    (await box.locator(".ck-problem-detail").textContent())?.includes("busy") === true,
-    "mic: a failed transcription shows the server's reason",
+    shown.includes("busy right now. Try again in a moment") &&
+      !shown.includes("Dictation is busy right now.") &&
+      (await box.locator(".ck-problem-detail").count()) === 0,
+    "mic: a 429 shows the localized busy label, never the server's sentence",
   );
   check(await retry.isVisible(), "mic: a failed take offers Try again");
   await retry.click();

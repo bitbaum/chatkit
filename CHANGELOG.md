@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — A server's English never reaches a person in another language
+
+Found 2026-11-10 on Solon's Russian page: the mic failed with the localized "voice input is unavailable" followed by the route's own "Sign in to dictate." Any app whose transcribe route answers in English showed English in every locale.
+
+- `DictationProblem` gains `signIn` (401/403) and `busy` (429); 413 is `fileTooLarge`; everything else `unavailable`. The problem comes from the HTTP status (`problemForStatus`, `problemForTranscription`), and a custom `transcribe` may throw an error with a `status`. Each has an overridable label (`labels.dictation.signIn`, `.busy`; English defaults in `DEFAULT_DICTATION_MESSAGES`). `busy` can be retried like `unavailable`.
+- The server's own sentence is no longer shown by default. `voice={{ showServerDetail: true }}` brings it back for a server whose text is localized.
+
 ## 0.23.0 — Any text box has the microphone; a thread of comments
 
 Owner, 2026-11-06: every product installs the chat package and the text boxes people actually type in are still made by hand, with no microphone. A package that is installed and not used is no package. This release gives the other two shapes of "a person types words" a component, so there is nothing to build locally.

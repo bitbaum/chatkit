@@ -16,6 +16,10 @@ export type UseDictationOptions = {
     transcribeUrl?: string;
     /** Or bring your own server leg (a widget token, a different body). */
     transcribe?: (audio: Blob, locale: string) => Promise<string>;
+    /** Show the server's own sentence beside the problem. Off by default: a
+     *  server's words are in the server's language, not the page's. Turn on only
+     *  when the server's text is localized. */
+    showServerDetail?: boolean;
     maxRecordingMs?: number;
     /** Largest recording `transcribeFile` will upload. */
     maxAudioFileBytes?: number;

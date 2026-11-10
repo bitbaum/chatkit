@@ -14,6 +14,8 @@ import {
   heardFromResults,
   liveWords,
   problemFor,
+  problemForTranscription,
+  retryableProblem,
   problemForRecording,
   reasonFromBody,
   reasonOf,
@@ -75,6 +77,10 @@ export type UseDictationOptions = {
   transcribeUrl?: string;
   /** Or bring your own server leg (a widget token, a different body). */
   transcribe?: (audio: Blob, locale: string) => Promise<string>;
+  /** Show the server's own sentence beside the problem. Off by default: a
+   *  server's words are in the server's language, not the page's. Turn on only
+   *  when the server's text is localized. */
+  showServerDetail?: boolean;
   maxRecordingMs?: number;
   /** Largest recording `transcribeFile` will upload. */
   maxAudioFileBytes?: number;
@@ -204,14 +210,14 @@ export function useDictation(opts: UseDictationOptions): DictationController {
   const setProblem = useCallback((next: DictationProblem | null) => {
     setProblemState(next);
     setProblemDetail(null);
-    if (next === null || next !== "unavailable") {
+    if (!retryableProblem(next)) {
       failedTake.current = null;
       setCanRetry(false);
     }
   }, []);
   const failTake = useCallback((audio: Blob, error: unknown) => {
-    setProblemState("unavailable");
-    setProblemDetail(reasonOf(error));
+    setProblemState(problemForTranscription(error));
+    setProblemDetail(optsRef.current.showServerDetail ? reasonOf(error) : null);
     failedTake.current = audio;
     setCanRetry(true);
   }, []);

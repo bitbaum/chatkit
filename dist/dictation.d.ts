@@ -19,7 +19,19 @@
 /** Why a dictation produced no text, in terms the person can act on.
  *  `fileTooLarge` is the fourth word, for a recording handed over as a file
  *  (see `isAudioFile`) that the server leg would refuse. */
-export type DictationProblem = "mic" | "silence" | "unavailable" | "fileTooLarge";
+export type DictationProblem = "mic" | "silence" | "unavailable" | "fileTooLarge" | "signIn" | "busy";
+/**
+ * Which problem a refused transcription is, from its HTTP status alone — the
+ * server's sentence is never what the person reads (it is in the server's
+ * language, not the page's). 401/403 → signIn, 429 → busy, 413 → fileTooLarge,
+ * anything else → unavailable.
+ */
+export declare function problemForStatus(status: number | null | undefined): DictationProblem;
+/** The problem for whatever a server leg threw: a `status` (ours, or set by an
+ *  app's own `transcribe`) decides; no status is `unavailable`. */
+export declare function problemForTranscription(error: unknown): DictationProblem;
+/** Problems a second try can fix; the others need the person to act. */
+export declare function retryableProblem(p: DictationProblem | null): boolean;
 /** Which path to try first. `browser` is free and instant; `server` is one
  *  model everywhere (and detects the language by itself). Either falls back to
  *  the other when it cannot work. */
