@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — `attach.sources`: a paperclip that offers only what the backend reads
+
+Solon's chats read words and text files, not pictures, and had to switch attachments off entirely because the paperclip always offered Camera and Photos. `attach={{ sources: ["files"] }}` (on `Composer` and `ChatApp`'s `composer.attach`) draws only the listed sources, and a picture that arrives by paste or drop is refused with the `wrongType` note instead of being staged and dropped by the server. `acceptsImages(sources)` is exported. Default unchanged.
+
 ## Unreleased — A server's English never reaches a person in another language
 
 Found 2026-11-10 on Solon's Russian page: the mic failed with the localized "voice input is unavailable" followed by the route's own "Sign in to dictate." Any app whose transcribe route answers in English showed English in every locale.

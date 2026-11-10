@@ -74,7 +74,15 @@ export type AttachmentReader = (file: File, ctx: FileReadContext) => Promise<Fil
 /** The composer's `attach` option: the limits, and optionally a reader. */
 export type AttachOptions = Partial<AttachmentLimits> & {
     readFile?: AttachmentReader;
+    /** Which sources the paperclip offers (default: camera, photos, files). An
+     *  app whose backend reads text and not pictures passes `["files"]`: no
+     *  Camera or Photos row is drawn, and a picture that arrives by paste or
+     *  drop is refused with the `wrongType` note, never staged and silently
+     *  dropped by the server. */
+    sources?: readonly AttachSource[];
 };
+/** Whether pictures can be attached under these options' `sources`. */
+export declare function acceptsImages(sources: readonly AttachSource[] | undefined): boolean;
 export declare const DEFAULT_ATTACHMENT_LIMITS: AttachmentLimits;
 /** Why a file did not attach — every one a label, so an app can say it in its
  *  reader's language. */

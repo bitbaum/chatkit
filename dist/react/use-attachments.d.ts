@@ -49,6 +49,8 @@ export declare function readAttachmentFile(file: File, limits?: Partial<Attachme
 export declare function readAttachmentFiles(file: File, limits?: Partial<AttachmentLimits>, notes?: Partial<AttachmentNotes>, options?: {
     preview?: boolean;
     readFile?: AttachmentReader;
+    /** Pictures are not accepted here (the app's `sources` has no Camera or Photos). */
+    noImages?: boolean;
     images?: number;
     room?: number;
     progress?: (note: string) => void;

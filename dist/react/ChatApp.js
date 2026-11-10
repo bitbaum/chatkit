@@ -1,7 +1,7 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, } from "react";
-import { DEFAULT_ATTACHMENT_LIMITS } from "../attachments.js";
+import { DEFAULT_ATTACHMENT_LIMITS, acceptsImages, } from "../attachments.js";
 import { localConversationStore } from "../stores.js";
 import { ChatScreen } from "./Screen.js";
 import { ChatStarters, ChatThread, } from "./Thread.js";
@@ -135,13 +135,14 @@ export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStor
         const wire = given.filter((a) => !(typeof File !== "undefined" && a instanceof File));
         // One at a time, like the box: a reader that makes pictures out of a PDF
         // must see how many the files before it left room for.
-        const { readFile, ...limits } = attachOptions;
+        const { readFile, sources, ...limits } = attachOptions;
         const read = [];
         let images = wire.filter((a) => a.kind === "image").length;
         let room = (limits.maxFiles ?? DEFAULT_ATTACHMENT_LIMITS.maxFiles) - wire.length;
         for (const f of files) {
             const r = await readAttachmentFiles(f, limits, composer?.labels?.attachNotes, {
                 readFile,
+                noImages: !acceptsImages(sources),
                 images,
                 room,
             });

@@ -6,6 +6,7 @@ import {
   DEFAULT_ATTACHMENT_LIMITS,
   DEFAULT_ATTACHMENT_NOTES,
   attachmentKey,
+  acceptsImages,
   isImageMime,
   isTextFile,
   stripDataUrlBase64,
@@ -47,13 +48,14 @@ export function useAttachments(
   options: AttachOptions = {},
   notes: Partial<AttachmentNotes> = {},
 ): AttachmentsController {
-  const { readFile, ...given } = options;
+  const { readFile, sources, ...given } = options;
   const lim: AttachmentLimits = { ...DEFAULT_ATTACHMENT_LIMITS, ...given };
   const { maxFiles, maxImageBytes, maxTextChars, maxImageEdge } = lim;
   // Mirrored in a ref so a new `notes` or `readFile` object every render does
   // not rebuild every callback below.
   const say = useRef<AttachmentNotes>(DEFAULT_ATTACHMENT_NOTES);
   const reader = useRef<AttachmentReader | undefined>(undefined);
+  const imagesOk = acceptsImages(sources);
   useEffect(() => {
     say.current = { ...DEFAULT_ATTACHMENT_NOTES, ...notes };
     reader.current = readFile;
@@ -95,6 +97,7 @@ export function useAttachments(
       const read = await readAttachmentFiles(file, limits, say.current, {
         preview: true,
         readFile: reader.current,
+        noImages: !imagesOk,
         images: staged.current.filter((a) => a.kind === "image").length,
         room: maxFiles - staged.current.length,
         progress: setNote,
@@ -262,6 +265,8 @@ export async function readAttachmentFiles(
   options: {
     preview?: boolean;
     readFile?: AttachmentReader;
+    /** Pictures are not accepted here (the app's `sources` has no Camera or Photos). */
+    noImages?: boolean;
     images?: number;
     room?: number;
     progress?: (note: string) => void;
@@ -289,6 +294,8 @@ export async function readAttachmentFiles(
       return { attachments: [], note: say.unreadable(file.name) };
     }
   }
+  if (options.noImages && isImageMime(file.type))
+    return { attachments: [], note: say.wrongType(file.name) };
   const one = await readAttachmentFile(file, full, say, { preview: options.preview });
   return one.note !== undefined
     ? { attachments: [], note: one.note }
