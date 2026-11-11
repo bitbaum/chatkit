@@ -11,6 +11,18 @@ export type ChatSpeaker = {
     name: string;
     /** Stable id for styling (`ck-from-<id>`), e.g. "cat" or "loki". */
     id?: string;
+    /**
+     * An agent is a member of the conversation, not a feature of it: say so.
+     * `"agent"` draws a small "Agent" mark beside the name, so a reader in a
+     * room of people and agents always knows which is which.
+     */
+    kind?: "agent" | "person";
+    /**
+     * Whose request the agent is working on — the person who asked and who
+     * answers for what it does ("Loki · for Georgy"). An agent's words are
+     * never unattributed in a shared room.
+     */
+    onBehalfOf?: string;
 };
 export type ChatMessageData = {
     id: string;
@@ -89,6 +101,10 @@ export type ThreadLabels = AnswerActionsLabels & {
     failed: string;
     loading: string;
     replies: string;
+    /** The mark beside an agent's name (`speaker.kind: "agent"`). */
+    agent?: string;
+    /** "for {name}" — whose request an agent is working on; `{name}` is replaced. */
+    onBehalfOf?: string;
     /** The word over a `> [!CAUTION]` callout in an answer, in the product's language. */
     alerts?: Partial<Record<AlertKind, string>>;
 };

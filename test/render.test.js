@@ -94,6 +94,36 @@ test("thread: names who speaks once two agents answer, and offers retry on the l
   assert.match(html, /ck-from-cat/);
 });
 
+test("thread: an agent is marked as an agent and says whom it works for", () => {
+  const html = renderToStaticMarkup(
+    h(ChatThread, {
+      messages: [
+        { id: "1", role: "user", content: "Fix the sign-up" },
+        {
+          id: "2",
+          role: "assistant",
+          content: "On it.",
+          speaker: { name: "Loki", id: "loki", kind: "agent", onBehalfOf: "Georgy" },
+        },
+        {
+          id: "3",
+          role: "assistant",
+          content: "I reviewed it.",
+          speaker: { name: "Mia", id: "mia", kind: "person" },
+        },
+      ],
+      labels: { agent: "Agent", onBehalfOf: "für {name}" },
+    }),
+  );
+  assert.match(
+    html,
+    /ck-speaker ck-speaker-agent">Loki<span class="ck-speaker-kind">Agent<\/span>/,
+  );
+  assert.match(html, /ck-speaker-for"> · für Georgy</);
+  assert.match(html, /ck-speaker">Mia</, "a person gets no agent mark");
+  assert.equal((html.match(/ck-speaker-kind/g) ?? []).length, 1);
+});
+
 test("thread: a failed turn says so, with retry — never silence", () => {
   const html = renderToStaticMarkup(
     h(ChatThread, {
