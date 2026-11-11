@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Agents are members: an "Agent" mark and whom it works for
+
+In a room where people and agents both answer, a reader has to know which is which and who answers for an agent's words. `ChatSpeaker` gains `kind: "agent" | "person"` (an agent gets a small "Agent" mark beside its name) and `onBehalfOf` (drawn as "Loki · for Georgy"). Both labels are translatable (`labels.agent`, `labels.onBehalfOf` with `{name}`), both optional, so existing apps are unchanged. The streaming turn shows the same line.
+
 ## Unreleased — `attach.sources`: a paperclip that offers only what the backend reads
 
 Solon's chats read words and text files, not pictures, and had to switch attachments off entirely because the paperclip always offered Camera and Photos. `attach={{ sources: ["files"] }}` (on `Composer` and `ChatApp`'s `composer.attach`) draws only the listed sources, and a picture that arrives by paste or drop is refused with the `wrongType` note instead of being staged and dropped by the server. `acceptsImages(sources)` is exported. Default unchanged.

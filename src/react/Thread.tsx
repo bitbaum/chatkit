@@ -21,6 +21,18 @@ export type ChatSpeaker = {
   name: string;
   /** Stable id for styling (`ck-from-<id>`), e.g. "cat" or "loki". */
   id?: string;
+  /**
+   * An agent is a member of the conversation, not a feature of it: say so.
+   * `"agent"` draws a small "Agent" mark beside the name, so a reader in a
+   * room of people and agents always knows which is which.
+   */
+  kind?: "agent" | "person";
+  /**
+   * Whose request the agent is working on — the person who asked and who
+   * answers for what it does ("Loki · for Georgy"). An agent's words are
+   * never unattributed in a shared room.
+   */
+  onBehalfOf?: string;
 };
 
 export type ChatMessageData = {
@@ -105,6 +117,10 @@ export type ThreadLabels = AnswerActionsLabels & {
   failed: string;
   loading: string;
   replies: string;
+  /** The mark beside an agent's name (`speaker.kind: "agent"`). */
+  agent?: string;
+  /** "for {name}" — whose request an agent is working on; `{name}` is replaced. */
+  onBehalfOf?: string;
   /** The word over a `> [!CAUTION]` callout in an answer, in the product's language. */
   alerts?: Partial<Record<AlertKind, string>>;
 };
@@ -120,6 +136,8 @@ export const DEFAULT_THREAD_LABELS: ThreadLabels = {
   failed: "That did not go through.",
   loading: "Loading conversation",
   replies: "Suggested replies",
+  agent: "Agent",
+  onBehalfOf: "for {name}",
 };
 
 /**
@@ -211,7 +229,7 @@ export function ChatMessage({
   if (last || message.failed) cls.push("ck-turn-pinned");
   return (
     <div className={cls.join(" ")}>
-      {showSpeaker && message.speaker && <span className="ck-speaker">{message.speaker.name}</span>}
+      {showSpeaker && message.speaker && <SpeakerLine speaker={message.speaker} labels={labels} />}
       {message.thinking && <ThinkingRow thinking={message.thinking} labels={labels} />}
       {message.failed ? (
         <p className="ck-failed" role="status">
@@ -252,6 +270,28 @@ export function ChatMessage({
         <ChatReplies replies={replies} onPick={onReply} label={labels.replies} />
       )}
     </div>
+  );
+}
+
+/** Who is speaking: the name, an "Agent" mark, and whom it works for. */
+function SpeakerLine({ speaker, labels }: { speaker: ChatSpeaker; labels: ThreadLabels }) {
+  const agent = speaker.kind === "agent";
+  return (
+    <span className={agent ? "ck-speaker ck-speaker-agent" : "ck-speaker"}>
+      {speaker.name}
+      {agent && (
+        <span className="ck-speaker-kind">{labels.agent ?? DEFAULT_THREAD_LABELS.agent}</span>
+      )}
+      {speaker.onBehalfOf && (
+        <span className="ck-speaker-for">
+          {" · "}
+          {(labels.onBehalfOf ?? DEFAULT_THREAD_LABELS.onBehalfOf ?? "for {name}").replace(
+            "{name}",
+            speaker.onBehalfOf,
+          )}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -478,7 +518,7 @@ export function ChatThread({
           ))}
           {live && (
             <div className="ck-turn ck-turn-answer">
-              {named && live.speaker && <span className="ck-speaker">{live.speaker.name}</span>}
+              {named && live.speaker && <SpeakerLine speaker={live.speaker} labels={labels} />}
               {live.steps && live.steps.length > 0 && (
                 <ThinkingRow thinking={{ steps: live.steps }} live labels={labels} />
               )}

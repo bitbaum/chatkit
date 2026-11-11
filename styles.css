@@ -507,6 +507,17 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.ck-speaker-kind {
+  margin-left: 0.5em;
+  padding: 0 0.4em;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  font-size: 0.625rem;
+}
+.ck-speaker-for {
+  text-transform: none;
+  letter-spacing: 0;
+}
 .ck-turn-actions {
   display: flex;
   flex-wrap: wrap;
