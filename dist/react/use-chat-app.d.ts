@@ -99,7 +99,7 @@ export type UseChatAppOptions = {
  */
 export declare function useChatApp({ store, transport, makeTitle, conversationId, onConversationChange, rememberKey, stopKeepsPartial, failureMessage, onTemporaryEnd, restore, }: UseChatAppOptions): {
     list: ConversationSummary[];
-    listState: "error" | "loading" | "ready";
+    listState: "loading" | "ready" | "error";
     /** The list has loaded (or failed) and the reopened chat is chosen. */
     ready: boolean;
     whenReady: () => Promise<void>;

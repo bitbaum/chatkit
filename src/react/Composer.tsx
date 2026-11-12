@@ -163,6 +163,18 @@ export type ComposerProps = {
   defaultValue?: string;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   density?: "comfortable" | "compact";
+  /**
+   * `"stacked"` (the default) is the box of an assistant: the words on top,
+   * the tools in a row under them. `"inline"` is the box of a messenger: one
+   * row — attach, the words, the microphone, send — that grows upward as the
+   * text does. A conversation between people is mostly short lines, and a box
+   * two rows tall under each of them is a fifth of a phone given to chrome.
+   */
+  layout?: "stacked" | "inline";
+  /** A message of only attachments goes out with no words at all (a
+   *  messenger: a photo needs no caption). `attachmentOnlyText` is the other
+   *  answer, for a model that must be told something. */
+  attachmentsAlone?: boolean;
   /** Outside the box, above it (suggestion chips). */
   above?: ReactNode;
   /** Inside the box, above the text (scope pills, an error). */
@@ -256,6 +268,8 @@ export function Composer({
   defaultValue = "",
   inputRef,
   density = "comfortable",
+  layout = "stacked",
+  attachmentsAlone = false,
   above,
   header,
   tools,
@@ -302,6 +316,8 @@ export function Composer({
 
   const attachOn = attach !== false;
   const attachments = useAttachments(typeof attach === "object" ? attach : {}, labels.attachNotes);
+  // The app takes the files itself (`attach.take`): nothing is staged here.
+  const take = typeof attach === "object" ? attach.take : undefined;
 
   const dictation = useDictation({
     ...(voice || {}),
@@ -313,10 +329,13 @@ export function Composer({
 
   const attachCount =
     (attachOn ? attachments.attachments.length : 0) + Math.max(0, heldAttachments);
+  // A message of only attachments may go out wordless: to the rule below that
+  // is "the app has said what such a message means", and it means nothing.
+  const wordless = attachmentsAlone && !attachmentOnlyText;
   const canSend = composerCanSend({
     text,
     attachmentCount: attachCount,
-    attachmentOnlyText,
+    attachmentOnlyText: wordless ? "\u2060" : attachmentOnlyText,
     sending,
     disabled,
     blocked: Boolean(sendBlockedReason),
@@ -326,7 +345,11 @@ export function Composer({
   const submit = async () => {
     if (!canSend) return;
     const sent = text;
-    const outgoing = composerOutgoingText(sent, attachCount, attachmentOnlyText);
+    const outgoing = composerOutgoingText(
+      sent,
+      attachCount,
+      wordless ? undefined : attachmentOnlyText,
+    );
     const result = await onSend(outgoing, attachOn ? attachments.toWire() : []);
     if (!shouldClearDraft(result)) return;
     // Only clear what was sent: words typed while a slow send was in flight
@@ -343,13 +366,16 @@ export function Composer({
   useImperativeHandle(handleRef, () => ({
     setText: (next: string) => setText(next),
     addFiles: (files: FileList | File[]) => {
-      if (attachOn) attachments.addFiles(files);
+      if (!attachOn) return;
+      if (take) take(Array.from(files));
+      else attachments.addFiles(files);
     },
     focus: () => textareaRef.current?.focus(),
     submit: () => submitRef.current(),
   }));
 
   const showModes = Boolean(modes && modes.length > 1);
+  const inline = layout === "inline";
   const extras = attachExtras ?? [];
 
   // The paperclip takes recordings too (through Files), when there is
@@ -358,9 +384,14 @@ export function Composer({
   // and lands in the box. Recordings are transcribed in the order picked;
   // everything else is staged.
   const takesAudio = voice !== false && dictation.canTranscribeFile;
-  const onFiles = (files: FileList | null) => {
+  const onFiles = (files: FileList | File[] | null) => {
     if (!files) return;
     const all = Array.from(files);
+    if (all.length === 0) return;
+    if (take) {
+      take(all);
+      return;
+    }
     const audio = takesAudio ? all.filter(isAudioFile) : [];
     const rest = all.filter((f) => !audio.includes(f));
     if (rest.length > 0) attachments.addFiles(rest);
@@ -371,13 +402,48 @@ export function Composer({
     }
   };
 
+  // One microphone, drawn where the layout puts it: among the tools of a
+  // stacked box, beside Send in an inline one (where the thumb is).
+  const mic = (
+    <button
+      type="button"
+      className={listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic"}
+      onClick={dictation.toggle}
+      disabled={disabled || transcribing}
+      aria-label={listening ? labels.voiceStop : labels.voice}
+      aria-pressed={listening}
+      title={listening ? labels.voiceStop : labels.voice}
+    >
+      {transcribing ? <IconSpinner /> : <IconMic />}
+    </button>
+  );
+
   return (
     <div className="ck-composer-wrap">
       {above}
       <div className="ck-composer-frame">
         <VoiceBar dictation={dictation} labels={labels} />
 
-        <div className={density === "compact" ? "ck-composer ck-composer-compact" : "ck-composer"}>
+        <div
+          className={[
+            "ck-composer",
+            density === "compact" ? "ck-composer-compact" : "",
+            inline ? "ck-composer-inline" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          // A file dragged onto the box is a file picked: the same path, the
+          // same limits. Only files are taken; dragged text lands in the
+          // textarea as the browser always did.
+          onDragOver={(e) => {
+            if (attachOn && !disabled && e.dataTransfer.types.includes("Files")) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            if (!attachOn || disabled || e.dataTransfer.files.length === 0) return;
+            e.preventDefault();
+            onFiles(e.dataTransfer.files);
+          }}
+        >
           {showModes && (
             <div className="ck-modes" role="group">
               {modes!.map((m) => (
@@ -420,7 +486,18 @@ export function Composer({
               setText(next);
             }}
             onPaste={(e) => {
-              if (attachOn && attachments.addFromPaste(e)) e.preventDefault();
+              if (!attachOn) return;
+              if (take) {
+                // Whatever the clipboard holds as a file is the app's to take;
+                // pasted text stays text.
+                const pasted = Array.from(e.clipboardData.files);
+                if (pasted.length > 0) {
+                  e.preventDefault();
+                  take(pasted);
+                }
+                return;
+              }
+              if (attachments.addFromPaste(e)) e.preventDefault();
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -444,27 +521,17 @@ export function Composer({
                   sources={
                     attachOn ? (typeof attach === "object" ? attach.sources : undefined) : []
                   }
+                  accept={typeof attach === "object" ? attach.accept : undefined}
                   rows={extras}
                 />
               )}
-              {voiceOn && (
-                <button
-                  type="button"
-                  className={listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic"}
-                  onClick={dictation.toggle}
-                  disabled={disabled || transcribing}
-                  aria-label={listening ? labels.voiceStop : labels.voice}
-                  aria-pressed={listening}
-                  title={listening ? labels.voiceStop : labels.voice}
-                >
-                  {transcribing ? <IconSpinner /> : <IconMic />}
-                </button>
-              )}
+              {voiceOn && !inline && mic}
               {tools}
               {hint && <span className="ck-hint">{hint}</span>}
             </div>
             <div className="ck-submit">
               {trailing}
+              {voiceOn && inline && mic}
               {/* Send and Stop share ONE slot, so the button you want never
                   moves depending on state. With `queue`, a message typed
                   while a turn runs keeps its Send, before Stop. */}

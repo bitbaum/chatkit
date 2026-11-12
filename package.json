@@ -1,7 +1,7 @@
 {
   "name": "@bitbaum/chatkit",
-  "version": "0.28.1",
-  "description": "One chat for every product: a composer with a microphone that always works, a thread that does not fight the reader, messages with copy and retry, and LLM markdown — the fleet's chat standard as a package.",
+  "version": "0.29.0",
+  "description": "One chat for every product: a composer with a microphone that always works, a thread that does not fight the reader, messages with copy and retry, LLM markdown, and a messenger for people and the agents among them \u2014 the fleet's chat standard as a package.",
   "license": "MIT",
   "author": "Cato",
   "homepage": "https://github.com/bitbaum/chatkit#readme",
@@ -21,7 +21,10 @@
     "markdown",
     "react",
     "ai",
-    "pdf"
+    "pdf",
+    "messenger",
+    "messaging",
+    "attachments"
   ],
   "type": "module",
   "sideEffects": [
@@ -39,7 +42,8 @@
     "dist",
     "bin",
     "styles.css",
-    "styles/chat.css"
+    "styles/chat.css",
+    "styles/messenger.css"
   ],
   "bin": {
     "chatkit-check-file-inputs": "./bin/chatkit-check-file-inputs.mjs",
@@ -54,6 +58,10 @@
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
     },
+    "./messenger": {
+      "types": "./dist/react/messenger.d.ts",
+      "default": "./dist/react/messenger.js"
+    },
     "./audit": {
       "types": "./dist/audit.d.ts",
       "default": "./dist/audit.js"
@@ -67,7 +75,8 @@
       "default": "./dist/pdf.js"
     },
     "./styles.css": "./styles.css",
-    "./styles/chat.css": "./styles/chat.css"
+    "./styles/chat.css": "./styles/chat.css",
+    "./styles/messenger.css": "./styles/messenger.css"
   },
   "scripts": {
     "build": "node scripts/build-chat-css.mjs && rm -rf dist && tsc -p tsconfig.json",
@@ -79,7 +88,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "demo": "esbuild demo/demo.tsx --bundle --jsx=automatic --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=demo/dist/demo.js --log-level=warning && esbuild demo/demo.tsx --bundle --jsx=automatic --format=iife --define:process.env.NODE_ENV='\"development\"' --outfile=demo/dist/demo-dev.js --log-level=warning",
-    "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs && node test/browser-app.mjs && node test/browser-pdf.mjs && node test/browser-field.mjs"
+    "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs && node test/browser-app.mjs && node test/browser-pdf.mjs && node test/browser-field.mjs && node test/browser-messenger.mjs"
   },
   "devDependencies": {
     "@bitbaum/design-tokens": "^1.5.2",
@@ -101,6 +110,7 @@
     "react": ">=18"
   },
   "dependencies": {
+    "@bitbaum/threadkit": "^0.1.1",
     "pdfjs-dist": "^6.4.299"
   }
 }

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@bitbaum/threadkit':
+        specifier: ^0.1.1
+        version: 0.1.1
       pdfjs-dist:
         specifier: ^6.4.299
         version: 6.5.438
@@ -61,6 +64,10 @@ packages:
     resolution: {integrity: sha512-ScF091XRs5ph109PkRgI3t5w3eersltlJUGea64MPItqXaT5asXM2x3Gj4t6THuFGojZ2pvMLAtuOc3DTmCoTg==}
     engines: {node: '>=20'}
     hasBin: true
+
+  '@bitbaum/threadkit@0.1.1':
+    resolution: {integrity: sha512-tNsM2bVHBzmXaNzrsMeDipjNUssTwgeRIUVLA+SzzPOUSa21wgzX5Majo9HfEtTR4gxyHCrIFYzUWsvbdAkrRw==}
+    engines: {node: '>=20'}
 
   '@cacheable/memory@2.2.0':
     resolution: {integrity: sha512-CTLKqLItRCEixEAewD3/j9DB3/o96gpTPD4eJ1v+DGOlxZRZncRQkGYqqnAGCscYd6RNeXfGeiuCphsPtqyIfQ==}
@@ -767,6 +774,8 @@ packages:
 snapshots:
 
   '@bitbaum/design-tokens@1.5.2': {}
+
+  '@bitbaum/threadkit@0.1.1': {}
 
   '@cacheable/memory@2.2.0':
     dependencies:

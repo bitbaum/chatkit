@@ -70,9 +70,16 @@ export function isTextFile(name, mime) {
  * "anything" — the capture chooser this exists to avoid.
  */
 export const FILES_ACCEPT = "application/pdf,text/*,application/json,.pdf,.txt,.md,.markdown,.csv,.tsv,.json";
+/**
+ * What a messenger's Files source asks for: documents a person sends another
+ * person — PDF, text, office files, an archive. Still one "document" family,
+ * so a phone still answers with its file browser and not a capture chooser.
+ */
+export const MESSAGE_FILES_ACCEPT = "application/pdf,text/plain,text/csv,text/markdown,application/json,application/zip,application/rtf,application/msword,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet,application/epub+zip,.pdf,.txt,.md,.csv,.json,.zip,.rtf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.epub";
 export const ATTACH_SOURCE_INPUT = {
     camera: { accept: "image/*", capture: "environment" },
     photos: { accept: "image/*" },
+    videos: { accept: "video/*" },
     files: { accept: FILES_ACCEPT },
 };
 const FAMILY_BY_EXTENSION = {};

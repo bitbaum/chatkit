@@ -108,6 +108,42 @@
   padding: 0.5rem;
   border-radius: calc(var(--ck-radius) * 0.75);
 }
+/* One row — attach · the words · mic · send — for a box between people
+   (`layout="inline"`). The row grows upward with the text and the buttons
+   stay on its last line. `dense` lets the tools take the cell to the left of
+   the textarea although they come after it in the markup. */
+.ck-composer-inline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-auto-flow: row dense;
+  align-items: end;
+  gap: 0.125rem 0.25rem;
+  padding: 0.25rem;
+  border-radius: 1.5rem;
+}
+.ck-composer-inline > * {
+  grid-column: 1 / -1;
+}
+.ck-composer-inline > .ck-actions {
+  display: contents;
+}
+.ck-composer-inline > .ck-input {
+  grid-column: 2;
+  min-height: var(--ck-target);
+  padding: 0.5625rem 0.25rem;
+}
+.ck-composer-inline .ck-tools {
+  grid-column: 1;
+  flex-wrap: nowrap;
+}
+.ck-composer-inline .ck-submit {
+  grid-column: 3;
+  gap: 0.25rem;
+}
+.ck-composer-inline .ck-icon-btn:not(.ck-mic-on) {
+  border-color: transparent;
+  background: transparent;
+}
 .ck-input {
   display: block;
   width: 100%;
@@ -2688,5 +2724,1092 @@ a.ck-turn-chip:hover {
   }
   .ck-field-improve-row > .ck-field-wrap {
     width: 100%;
+  }
+}
+
+/* ── Messenger: people talking to people ───────────────────────────────────
+   After the ChatApp boundary, so the embedded styles/chat.css keeps its
+   budget. styles/messenger.css is that embedded sheet plus this section: the
+   Messenger without ChatApp. On a phone it is one pane at a time (the list,
+   then the conversation with its own way back); from 48rem of ITS OWN width
+   the two sit side by side — a container query, so a Messenger in a narrow
+   panel of a wide page still gets the phone layout. demo/messenger.html is
+   the reference: look at it at 390px before changing any of this. */
+.ck-msgr {
+  /* The viewer's own bubble. Monochrome by default: inside an app the accent
+     is for the one action that matters, and sixty bubbles are not it. */
+  --ck-msgr-own: var(--ck-fg);
+  --ck-msgr-on-own: var(--ck-bg);
+  --ck-positive: hsl(var(--status-positive, 142 60% 38%));
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ck-page);
+  color: var(--ck-fg);
+  font-family: var(--ck-font);
+  container: ck-msgr / inline-size;
+}
+.ck-msgr *,
+.ck-msgr *::before,
+.ck-msgr *::after {
+  box-sizing: border-box;
+}
+.ck-msgr-viewport {
+  height: var(--ck-viewport-height, 100dvh);
+}
+.ck-msgr button:focus-visible,
+.ck-msgr a:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+.ck-msgr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ck-msgr-side,
+.ck-msgr-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.ck-msgr-main {
+  background: var(--ck-bg);
+}
+.ck-msgr[data-pane="thread"] > .ck-msgr-side,
+.ck-msgr[data-pane="list"] > .ck-msgr-main {
+  display: none;
+}
+/* buttons that are words */
+.ck-msgr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: var(--ck-target);
+  padding: 0 1rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ck-msgr-btn-primary {
+  border-color: transparent;
+  background: var(--ck-fg);
+  color: var(--ck-bg);
+}
+.ck-msgr-btn-danger {
+  border-color: transparent;
+  background: var(--ck-danger);
+  color: var(--ck-on-danger);
+}
+.ck-msgr-btn-wide {
+  width: 100%;
+}
+.ck-msgr-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.ck-msgr-confirm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.ck-msgr-confirm .ck-msgr-btn {
+  white-space: normal;
+}
+.ck-msgr-state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem var(--ck-gutter);
+  color: var(--ck-fg-3);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+.ck-msgr-state p {
+  max-width: 22rem;
+  margin: 0;
+}
+.ck-msgr-state > svg {
+  font-size: 1.5rem;
+}
+.ck-msgr-hint {
+  margin: 0;
+  color: var(--ck-fg-3);
+  font-size: 0.875rem;
+}
+.ck-msgr-problem {
+  margin: 0;
+  color: var(--ck-danger);
+  font-size: 0.875rem;
+}
+
+/* faces: a person is a circle, an agent a rounded square */
+.ck-msgr-avatar {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+.ck-msgr-avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+.ck-msgr-avatar-sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.6875rem;
+}
+.ck-msgr-avatar-md {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.8125rem;
+}
+.ck-msgr-avatar-lg {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1rem;
+}
+.ck-msgr-avatar-agent {
+  border: 1px solid var(--ck-line-2);
+  border-radius: 0.5rem;
+  background: var(--ck-bg);
+}
+.ck-msgr-avatar-agent > svg {
+  font-size: 1.15em;
+}
+.ck-msgr-avatar-lg.ck-msgr-avatar-agent {
+  border-radius: 0.875rem;
+}
+.ck-msgr-online {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--ck-bg);
+  border-radius: 999px;
+  background: var(--ck-positive);
+}
+
+/* the list */
+.ck-msgr-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.ck-msgr-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.5rem var(--ck-gutter);
+}
+.ck-msgr-list-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ck-msgr-list-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 var(--ck-gutter) 0.625rem;
+}
+.ck-msgr-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--ck-target);
+  padding: 0 0.875rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg-3);
+}
+.ck-msgr-search:focus-within {
+  border-color: var(--ck-line-2);
+}
+.ck-msgr-search > input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+  appearance: none;
+}
+.ck-msgr-search > input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.ck-msgr-filter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.1875rem;
+  padding: 0.1875rem;
+  border-radius: 999px;
+  background: var(--ck-raised);
+}
+.ck-msgr-filter > button {
+  min-height: var(--ck-target);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.ck-msgr-filter > button[aria-pressed="true"] {
+  background: var(--ck-bg);
+  box-shadow: 0 0 0 1px var(--ck-line);
+  color: var(--ck-fg);
+  font-weight: 600;
+}
+.ck-msgr-list-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.ck-msgr-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ck-msgr-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.625rem var(--ck-gutter);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ck-msgr-row:hover,
+.ck-msgr-row[aria-current="true"] {
+  background: var(--ck-raised);
+}
+.ck-msgr-row:focus-visible {
+  outline-offset: -2px;
+}
+.ck-msgr-row-face {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.ck-msgr-row-agent {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 0.375rem;
+  background: var(--ck-bg);
+  color: var(--ck-fg-2);
+  font-size: 0.75rem;
+}
+.ck-msgr-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.ck-msgr-row-top,
+.ck-msgr-row-bottom {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ck-msgr-row-name {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.ck-msgr-row-top > time {
+  flex: none;
+  color: var(--ck-fg-3);
+  font-size: 0.8125rem;
+}
+.ck-msgr-row-preview {
+  flex: 1;
+  color: var(--ck-fg-3);
+  font-size: 0.9375rem;
+}
+.ck-msgr-row-unread .ck-msgr-row-name {
+  font-weight: 700;
+}
+.ck-msgr-row-unread .ck-msgr-row-preview {
+  color: var(--ck-fg);
+}
+.ck-msgr-badge {
+  flex: none;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--ck-fg);
+  color: var(--ck-bg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.375rem;
+  text-align: center;
+}
+.ck-msgr-pick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1.5px solid var(--ck-line-2);
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+.ck-msgr-row[aria-pressed="true"] .ck-msgr-pick {
+  border-color: var(--ck-fg);
+  background: var(--ck-fg);
+  color: var(--ck-bg);
+}
+.ck-msgr-new {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ck-msgr-new-body {
+  min-height: 9rem;
+  max-height: 50vh;
+  margin-inline: calc(var(--ck-gutter) * -1);
+  overflow-y: auto;
+}
+.ck-msgr-new-body > .ck-msgr-hint {
+  padding: 1rem var(--ck-gutter);
+  text-align: center;
+}
+
+/* the top of a conversation */
+.ck-msgr-top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 3.5rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border-bottom: 1px solid var(--ck-line);
+  background: var(--ck-bg);
+}
+.ck-msgr-viewport .ck-msgr-top,
+.ck-msgr-viewport .ck-msgr-list-head {
+  padding-top: calc(0.25rem + env(safe-area-inset-top, 0px));
+}
+.ck-msgr-top .ck-icon-btn {
+  border-color: transparent;
+  background: transparent;
+}
+.ck-msgr-top-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.ck-msgr-top-name {
+  margin: 0;
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+}
+.ck-msgr-top-sub {
+  margin: 0;
+  color: var(--ck-fg-3);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.ck-msgr-top-agent {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.ck-msgr-top-agent > .ck-speaker-kind {
+  flex: none;
+  margin-left: 0;
+}
+.ck-msgr-banner {
+  flex: none;
+  margin: 0;
+  padding: 0.375rem var(--ck-gutter);
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* the thread */
+.ck-msgr-thread-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.ck-msgr-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0.75rem var(--ck-gutter) 0.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* The reader's place is kept by hand when earlier messages load. */
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+}
+.ck-msgr-scroll:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: -2px;
+}
+.ck-msgr-thread-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: var(--ck-measure);
+  min-width: 0;
+  margin: auto auto 0;
+}
+.ck-msgr-older {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 0.375rem;
+  min-height: var(--ck-target);
+  padding: 0 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--ck-fg-3);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ck-msgr-day,
+.ck-msgr-unread-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  color: var(--ck-fg-3);
+  font-size: 0.75rem;
+}
+.ck-msgr-day > span {
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  background: var(--ck-raised);
+}
+.ck-msgr-unread-line::before,
+.ck-msgr-unread-line::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ck-line-2);
+}
+.ck-msgr-unread-line > span {
+  color: var(--ck-fg-2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ck-msgr-run {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ck-msgr-own {
+  justify-content: flex-end;
+}
+/* The face sits beside the last bubble, not beside the time under it. */
+.ck-msgr-run > .ck-msgr-avatar {
+  margin-bottom: 1.25rem;
+}
+.ck-msgr-run-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1875rem;
+  max-width: min(85%, 34rem);
+  min-width: 0;
+}
+.ck-msgr-own > .ck-msgr-run-body {
+  align-items: flex-end;
+}
+.ck-msgr-run .ck-speaker {
+  margin: 0 0.25rem 0.0625rem;
+}
+.ck-msgr-msg {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  max-width: 100%;
+  min-width: 0;
+}
+.ck-msgr-own .ck-msgr-msg {
+  align-items: flex-end;
+}
+.ck-msgr-bubble {
+  max-width: 100%;
+  padding: 0.5rem 0.875rem;
+  border-radius: 1.125rem;
+  background: var(--ck-bubble);
+  color: var(--ck-fg);
+  font-size: max(16px, var(--ck-text));
+  line-height: 1.45;
+  /* Words nobody on this side wrote: a pasted address must wrap, not push
+     the thread sideways. `break-word`, not `anywhere`: a word is cut only
+     when it cannot fit on a line of its own. */
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+.ck-msgr-own .ck-msgr-bubble {
+  background: var(--ck-msgr-own);
+  color: var(--ck-msgr-on-own);
+}
+/* An agent's words: outlined, not filled. With its face and its mark this is
+   the third way the thread says "not a person". */
+.ck-msgr-from-agent .ck-msgr-bubble {
+  border: 1px solid var(--ck-line-2);
+  background: transparent;
+  white-space: normal;
+}
+.ck-msgr-bubble > .ck-md {
+  font-size: inherit;
+  line-height: inherit;
+}
+.ck-msgr-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+@media (pointer: coarse) {
+  /* A long press opens what can be done to a message; it must not start a
+     text selection under the finger first. Copy is in that sheet. */
+  .ck-msgr-bubble {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+.ck-msgr-act {
+  position: absolute;
+  top: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ck-fg-3);
+  font-size: 1rem;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.ck-msgr-own .ck-msgr-act {
+  right: calc(100% + 0.25rem);
+}
+.ck-msgr-other .ck-msgr-act {
+  left: calc(100% + 0.25rem);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ck-msgr-msg:hover > .ck-msgr-act,
+  .ck-msgr-act:focus-visible {
+    display: inline-flex;
+  }
+  .ck-msgr-act:hover {
+    background: var(--ck-raised);
+    color: var(--ck-fg);
+  }
+}
+.ck-msgr-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1rem;
+  padding: 0 0.25rem;
+  color: var(--ck-fg-3);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+.ck-msgr-tick {
+  display: inline-flex;
+  font-size: 0.875rem;
+}
+.ck-msgr-tick-read {
+  color: var(--ck-fg);
+}
+.ck-msgr-sending > .ck-msgr-bubble,
+.ck-msgr-sending > .ck-msgr-attachments {
+  opacity: 0.6;
+}
+.ck-msgr-failed > .ck-msgr-bubble {
+  outline: 1px solid var(--ck-danger);
+}
+.ck-msgr-failed-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0 0.5rem;
+  color: var(--ck-danger);
+  font-size: 0.875rem;
+}
+.ck-msgr-failed-row > button,
+.ck-msgr-waiting > button,
+.ck-msgr-editing > button {
+  min-height: var(--ck-target);
+  padding: 0 0.375rem;
+  border: 0;
+  background: transparent;
+  color: var(--ck-fg);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+.ck-msgr-typing,
+.ck-msgr-waiting {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  min-width: 0;
+  color: var(--ck-fg-3);
+  font-size: 0.875rem;
+}
+.ck-msgr-typing {
+  padding-left: 0.25rem;
+}
+.ck-msgr-awaited {
+  align-items: center;
+}
+.ck-msgr-awaited > .ck-msgr-avatar {
+  margin-bottom: 0;
+}
+
+/* what was sent with a message */
+.ck-msgr-attachments {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  max-width: 100%;
+}
+.ck-msgr-own .ck-msgr-attachments {
+  align-items: flex-end;
+}
+.ck-msgr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.1875rem;
+  width: min(18rem, 100%);
+  overflow: hidden;
+  border-radius: 1rem;
+}
+.ck-msgr-grid-one {
+  display: block;
+  width: auto;
+  max-width: 100%;
+}
+.ck-msgr-grid[data-count="3"] > :first-child {
+  grid-column: 1 / -1;
+  aspect-ratio: 2 / 1;
+}
+.ck-msgr-media {
+  position: relative;
+  display: block;
+  min-width: 0;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: var(--ck-raised);
+  cursor: zoom-in;
+}
+/* One picture keeps its own shape; the size comes from the message (so the
+   thread does not jump when it loads), with a sensible box when unknown. */
+.ck-msgr-media-one {
+  width: min(18rem, 100%);
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 1rem;
+}
+.ck-msgr-media > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ck-msgr-media-blank {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ck-fg-3);
+  font-size: 1.5rem;
+}
+.ck-msgr-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 1.25rem;
+  transform: translate(-50%, -50%);
+}
+.ck-msgr-duration {
+  position: absolute;
+  right: 0.375rem;
+  bottom: 0.375rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.375rem;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 0.75rem;
+}
+.ck-msgr-more-media {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.5);
+  color: #fff;
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+.ck-msgr-audio {
+  width: min(18rem, 100%);
+  height: var(--ck-target);
+}
+.ck-msgr-file {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: min(18rem, 100%);
+  min-height: 3.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 1rem;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  text-decoration: none;
+}
+.ck-msgr-file:hover {
+  border-color: var(--ck-line-2);
+}
+.ck-msgr-file-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font-size: 1.125rem;
+}
+.ck-msgr-file-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.9375rem;
+}
+.ck-msgr-file-text > small {
+  color: var(--ck-fg-3);
+  font-size: 0.75rem;
+}
+.ck-msgr-file-get {
+  display: inline-flex;
+  flex: none;
+  color: var(--ck-fg-3);
+  font-size: 1.125rem;
+}
+
+/* a picture or a film, the whole screen */
+.ck-msgr-viewer {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgb(0 0 0 / 0.94);
+  color: #fff;
+  font-family: var(--ck-font);
+}
+.ck-msgr-viewer[open] {
+  display: flex;
+  flex-direction: column;
+}
+.ck-msgr-viewer::backdrop {
+  background: #000;
+}
+.ck-msgr-viewer-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 0.5rem 0.5rem;
+}
+.ck-msgr-viewer-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+.ck-msgr-viewer-title > small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.ck-msgr-viewer-btn {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--ck-target);
+  height: var(--ck-target);
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+  font-size: 1.25rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ck-msgr-viewer-stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.ck-msgr-viewer-stage > img,
+.ck-msgr-viewer-stage > video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.ck-msgr-viewer-gone {
+  margin: 0;
+  opacity: 0.8;
+}
+.ck-msgr-viewer-prev,
+.ck-msgr-viewer-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ck-msgr-viewer-prev {
+  left: 0.5rem;
+}
+.ck-msgr-viewer-next {
+  right: 0.5rem;
+}
+
+/* the box, and what is on its way */
+.ck-msgr-dock {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.375rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  background: var(--ck-bg);
+}
+.ck-msgr-dock > * {
+  width: 100%;
+  max-width: var(--ck-measure);
+  margin-inline: auto;
+}
+.ck-msgr-dock > .ck-note {
+  padding: 0.25rem 0.5rem;
+}
+.ck-msgr-closed {
+  margin: 0;
+  padding: 0.75rem;
+  color: var(--ck-fg-3);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+.ck-msgr-editing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0 0.25rem 0 0.75rem;
+  color: var(--ck-fg-2);
+  font-size: 0.875rem;
+}
+.ck-msgr-editing > span {
+  flex: 1;
+}
+.ck-msgr-tray {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.625rem 0.625rem 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ck-msgr-upload {
+  position: relative;
+  flex: none;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 0.75rem;
+  background: var(--ck-raised);
+}
+.ck-msgr-upload > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+.ck-msgr-upload-preparing > img,
+.ck-msgr-upload-uploading > img {
+  opacity: 0.6;
+}
+.ck-msgr-upload-failed {
+  border-color: var(--ck-danger);
+}
+.ck-msgr-upload-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.375rem;
+  color: var(--ck-fg-2);
+  font-size: 0.6875rem;
+}
+.ck-msgr-upload-file > svg {
+  font-size: 1.25rem;
+}
+.ck-msgr-upload-file > .ck-truncate {
+  max-width: 100%;
+}
+.ck-msgr-upload-bar {
+  position: absolute;
+  right: 0.375rem;
+  bottom: 0.375rem;
+  left: 0.375rem;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ck-fg) 22%, transparent);
+}
+.ck-msgr-upload-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ck-fg);
+  transition: width 0.15s linear;
+}
+.ck-msgr-upload-retry {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--ck-bg) 72%, transparent);
+  color: var(--ck-danger);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-msgr-upload-bar > span {
+    transition: none;
+  }
+}
+
+/* Side by side from 48rem of the Messenger's own width. Last in the section,
+   so it wins over the phone rules above without outweighing them. */
+@container ck-msgr (min-width: 48rem) {
+  .ck-msgr[data-pane] > .ck-msgr-side {
+    display: flex;
+    flex: 0 0 22rem;
+    border-right: 1px solid var(--ck-line);
+  }
+  .ck-msgr[data-pane] > .ck-msgr-main {
+    display: flex;
+  }
+  .ck-msgr-back {
+    display: none;
+  }
+  .ck-msgr-top {
+    padding-left: 1rem;
   }
 }

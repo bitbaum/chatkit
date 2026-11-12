@@ -541,6 +541,98 @@ same way forever; any other error shows the label. A comment is shown as text, n
 render in `timeZone` (UTC by default, so the server's and the browser's markup
 agree), or through your own `formatTime`.
 
+### People talking to people — `Messenger` (0.29)
+
+`ChatApp` is one person and a model. `Messenger` is the other chat a product
+ends up needing: a list of conversations, a thread between several people,
+photos and files — and agents as members of a conversation, never mistaken
+for a person.
+
+```tsx
+import { Messenger, type MessengerTransport } from "@bitbaum/chatkit/messenger";
+import "@bitbaum/chatkit/styles/messenger.css"; // or styles.css, if ChatApp is on the page too
+
+<Messenger
+  viewer={{ id: user.id }}
+  transport={transport}                  // your backend: three methods to start
+  agents={[{ id: catId, name: "Cat", mention: "@cat", hint: "Everyone here sees its answer" }]}
+  conversationId={id}                    // keep it in the URL: links and Back work
+  onConversationChange={setId}
+  composer={{ voice: { transcribeUrl: "/api/transcribe" } }}
+/>;
+```
+
+Give it a box with a height (`fill="viewport"` makes it the display and keeps
+the box above the phone keyboard). On a phone it is one screen at a time: the
+list, then the conversation with its own way back. From 48rem of **its own**
+width (a container query) the two sit side by side.
+
+**The transport is the whole integration.** `conversations`, `messages` and
+`send` are required; every other method switches a feature on by being there:
+
+| Method | With it |
+| --- | --- |
+| `upload(file, about, { progress, signal })` | the paperclip: Camera · Photos · Videos · Files, a tray with progress, Try again |
+| `subscribe(scope, on)` | messages, read marks, typing and presence from elsewhere (`MessengerEvent`) |
+| `markRead` · `typing` | ticks on the other side; "Maya is typing…" |
+| `edit` · `remove` | Edit and Delete on the viewer's own messages (long press, right click, or "…") |
+| `people` · `open` | "New": find people, start a conversation |
+| `leave` | "Delete conversation" (for the viewer only) |
+| `conversation(id)` | a link to a conversation the list has not loaded |
+| `usage()` | the storage quota checked before an upload starts |
+
+Shapes are `@bitbaum/threadkit`'s with a face: a conversation is a `Thread`
+whose participants have a `name`, a message is a `Message` (`threadId`,
+`authorId`, `body`, `createdAt`, `clientId`) that may carry `attachments` with
+a `url`. JSON with ISO dates goes through `reviveMessage` /
+`reviveConversation`. Throw a `MessengerError("…")` when the words are meant
+for the person; anything else is reported in the package's own.
+
+What it settles, so no product decides it again:
+
+- **An agent is never mistaken for a person.** Its face is a rounded square
+  (people are circles), its name carries an "Agent" mark and whom it answered
+  for (`onBehalfOf` → "Cat · for Georgy"), its words are in an outlined bubble
+  and rendered as markdown; the top bar says "Cat is in this conversation".
+  A message that names an agent (`@cat`, whole word — `@catalogue` is somebody
+  else) shows "Cat is thinking…" until it answers, and says so if it never does.
+- **Whose message is whose.** The viewer's on the right. Everyone else on the
+  left, named as soon as more than one other voice is present. A person's
+  words are shown exactly as typed, with `http(s)` addresses made links;
+  nothing a person types is ever rendered as markup.
+- **A thread that reads.** Runs of messages share one name and one time, a
+  line where each day begins, a "New" line where the unread begin, ticks from
+  threadkit's `readState` (an agent in the room does not hold a message at
+  unread). It follows new messages only while the reader is at the end, and
+  loading earlier messages keeps their place.
+- **A box of one row**: attach · the words · microphone · send
+  (`Composer layout="inline"`), growing upward with the text. Top bar and box
+  together are about 120px of a phone; the rest is the conversation.
+- **Files that do not cost more than they must.** What may be attached is
+  threadkit's `checkAttachment` (an allowlist, a ceiling per kind, a quota) —
+  refused in words before a byte moves. Photos are shrunk in the browser
+  (2048px, 1.5 MB by default: `composer.attach`), a film is drawn as its still
+  and loads nothing until opened, bytes go wherever `transport.upload` sends
+  them — the package has no storage. Pictures open on the whole screen;
+  anything else downloads.
+- **A message that did not go is kept**, marked "Not sent." with Try again
+  and Delete, and is never shown twice when the stored row and a pushed copy
+  both arrive (`clientId`).
+- **Drafts survive** a visit to another conversation and a reload of the tab.
+
+The rules are `@bitbaum/threadkit`'s: who may write, how messages merge, and
+— from threadkit 0.1.2 — the attachment policy, the mention matcher and
+`readState`. Those three are exported from here too (`checkAttachment`,
+`DEFAULT_ATTACHMENT_POLICY`, `mentionMatcher`, `readState`), so a server
+checks an upload with the same function the browser used; `src/thread-rules.ts`
+says where they come from and when that copy goes.
+
+An app with its own arrangement uses the parts: `useMessenger` (the
+behaviour), `ConversationList`, `MessageThread`, `MessageAttachments`. Every
+word is a label (`labels`, `DEFAULT_MESSENGER_LABELS`); the viewer's bubble is
+`--ck-msgr-own` / `--ck-msgr-on-own`. `demo/messenger.html` is the reference
+at 390px and 1280px, and `test/browser-messenger.mjs` drives it.
+
 ### Suggested replies
 
 The two to four things the person is likely to say next, as buttons under the
@@ -760,6 +852,14 @@ sit under the three sources in the same sheet, and the sheet then opens on a
 mouse too, since a file dialog cannot hold them. Labels:
 `labels={{ attachMenu: { title, close, sources: { camera, photos, files } } }}`.
 
+A messenger sends films and documents, not prompts: `sources` may name
+`"videos"` (its own input, `video/*`, so no input ever mixes two families),
+`attach.accept` widens what one source asks for (`MESSAGE_FILES_ACCEPT`:
+office documents and archives for Files), and `attach.take` hands every
+picked, pasted or dropped file to the app as it came, with nothing read into
+the page — for a box whose files go to storage. A file dragged onto any
+composer is a file picked.
+
 ### Picking files anywhere — `@bitbaum/chatkit/attach`
 
 An app with no chat still has uploaders (an avatar, product photos, a receipt).
@@ -976,10 +1076,15 @@ on `Composer`, `labels` on `ChatThread`.
 13. A conversation under an item is `CommentThread`: oldest first, the same box
     with the microphone, remove your own, a way to sign in for a reader who
     cannot yet write.
+14. People talking to people is `Messenger`: the box at the bottom of the
+    screen with nothing empty under it, an agent told from a person by shape,
+    mark and bubble, one bubble per message however many times it arrives, a
+    failed message kept with Try again, files checked before they upload.
 
 `pnpm run verify` proves all of it: unit and render tests, then
 `test/browser.mjs` drives Chromium through the demo at desktop and 390px, light
-and dark, and speaks into a fake microphone past a silent recogniser.
+and dark, and speaks into a fake microphone past a silent recogniser, and
+`test/browser-messenger.mjs` does the same for the Messenger.
 
 ## Improving it — here, never in your app
 

@@ -108,6 +108,42 @@
   padding: 0.5rem;
   border-radius: calc(var(--ck-radius) * 0.75);
 }
+/* One row — attach · the words · mic · send — for a box between people
+   (`layout="inline"`). The row grows upward with the text and the buttons
+   stay on its last line. `dense` lets the tools take the cell to the left of
+   the textarea although they come after it in the markup. */
+.ck-composer-inline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-auto-flow: row dense;
+  align-items: end;
+  gap: 0.125rem 0.25rem;
+  padding: 0.25rem;
+  border-radius: 1.5rem;
+}
+.ck-composer-inline > * {
+  grid-column: 1 / -1;
+}
+.ck-composer-inline > .ck-actions {
+  display: contents;
+}
+.ck-composer-inline > .ck-input {
+  grid-column: 2;
+  min-height: var(--ck-target);
+  padding: 0.5625rem 0.25rem;
+}
+.ck-composer-inline .ck-tools {
+  grid-column: 1;
+  flex-wrap: nowrap;
+}
+.ck-composer-inline .ck-submit {
+  grid-column: 3;
+  gap: 0.25rem;
+}
+.ck-composer-inline .ck-icon-btn:not(.ck-mic-on) {
+  border-color: transparent;
+  background: transparent;
+}
 .ck-input {
   display: block;
   width: 100%;
