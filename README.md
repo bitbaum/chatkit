@@ -484,7 +484,7 @@ box. A comment is shown as text, never as markup, with its line breaks. Times
 render in `timeZone` (UTC by default, so the server's and the browser's markup
 agree), or through your own `formatTime`.
 
-### People talking to people — `Messenger` (0.26)
+### People talking to people — `Messenger` (0.27)
 
 `ChatApp` is one person and a model. `Messenger` is the other chat a product
 ends up needing: a list of conversations, a thread between several people,

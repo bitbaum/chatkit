@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.26.0 — `Messenger`: people talking to people, and to the agents among them
+## 0.27.0 — `Messenger`: people talking to people, and to the agents among them
 
 Owner, 2026-11-12, looking at OrangeCat's direct messages on a phone: the Cat had answered in a conversation between two people and "it's hard to tell whether it was the cat or my friend"; nothing said an AI was taking part; "you scroll down and then the half screen is taken"; and nothing could be attached. That messenger was built in the app (about 8,700 lines), so none of it could be fixed for the next product either. This is the messenger as a package.
 
