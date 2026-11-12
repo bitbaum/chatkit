@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { ATTACH_SOURCE_INPUT, type AttachSource } from "../attachments.js";
-import { IconCamera, IconFileUp, IconImage, IconPaperclip } from "./icons.js";
+import { IconCamera, IconFileUp, IconImage, IconPaperclip, IconVideo } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 
 export type AttachMenuLabels = {
@@ -11,14 +11,16 @@ export type AttachMenuLabels = {
   /** The sheet's title. */
   title: string;
   close: string;
-  sources: Record<AttachSource, string>;
+  /** `videos` may be left out by an app that set its labels before the
+   *  source existed: it then reads the default. */
+  sources: Record<Exclude<AttachSource, "videos">, string> & { videos?: string };
 };
 
 export const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels = {
   attach: "Attach a screenshot or file",
   title: "Add to message",
   close: "Close",
-  sources: { camera: "Camera", photos: "Photos", files: "Files" },
+  sources: { camera: "Camera", photos: "Photos", videos: "Videos", files: "Files" },
 };
 
 /**
@@ -39,6 +41,7 @@ const SOURCES: readonly AttachSource[] = ["camera", "photos", "files"];
 const ICONS: Record<AttachSource, () => React.JSX.Element> = {
   camera: IconCamera,
   photos: IconImage,
+  videos: IconVideo,
   files: IconFileUp,
 };
 
@@ -65,6 +68,7 @@ export function AttachMenu({
   disabled = false,
   labels = DEFAULT_ATTACH_MENU_LABELS,
   sources = SOURCES,
+  accept,
   trigger,
   extra,
   rows,
@@ -76,6 +80,9 @@ export function AttachMenu({
   /** Which sources to offer, in order. An avatar or product-photo uploader
    *  passes `["camera", "photos"]`; one source skips the sheet entirely. */
   sources?: readonly AttachSource[];
+  /** What a source asks the phone for, where `ATTACH_SOURCE_INPUT` is not it
+   *  (a messenger's Files: `MESSAGE_FILES_ACCEPT`). One family per source. */
+  accept?: Partial<Record<AttachSource, string>>;
   /** The button's content. Defaults to a paperclip icon; an uploader passes
    *  its own ("Add photo"). The button keeps chatkit's 44px target. */
   trigger?: ReactNode;
@@ -121,6 +128,7 @@ export function AttachMenu({
           multiple={source !== "camera"}
           data-ck-source={source}
           {...ATTACH_SOURCE_INPUT[source]}
+          {...(accept?.[source] ? { accept: accept[source] } : {})}
           onChange={(e) => {
             onFiles(e.target.files);
             e.target.value = "";
@@ -152,7 +160,9 @@ export function AttachMenu({
                   onClick={() => pick(source)}
                 >
                   <Icon />
-                  <span>{labels.sources[source]}</span>
+                  <span>
+                    {labels.sources[source] ?? DEFAULT_ATTACH_MENU_LABELS.sources[source]}
+                  </span>
                 </button>
               );
             })}

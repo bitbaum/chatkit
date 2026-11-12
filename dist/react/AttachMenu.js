@@ -2,18 +2,19 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useRef, useState } from "react";
 import { ATTACH_SOURCE_INPUT } from "../attachments.js";
-import { IconCamera, IconFileUp, IconImage, IconPaperclip } from "./icons.js";
+import { IconCamera, IconFileUp, IconImage, IconPaperclip, IconVideo } from "./icons.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 export const DEFAULT_ATTACH_MENU_LABELS = {
     attach: "Attach a screenshot or file",
     title: "Add to message",
     close: "Close",
-    sources: { camera: "Camera", photos: "Photos", files: "Files" },
+    sources: { camera: "Camera", photos: "Photos", videos: "Videos", files: "Files" },
 };
 const SOURCES = ["camera", "photos", "files"];
 const ICONS = {
     camera: IconCamera,
     photos: IconImage,
+    videos: IconVideo,
     files: IconFileUp,
 };
 /**
@@ -34,7 +35,7 @@ const ICONS = {
  * they sit under Camera · Photos · Files in the same sheet, on every pointer,
  * since a mouse cannot reach them through a file dialog.
  */
-export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_MENU_LABELS, sources = SOURCES, trigger, extra, rows, onOpenChange, }) {
+export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_MENU_LABELS, sources = SOURCES, accept, trigger, extra, rows, onOpenChange, }) {
     const inputs = useRef({});
     const [sheetOpen, setSheetOpen] = useState(false);
     const setOpen = (next) => {
@@ -57,12 +58,12 @@ export function AttachMenu({ onFiles, disabled = false, labels = DEFAULT_ATTACH_
     };
     return (_jsxs(_Fragment, { children: [sources.map((source) => (_jsx("input", { ref: (el) => {
                     inputs.current[source] = el;
-                }, type: "file", hidden: true, multiple: source !== "camera", "data-ck-source": source, ...ATTACH_SOURCE_INPUT[source], onChange: (e) => {
+                }, type: "file", hidden: true, multiple: source !== "camera", "data-ck-source": source, ...ATTACH_SOURCE_INPUT[source], ...(accept?.[source] ? { accept: accept[source] } : {}), onChange: (e) => {
                     onFiles(e.target.files);
                     e.target.value = "";
                 } }, source))), _jsx("button", { type: "button", className: trigger ? "ck-attach-trigger" : "ck-icon-btn", onClick: open, disabled: disabled, "aria-label": labels.attach, "aria-haspopup": "dialog", title: labels.attach, children: trigger ?? _jsx(IconPaperclip, {}) }), _jsxs(Sheet, { open: sheetOpen, onClose: close, title: labels.title, closeLabel: labels.close, children: [sources.length > 0 && (_jsx("div", { className: "ck-attach-sources", children: sources.map((source) => {
                             const Icon = ICONS[source];
-                            return (_jsxs("button", { type: "button", className: "ck-attach-source", "data-ck-source": source, onClick: () => pick(source), children: [_jsx(Icon, {}), _jsx("span", { children: labels.sources[source] })] }, source));
+                            return (_jsxs("button", { type: "button", className: "ck-attach-source", "data-ck-source": source, onClick: () => pick(source), children: [_jsx(Icon, {}), _jsx("span", { children: labels.sources[source] ?? DEFAULT_ATTACH_MENU_LABELS.sources[source] })] }, source));
                         }) })), hasRows && (_jsxs("div", { className: sources.length > 0 ? "ck-sheet-extra" : "ck-sheet-extra ck-sheet-only", children: [rows?.map((row) => (_jsxs("button", { type: "button", className: "ck-attach-extra", "data-ck-extra": row.id, onClick: () => {
                                     close();
                                     row.onPick();

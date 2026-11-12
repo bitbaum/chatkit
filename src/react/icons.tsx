@@ -263,3 +263,70 @@ export const IconPencil = () => (
     <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
   </Svg>
 );
+export const IconVideo = () => (
+  <Svg>
+    <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+    <rect x="2" y="6" width="14" height="12" rx="2" />
+  </Svg>
+);
+export const IconPlus = () => (
+  <Svg>
+    <path d="M5 12h14" />
+    <path d="M12 5v14" />
+  </Svg>
+);
+export const IconArrowLeft = () => (
+  <Svg>
+    <path d="m12 19-7-7 7-7" />
+    <path d="M19 12H5" />
+  </Svg>
+);
+export const IconChecks = () => (
+  <Svg>
+    <path d="M18 6 7 17l-5-5" />
+    <path d="m22 10-7.5 7.5L13 16" />
+  </Svg>
+);
+export const IconClock = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 6v6l4 2" />
+  </Svg>
+);
+export const IconAlert = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 8v4" />
+    <path d="M12 16h.01" />
+  </Svg>
+);
+export const IconDownload = () => (
+  <Svg>
+    <path d="M12 15V3" />
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="m7 10 5 5 5-5" />
+  </Svg>
+);
+export const IconPlay = () => (
+  <Svg fill="currentColor" stroke="none">
+    <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14Z" />
+  </Svg>
+);
+export const IconAgent = () => (
+  <Svg>
+    <path d="M12 8V4H8" />
+    <rect x="4" y="8" width="16" height="12" rx="2" />
+    <path d="M2 14h2" />
+    <path d="M20 14h2" />
+    <path d="M15 13v2" />
+    <path d="M9 13v2" />
+  </Svg>
+);
+export const IconUsers = () => (
+  <Svg>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </Svg>
+);

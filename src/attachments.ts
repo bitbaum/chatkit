@@ -81,6 +81,20 @@ export type AttachOptions = Partial<AttachmentLimits> & {
    *  drop is refused with the `wrongType` note, never staged and silently
    *  dropped by the server. */
   sources?: readonly AttachSource[];
+  /** What a source asks the phone for, where the default is not it: a
+   *  messenger's Files takes office documents and archives, a model's does
+   *  not. One family per source (`acceptFamilies`), for the reason
+   *  `ATTACH_SOURCE_INPUT` gives. */
+  accept?: Partial<Record<AttachSource, string>>;
+  /**
+   * The app takes the files itself. Everything picked, pasted or dropped is
+   * handed over as it came — nothing is read into the page, nothing is staged
+   * in the box, and a recording is a file like any other, not dictation. For
+   * a box whose files go to storage, not into a prompt (a messenger): the app
+   * uploads them, shows them in `header`, and counts them with
+   * `heldAttachments`.
+   */
+  take?: (files: File[]) => void;
 };
 
 /** Whether pictures can be attached under these options' `sources`. */
@@ -173,6 +187,10 @@ export function isTextFile(name: string, mime: string): boolean {
  * - camera: `capture` opens the camera straight away.
  * - photos: `image/*` alone opens the system photo picker (Screenshots is its
  *   first album), not a chooser.
+ * - videos: `video/*` alone, the same picker filtered to films. Its own
+ *   source, not a wider Photos: a second family on one input is the mixed
+ *   `accept` this type exists to prevent. Offered only where asked for
+ *   (`sources`), since most boxes send words to a model, not films to people.
  * - files: `FILES_ACCEPT`, documents only (PDF and text), opens the real
  *   document browser — Downloads, Drive, any folder. It used to be no `accept`
  *   at all, which Chrome answered with that browser but Brave on Android
@@ -182,7 +200,7 @@ export function isTextFile(name: string, mime: string): boolean {
  *   app off the table on both. The type check still happens after the pick,
  *   in `isTextFile` and the app's own reader (`@bitbaum/chatkit/pdf`).
  */
-export type AttachSource = "camera" | "photos" | "files";
+export type AttachSource = "camera" | "photos" | "videos" | "files";
 
 /**
  * What the Files source asks the phone for: PDFs and text, one "document"
@@ -194,12 +212,21 @@ export type AttachSource = "camera" | "photos" | "files";
 export const FILES_ACCEPT =
   "application/pdf,text/*,application/json,.pdf,.txt,.md,.markdown,.csv,.tsv,.json";
 
+/**
+ * What a messenger's Files source asks for: documents a person sends another
+ * person — PDF, text, office files, an archive. Still one "document" family,
+ * so a phone still answers with its file browser and not a capture chooser.
+ */
+export const MESSAGE_FILES_ACCEPT =
+  "application/pdf,text/plain,text/csv,text/markdown,application/json,application/zip,application/rtf,application/msword,application/vnd.ms-excel,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet,application/epub+zip,.pdf,.txt,.md,.csv,.json,.zip,.rtf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.epub";
+
 export const ATTACH_SOURCE_INPUT: Record<
   AttachSource,
   { accept?: string; capture?: "environment" }
 > = {
   camera: { accept: "image/*", capture: "environment" },
   photos: { accept: "image/*" },
+  videos: { accept: "video/*" },
   files: { accept: FILES_ACCEPT },
 };
 

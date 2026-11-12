@@ -93,4 +93,14 @@ export const IconGhost = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M9 10
 export const IconTrash = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M3 6h18" }), _jsx("path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }), _jsx("path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" })] }));
 export const IconSearch = () => (_jsxs(Svg, { children: [_jsx("circle", { cx: "11", cy: "11", r: "8" }), _jsx("path", { d: "m21 21-4.3-4.3" })] }));
 export const IconPencil = () => (_jsx(Svg, { children: _jsx("path", { d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" }) }));
+export const IconVideo = () => (_jsxs(Svg, { children: [_jsx("path", { d: "m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" }), _jsx("rect", { x: "2", y: "6", width: "14", height: "12", rx: "2" })] }));
+export const IconPlus = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M5 12h14" }), _jsx("path", { d: "M12 5v14" })] }));
+export const IconArrowLeft = () => (_jsxs(Svg, { children: [_jsx("path", { d: "m12 19-7-7 7-7" }), _jsx("path", { d: "M19 12H5" })] }));
+export const IconChecks = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M18 6 7 17l-5-5" }), _jsx("path", { d: "m22 10-7.5 7.5L13 16" })] }));
+export const IconClock = () => (_jsxs(Svg, { children: [_jsx("circle", { cx: "12", cy: "12", r: "10" }), _jsx("path", { d: "M12 6v6l4 2" })] }));
+export const IconAlert = () => (_jsxs(Svg, { children: [_jsx("circle", { cx: "12", cy: "12", r: "10" }), _jsx("path", { d: "M12 8v4" }), _jsx("path", { d: "M12 16h.01" })] }));
+export const IconDownload = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M12 15V3" }), _jsx("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), _jsx("path", { d: "m7 10 5 5 5-5" })] }));
+export const IconPlay = () => (_jsx(Svg, { fill: "currentColor", stroke: "none", children: _jsx("path", { d: "M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14Z" }) }));
+export const IconAgent = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M12 8V4H8" }), _jsx("rect", { x: "4", y: "8", width: "16", height: "12", rx: "2" }), _jsx("path", { d: "M2 14h2" }), _jsx("path", { d: "M20 14h2" }), _jsx("path", { d: "M15 13v2" }), _jsx("path", { d: "M9 13v2" })] }));
+export const IconUsers = () => (_jsxs(Svg, { children: [_jsx("path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }), _jsx("circle", { cx: "9", cy: "7", r: "4" }), _jsx("path", { d: "M22 21v-2a4 4 0 0 0-3-3.87" }), _jsx("path", { d: "M16 3.13a4 4 0 0 1 0 7.75" })] }));
 //# sourceMappingURL=icons.js.map

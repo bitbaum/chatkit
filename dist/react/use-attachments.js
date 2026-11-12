@@ -9,7 +9,9 @@ import { DEFAULT_ATTACHMENT_LIMITS, DEFAULT_ATTACHMENT_NOTES, attachmentKey, acc
  * that survives every send). From loki `hooks/use-attachments.ts`.
  */
 export function useAttachments(options = {}, notes = {}) {
-    const { readFile, sources, ...given } = options;
+    const { readFile, sources, accept: _accept, take: _take, ...given } = options;
+    void _accept;
+    void _take;
     const lim = { ...DEFAULT_ATTACHMENT_LIMITS, ...given };
     const { maxFiles, maxImageBytes, maxTextChars, maxImageEdge } = lim;
     // Mirrored in a ref so a new `notes` or `readFile` object every render does

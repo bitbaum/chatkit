@@ -48,7 +48,9 @@ export function useAttachments(
   options: AttachOptions = {},
   notes: Partial<AttachmentNotes> = {},
 ): AttachmentsController {
-  const { readFile, sources, ...given } = options;
+  const { readFile, sources, accept: _accept, take: _take, ...given } = options;
+  void _accept;
+  void _take;
   const lim: AttachmentLimits = { ...DEFAULT_ATTACHMENT_LIMITS, ...given };
   const { maxFiles, maxImageBytes, maxTextChars, maxImageEdge } = lim;
   // Mirrored in a ref so a new `notes` or `readFile` object every render does

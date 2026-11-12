@@ -48,7 +48,7 @@ function AttachmentStrip({ attachments, labels, }) {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sendBlockedReason = null, sending = false, onStop, attachmentOnlyText, heldAttachments = 0, queue = false, attach = false, attachExtras, handleRef, voice = {}, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue = "", inputRef, density = "comfortable", above, header, tools, trailing, footer, hint, stagedPosition = "below", labels: labelOverrides, autoFocus, }) {
+export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sendBlockedReason = null, sending = false, onStop, attachmentOnlyText, heldAttachments = 0, queue = false, attach = false, attachExtras, handleRef, voice = {}, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue = "", inputRef, density = "comfortable", layout = "stacked", attachmentsAlone = false, above, header, tools, trailing, footer, hint, stagedPosition = "below", labels: labelOverrides, autoFocus, }) {
     const labels = {
         ...DEFAULT_COMPOSER_LABELS,
         ...labelOverrides,
@@ -84,6 +84,8 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
     useAutoGrow(textareaRef, text);
     const attachOn = attach !== false;
     const attachments = useAttachments(typeof attach === "object" ? attach : {}, labels.attachNotes);
+    // The app takes the files itself (`attach.take`): nothing is staged here.
+    const take = typeof attach === "object" ? attach.take : undefined;
     const dictation = useDictation({
         ...(voice || {}),
         onText: (said) => setText((prev) => appendTranscript(prev, said)),
@@ -92,10 +94,13 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
     const listening = dictation.status === "listening";
     const transcribing = dictation.status === "transcribing";
     const attachCount = (attachOn ? attachments.attachments.length : 0) + Math.max(0, heldAttachments);
+    // A message of only attachments may go out wordless: to the rule below that
+    // is "the app has said what such a message means", and it means nothing.
+    const wordless = attachmentsAlone && !attachmentOnlyText;
     const canSend = composerCanSend({
         text,
         attachmentCount: attachCount,
-        attachmentOnlyText,
+        attachmentOnlyText: wordless ? "\u2060" : attachmentOnlyText,
         sending,
         disabled,
         blocked: Boolean(sendBlockedReason),
@@ -105,7 +110,7 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
         if (!canSend)
             return;
         const sent = text;
-        const outgoing = composerOutgoingText(sent, attachCount, attachmentOnlyText);
+        const outgoing = composerOutgoingText(sent, attachCount, wordless ? undefined : attachmentOnlyText);
         const result = await onSend(outgoing, attachOn ? attachments.toWire() : []);
         if (!shouldClearDraft(result))
             return;
@@ -123,13 +128,18 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
     useImperativeHandle(handleRef, () => ({
         setText: (next) => setText(next),
         addFiles: (files) => {
-            if (attachOn)
+            if (!attachOn)
+                return;
+            if (take)
+                take(Array.from(files));
+            else
                 attachments.addFiles(files);
         },
         focus: () => textareaRef.current?.focus(),
         submit: () => submitRef.current(),
     }));
     const showModes = Boolean(modes && modes.length > 1);
+    const inline = layout === "inline";
     const extras = attachExtras ?? [];
     // The paperclip takes recordings too (through Files), when there is
     // somewhere to send them. A voice memo is not an attachment the model reads —
@@ -141,6 +151,12 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
         if (!files)
             return;
         const all = Array.from(files);
+        if (all.length === 0)
+            return;
+        if (take) {
+            take(all);
+            return;
+        }
         const audio = takesAudio ? all.filter(isAudioFile) : [];
         const rest = all.filter((f) => !audio.includes(f));
         if (rest.length > 0)
@@ -152,7 +168,28 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
             })();
         }
     };
-    return (_jsxs("div", { className: "ck-composer-wrap", children: [above, _jsxs("div", { className: "ck-composer-frame", children: [_jsx(VoiceBar, { dictation: dictation, labels: labels }), _jsxs("div", { className: density === "compact" ? "ck-composer ck-composer-compact" : "ck-composer", children: [showModes && (_jsx("div", { className: "ck-modes", role: "group", children: modes.map((m) => (_jsx("button", { type: "button", className: "ck-mode", "aria-pressed": m.id === mode, title: m.hint, onClick: () => onModeChange?.(m.id), children: m.label }, m.id))) })), header, attachOn && stagedPosition === "above" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsx("textarea", { ref: textareaRef, className: "ck-input", rows: 1, value: text, autoFocus: autoFocus, disabled: disabled || transcribing, placeholder: listening ? labels.listening : sending && queue ? labels.queue : placeholder, "aria-label": ariaLabel ?? placeholder, enterKeyHint: "send", onChange: (e) => {
+    // One microphone, drawn where the layout puts it: among the tools of a
+    // stacked box, beside Send in an inline one (where the thumb is).
+    const mic = (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) }));
+    return (_jsxs("div", { className: "ck-composer-wrap", children: [above, _jsxs("div", { className: "ck-composer-frame", children: [_jsx(VoiceBar, { dictation: dictation, labels: labels }), _jsxs("div", { className: [
+                            "ck-composer",
+                            density === "compact" ? "ck-composer-compact" : "",
+                            inline ? "ck-composer-inline" : "",
+                        ]
+                            .filter(Boolean)
+                            .join(" "), 
+                        // A file dragged onto the box is a file picked: the same path, the
+                        // same limits. Only files are taken; dragged text lands in the
+                        // textarea as the browser always did.
+                        onDragOver: (e) => {
+                            if (attachOn && !disabled && e.dataTransfer.types.includes("Files"))
+                                e.preventDefault();
+                        }, onDrop: (e) => {
+                            if (!attachOn || disabled || e.dataTransfer.files.length === 0)
+                                return;
+                            e.preventDefault();
+                            onFiles(e.dataTransfer.files);
+                        }, children: [showModes && (_jsx("div", { className: "ck-modes", role: "group", children: modes.map((m) => (_jsx("button", { type: "button", className: "ck-mode", "aria-pressed": m.id === mode, title: m.hint, onClick: () => onModeChange?.(m.id), children: m.label }, m.id))) })), header, attachOn && stagedPosition === "above" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsx("textarea", { ref: textareaRef, className: "ck-input", rows: 1, value: text, autoFocus: autoFocus, disabled: disabled || transcribing, placeholder: listening ? labels.listening : sending && queue ? labels.queue : placeholder, "aria-label": ariaLabel ?? placeholder, enterKeyHint: "send", onChange: (e) => {
                                     const next = e.target.value;
                                     if (onEmptySlash && next === "/" && text === "") {
                                         onEmptySlash();
@@ -160,13 +197,25 @@ export function Composer({ onSend, placeholder, ariaLabel, disabled = false, sen
                                     }
                                     setText(next);
                                 }, onPaste: (e) => {
-                                    if (attachOn && attachments.addFromPaste(e))
+                                    if (!attachOn)
+                                        return;
+                                    if (take) {
+                                        // Whatever the clipboard holds as a file is the app's to take;
+                                        // pasted text stays text.
+                                        const pasted = Array.from(e.clipboardData.files);
+                                        if (pasted.length > 0) {
+                                            e.preventDefault();
+                                            take(pasted);
+                                        }
+                                        return;
+                                    }
+                                    if (attachments.addFromPaste(e))
                                         e.preventDefault();
                                 }, onKeyDown: (e) => {
                                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                                         e.preventDefault();
                                         void submit();
                                     }
-                                } }), attachOn && stagedPosition === "below" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsxs("div", { className: "ck-actions", children: [_jsxs("div", { className: "ck-tools", children: [(attachOn || extras.length > 0) && (_jsx(AttachMenu, { onFiles: onFiles, disabled: disabled || (attachments.full && extras.length === 0), labels: { attach: labels.attach, ...labels.attachMenu }, sources: attachOn ? (typeof attach === "object" ? attach.sources : undefined) : [], rows: extras })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) })), tools, hint && _jsx("span", { className: "ck-hint", children: hint })] }), _jsxs("div", { className: "ck-submit", children: [trailing, sending && onStop ? (_jsxs(_Fragment, { children: [queue && canSend && (_jsx("button", { type: "button", className: "ck-send", onClick: () => void submit(), "aria-label": labels.send, title: labels.send, children: _jsx(IconArrowUp, {}) })), _jsx("button", { type: "button", className: "ck-send ck-send-stop", onClick: onStop, "aria-label": labels.stop, title: labels.stop, children: _jsx(IconStop, {}) })] })) : (!listening && (_jsx("button", { type: "button", className: "ck-send", disabled: !canSend, onClick: () => void submit(), "aria-label": labels.send, title: sendBlockedReason ?? labels.send, children: sending ? _jsx(IconSpinner, {}) : _jsx(IconArrowUp, {}) })))] })] }), footer] })] }), _jsx(VoiceProblem, { dictation: dictation, labels: labels })] }));
+                                } }), attachOn && stagedPosition === "below" && (_jsx(AttachmentStrip, { attachments: attachments, labels: labels })), _jsxs("div", { className: "ck-actions", children: [_jsxs("div", { className: "ck-tools", children: [(attachOn || extras.length > 0) && (_jsx(AttachMenu, { onFiles: onFiles, disabled: disabled || (attachments.full && extras.length === 0), labels: { attach: labels.attach, ...labels.attachMenu }, sources: attachOn ? (typeof attach === "object" ? attach.sources : undefined) : [], accept: typeof attach === "object" ? attach.accept : undefined, rows: extras })), voiceOn && !inline && mic, tools, hint && _jsx("span", { className: "ck-hint", children: hint })] }), _jsxs("div", { className: "ck-submit", children: [trailing, voiceOn && inline && mic, sending && onStop ? (_jsxs(_Fragment, { children: [queue && canSend && (_jsx("button", { type: "button", className: "ck-send", onClick: () => void submit(), "aria-label": labels.send, title: labels.send, children: _jsx(IconArrowUp, {}) })), _jsx("button", { type: "button", className: "ck-send ck-send-stop", onClick: onStop, "aria-label": labels.stop, title: labels.stop, children: _jsx(IconStop, {}) })] })) : (!listening && (_jsx("button", { type: "button", className: "ck-send", disabled: !canSend, onClick: () => void submit(), "aria-label": labels.send, title: sendBlockedReason ?? labels.send, children: sending ? _jsx(IconSpinner, {}) : _jsx(IconArrowUp, {}) })))] })] }), footer] })] }), _jsx(VoiceProblem, { dictation: dictation, labels: labels })] }));
 }
 //# sourceMappingURL=Composer.js.map

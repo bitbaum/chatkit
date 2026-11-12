@@ -100,6 +100,18 @@ export type ComposerProps = {
     defaultValue?: string;
     inputRef?: RefObject<HTMLTextAreaElement | null>;
     density?: "comfortable" | "compact";
+    /**
+     * `"stacked"` (the default) is the box of an assistant: the words on top,
+     * the tools in a row under them. `"inline"` is the box of a messenger: one
+     * row — attach, the words, the microphone, send — that grows upward as the
+     * text does. A conversation between people is mostly short lines, and a box
+     * two rows tall under each of them is a fifth of a phone given to chrome.
+     */
+    layout?: "stacked" | "inline";
+    /** A message of only attachments goes out with no words at all (a
+     *  messenger: a photo needs no caption). `attachmentOnlyText` is the other
+     *  answer, for a model that must be told something. */
+    attachmentsAlone?: boolean;
     /** Outside the box, above it (suggestion chips). */
     above?: ReactNode;
     /** Inside the box, above the text (scope pills, an error). */
@@ -125,5 +137,5 @@ export type ComposerProps = {
  * Extracted from loki `components/composer/Composer.tsx` (itself the merge of
  * four composers in one app), with heidi's microphone and orangecat's lessons.
  */
-export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, attachExtras, handleRef, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, above, header, tools, trailing, footer, hint, stagedPosition, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
+export declare function Composer({ onSend, placeholder, ariaLabel, disabled, sendBlockedReason, sending, onStop, attachmentOnlyText, heldAttachments, queue, attach, attachExtras, handleRef, voice, modes, mode, onModeChange, onEmptySlash, value, onValueChange, defaultValue, inputRef, density, layout, attachmentsAlone, above, header, tools, trailing, footer, hint, stagedPosition, labels: labelOverrides, autoFocus, }: ComposerProps): import("react").JSX.Element;
 //# sourceMappingURL=Composer.d.ts.map

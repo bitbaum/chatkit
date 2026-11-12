@@ -6,7 +6,11 @@ export type AttachMenuLabels = {
     /** The sheet's title. */
     title: string;
     close: string;
-    sources: Record<AttachSource, string>;
+    /** `videos` may be left out by an app that set its labels before the
+     *  source existed: it then reads the default. */
+    sources: Record<Exclude<AttachSource, "videos">, string> & {
+        videos?: string;
+    };
 };
 export declare const DEFAULT_ATTACH_MENU_LABELS: AttachMenuLabels;
 /**
@@ -40,13 +44,16 @@ export type AttachExtra = {
  * they sit under Camera · Photos · Files in the same sheet, on every pointer,
  * since a mouse cannot reach them through a file dialog.
  */
-export declare function AttachMenu({ onFiles, disabled, labels, sources, trigger, extra, rows, onOpenChange, }: {
+export declare function AttachMenu({ onFiles, disabled, labels, sources, accept, trigger, extra, rows, onOpenChange, }: {
     onFiles: (files: FileList | null) => void;
     disabled?: boolean;
     labels?: AttachMenuLabels;
     /** Which sources to offer, in order. An avatar or product-photo uploader
      *  passes `["camera", "photos"]`; one source skips the sheet entirely. */
     sources?: readonly AttachSource[];
+    /** What a source asks the phone for, where `ATTACH_SOURCE_INPUT` is not it
+     *  (a messenger's Files: `MESSAGE_FILES_ACCEPT`). One family per source. */
+    accept?: Partial<Record<AttachSource, string>>;
     /** The button's content. Defaults to a paperclip icon; an uploader passes
      *  its own ("Add photo"). The button keeps chatkit's 44px target. */
     trigger?: ReactNode;
