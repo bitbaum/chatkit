@@ -17,11 +17,35 @@ export type CommentItem = {
  * every failure message; the app owns the database and who may do what.
  */
 export type CommentTransport = {
-  /** Store the comment and return it as stored (its id, its author, its time). Throw to refuse. */
+  /**
+   * Store the comment and return it as stored (its id, its author, its time).
+   * Throw to refuse: a `CommentRefused` with the reason the reader should see.
+   */
   post: (text: string) => Promise<CommentItem>;
   /** Delete one. Omit and nobody gets a Remove button. */
   remove?: (id: string) => Promise<void>;
 };
+
+/**
+ * Throw this from `transport.post` or `transport.remove` to say why in the
+ * reader's words: the thread shows `message` under the box instead of its
+ * generic `postFailed` / `removeFailed`, so "Write a longer comment" or "You
+ * have posted a lot this hour" reaches the reader rather than "try again",
+ * which would fail the same way forever. Any other error shows the label: a
+ * raw `TypeError` or a server's English is never shown (the same rule as
+ * `ChatTurnError`).
+ */
+export class CommentRefused extends Error {
+  constructor(message: string, options: { cause?: unknown } = {}) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = "CommentRefused";
+  }
+}
+
+/** What a failed post or removal says: a `CommentRefused`'s words, else the label. */
+export function commentFailure(error: unknown, fallback: string): string {
+  return error instanceof CommentRefused && error.message.trim() ? error.message : fallback;
+}
 
 export type CommentThreadLabels = {
   /** The heading: "No comments yet", "1 comment", "7 comments". */
@@ -122,8 +146,8 @@ export function CommentThread({
       const created = await transport.post(text);
       setList((current) => [...current, created]);
       return true;
-    } catch {
-      setError(labels.postFailed);
+    } catch (e) {
+      setError(commentFailure(e, labels.postFailed));
       return false;
     } finally {
       setSending(false);
@@ -137,9 +161,9 @@ export function CommentThread({
     setList((current) => current.filter((c) => c.id !== id));
     try {
       await transport.remove(id);
-    } catch {
+    } catch (e) {
       setList(before);
-      setError(labels.removeFailed);
+      setError(commentFailure(e, labels.removeFailed));
     }
   };
 

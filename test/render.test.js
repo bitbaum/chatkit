@@ -7,7 +7,16 @@ import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as reactMod from "../dist/react/index.js";
-const { Composer, ChatThread, ChatStarters, Markdown, DictationField, CommentThread } = reactMod;
+const {
+  Composer,
+  ChatThread,
+  ChatStarters,
+  Markdown,
+  DictationField,
+  CommentThread,
+  CommentRefused,
+  commentFailure,
+} = reactMod;
 import { AttachMenu, ATTACH_SOURCE_INPUT, shrinkImage } from "../dist/react/attach.js";
 
 test("composer: textarea, send, and 16px guaranteed by the stylesheet", () => {
@@ -468,4 +477,18 @@ test("CommentThread: count heading, oldest first, text not markup, and a way to 
     1,
     "Remove only where allowed",
   );
+});
+
+test("a refused comment says why in the app's words; any other failure shows the label", () => {
+  assert.equal(
+    commentFailure(new CommentRefused("Write a short comment."), "try again"),
+    "Write a short comment.",
+  );
+  assert.equal(commentFailure(new Error("500 Internal Server Error"), "try again"), "try again");
+  assert.equal(commentFailure(new TypeError("Failed to fetch"), "try again"), "try again");
+  assert.equal(commentFailure({ message: "raw" }, "try again"), "try again");
+  assert.equal(commentFailure(new CommentRefused("  "), "try again"), "try again");
+  const e = new CommentRefused("Limit reached.", { cause: 429 });
+  assert.equal(e.name, "CommentRefused");
+  assert.ok(e instanceof Error);
 });

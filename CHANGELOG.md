@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.26.0 — A refused comment says why
+
+`CommentThread` always said "The comment could not be posted… try again" whatever the server answered, so a comment that was too short or over a rate limit was retried forever (seen on Substrata, 2026-11-12). A transport may now throw `new CommentRefused(words)` from `post` or `remove`; the thread shows those words. Any other error still shows `postFailed` / `removeFailed`, so a raw error or a server's English never reaches a reader by accident. `commentFailure(error, fallback)` is exported for apps that build their own box.
+
 ## Unreleased — Agents are members: an "Agent" mark and whom it works for
 
 In a room where people and agents both answer, a reader has to know which is which and who answers for an agent's words. `ChatSpeaker` gains `kind: "agent" | "person"` (an agent gets a small "Agent" mark beside its name) and `onBehalfOf` (drawn as "Loki · for Georgy"). Both labels are translatable (`labels.agent`, `labels.onBehalfOf` with `{name}`), both optional, so existing apps are unchanged. The streaming turn shows the same line.
