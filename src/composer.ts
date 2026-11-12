@@ -64,6 +64,21 @@ export function appendTranscript(draft: string, said: string): string {
   return draft.trim() ? `${draft.replace(/\s+$/, "")} ${t}` : t;
 }
 
+/**
+ * Text a field sets itself (a dictated take, a rewrite) kept within the
+ * field's `maxLength`. The attribute stops typing and pasting at the limit
+ * and nothing else: a value set in code goes straight past it, and the form
+ * then refuses or cuts what the person said. Cut at the limit, on a word
+ * where one is near, so the field never holds more than it may send.
+ */
+export function clipToMaxLength(text: string, maxLength: number | undefined): string {
+  if (!maxLength || maxLength < 0 || text.length <= maxLength) return text;
+  const cut = text.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(" ");
+  // Back to the last whole word when that loses little (under 24 characters).
+  return lastSpace > 0 && maxLength - lastSpace <= 24 ? cut.slice(0, lastSpace) : cut;
+}
+
 /** `75` → `1:15`. The recording timer. */
 export function formatElapsed(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));

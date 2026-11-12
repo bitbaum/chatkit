@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
-import { appendTranscript } from "../composer.js";
+import { appendTranscript, clipToMaxLength } from "../composer.js";
 import { DEFAULT_DICTATION_MESSAGES, type DictationProblem } from "../dictation.js";
 import { useDictation } from "./use-dictation.js";
 import { useAutoGrow } from "./hooks.js";
@@ -226,7 +226,7 @@ export function DictationField({
     ...(voice || {}),
     onText: (said) => {
       setUndo(null);
-      set(appendTranscript(valueRef.current, said));
+      set(clipToMaxLength(appendTranscript(valueRef.current, said), maxLength));
     },
   });
   const voiceOn = voice !== false && dictation.supported && !readOnly;
@@ -264,7 +264,7 @@ export function DictationField({
       const next = await improve.run(before, what.trim());
       if (typeof next === "string" && next.trim()) {
         setUndo(before);
-        set(next);
+        set(clipToMaxLength(next, maxLength));
         setOpen(false);
         setInstruction("");
       } else setFailed(true);

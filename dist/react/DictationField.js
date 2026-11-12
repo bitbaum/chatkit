@@ -1,7 +1,7 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useId, useRef, useState, } from "react";
-import { appendTranscript } from "../composer.js";
+import { appendTranscript, clipToMaxLength } from "../composer.js";
 import { DEFAULT_DICTATION_MESSAGES } from "../dictation.js";
 import { useDictation } from "./use-dictation.js";
 import { useAutoGrow } from "./hooks.js";
@@ -63,7 +63,7 @@ export function DictationField({ value, onValueChange, label, ariaLabel, id, pla
         ...(voice || {}),
         onText: (said) => {
             setUndo(null);
-            set(appendTranscript(valueRef.current, said));
+            set(clipToMaxLength(appendTranscript(valueRef.current, said), maxLength));
         },
     });
     const voiceOn = voice !== false && dictation.supported && !readOnly;
@@ -98,7 +98,7 @@ export function DictationField({ value, onValueChange, label, ariaLabel, id, pla
             const next = await improve.run(before, what.trim());
             if (typeof next === "string" && next.trim()) {
                 setUndo(before);
-                set(next);
+                set(clipToMaxLength(next, maxLength));
                 setOpen(false);
                 setInstruction("");
             }
