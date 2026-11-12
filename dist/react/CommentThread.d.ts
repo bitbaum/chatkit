@@ -12,11 +12,30 @@ export type CommentItem = {
  * every failure message; the app owns the database and who may do what.
  */
 export type CommentTransport = {
-    /** Store the comment and return it as stored (its id, its author, its time). Throw to refuse. */
+    /**
+     * Store the comment and return it as stored (its id, its author, its time).
+     * Throw to refuse: a `CommentRefused` with the reason the reader should see.
+     */
     post: (text: string) => Promise<CommentItem>;
     /** Delete one. Omit and nobody gets a Remove button. */
     remove?: (id: string) => Promise<void>;
 };
+/**
+ * Throw this from `transport.post` or `transport.remove` to say why in the
+ * reader's words: the thread shows `message` under the box instead of its
+ * generic `postFailed` / `removeFailed`, so "Write a longer comment" or "You
+ * have posted a lot this hour" reaches the reader rather than "try again",
+ * which would fail the same way forever. Any other error shows the label: a
+ * raw `TypeError` or a server's English is never shown (the same rule as
+ * `ChatTurnError`).
+ */
+export declare class CommentRefused extends Error {
+    constructor(message: string, options?: {
+        cause?: unknown;
+    });
+}
+/** What a failed post or removal says: a `CommentRefused`'s words, else the label. */
+export declare function commentFailure(error: unknown, fallback: string): string;
 export type CommentThreadLabels = {
     /** The heading: "No comments yet", "1 comment", "7 comments". */
     count: (n: number) => string;

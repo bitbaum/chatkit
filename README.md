@@ -458,6 +458,60 @@ and radius follow the same `--ck-*` variables as the composer. The styles are
 in `styles.css` (not in the embedded `styles/chat.css`: this is not a chat
 surface).
 
+#### In a form (0.27)
+
+A field in a form needs more than a note box: a name for the post, an error,
+the keys that submit it, and a blur an inline editor can save on. All of it is
+optional; without these props the field is what it was, except that a `hint`
+is now linked to the field with `aria-describedby`, and Enter in Improve's
+"What should change?" box applies the instruction.
+
+```tsx
+<form action="/api/listing" method="post">
+  <DictationField
+    label="Title"
+    name="title"                       // posts with the native form
+    multiline={false}
+    value={title}
+    onValueChange={setTitle}
+    error={tried && !title.trim() ? "A title is needed." : null}
+    hint="One line, said or typed."
+    onSubmit={save}                    // Enter here; Cmd/Ctrl+Enter in a text area
+  />
+</form>
+```
+
+- `name`, `autoFocus`, `readOnly` (no microphone, no Improve: nothing may
+  change the text), `id`, `maxLength`, `disabled`, `required`.
+- `invalid` and `error`: `aria-invalid="true"`, the frame in `--ck-danger`, and
+  the error in words under the field (`<p class="ck-field-error" role="alert">`).
+  `error` implies `invalid`; an empty `error` (`""`, `0`) is no error. The error and `hint` describe the field through
+  `aria-describedby` (ids `<id>-error`, `<id>-hint`).
+- `onSubmit`: the submit keys are the package's, so they are the same in every
+  app. Cmd+Enter or Ctrl+Enter in a multi-line field, Enter in a one-line one
+  (Shift+Enter does nothing there). Never during an IME composition, never
+  while disabled or read-only, never while a take is recorded or transcribed.
+  With `onSubmit` set, Enter in a one-line field is the package's whether it
+  submits or not: the browser's own form post never runs, so a form is not
+  sent mid-take without the words. An Enter that ends an IME composition is
+  left to the browser.
+- `onKeyDown` runs first, on every key (Escape to cancel an inline editor);
+  `event.preventDefault()` there stops `onSubmit`.
+- `onFocus` / `onBlur` belong to the whole field: the text box, the
+  microphone, Improve and its panel. Moving between them is not a blur, so
+  pressing the microphone does not close an inline editor that saves on blur.
+  Leaving while a take is recorded or transcribed is reported once the take
+  has ended and its words have gone through `onValueChange`, so a host that
+  unmounts the field on blur keeps what was said. Waiting for Improve is not
+  a blur either. A switch to another window or app is not a blur. A field
+  unmounted by the host while its blur is held reports no blur (the words
+  still arrive through `onValueChange`).
+- `inputProps`: what the box itself may also take — `spellCheck`,
+  `autoComplete`, `autoCapitalize`, `inputMode`, `enterKeyHint`, `minLength`,
+  `aria-*`, `data-*` (`DictationFieldInputProps`). Spread before the managed
+  props, so the field's own id, value, class, label wiring, keys and focus
+  win; an `aria-describedby` there is joined with the hint and error ids.
+
 ### Comments — `CommentThread` (0.23)
 
 The conversation under anything: an article, a page, a listing.
@@ -480,11 +534,14 @@ The conversation under anything: an article, a page, a listing.
 The component owns the list, the optimistic removal (rolled back, in words, if
 it fails) and every failure message; the box is `Composer`, so it has the
 microphone, 16px text and Enter-to-send; a refused post keeps the draft in the
-box. A comment is shown as text, never as markup, with its line breaks. Times
+box. To say why a post was refused ("Write a longer comment", a rate
+limit), throw `new CommentRefused(words)` from `post` or `remove`: the thread
+shows those words instead of the generic "try again", which would fail the
+same way forever; any other error shows the label. A comment is shown as text, never as markup, with its line breaks. Times
 render in `timeZone` (UTC by default, so the server's and the browser's markup
 agree), or through your own `formatTime`.
 
-### People talking to people — `Messenger` (0.27)
+### People talking to people — `Messenger` (0.29)
 
 `ChatApp` is one person and a model. `Messenger` is the other chat a product
 ends up needing: a list of conversations, a thread between several people,
@@ -1013,7 +1070,9 @@ on `Composer`, `labels` on `ChatThread`.
     back after a reload, attachments on, a queue behind a running answer.
 
 12. Any other text box is `DictationField`: the same microphone, 16px text and
-    44px targets as the composer, and an optional Improve with Undo.
+    44px targets as the composer, and an optional Improve with Undo. In a form
+    it takes a name, an error said in words, the same submit keys in every app
+    and a blur that belongs to the whole field.
 13. A conversation under an item is `CommentThread`: oldest first, the same box
     with the microphone, remove your own, a way to sign in for a reader who
     cannot yet write.
@@ -1099,3 +1158,11 @@ including close to the bottom. Status updates and incoming assistant turns keep
 the reading position. Sending a new user turn or choosing return-to-latest
 resumes following. Full-screen `ChatScreen` keeps its bounded scroll containment;
 embedded threads allow gestures to reach their surrounding page.
+
+When the page itself scrolls (a short thread in a card mid-page), following
+only ever moves the page down, to bring a new turn into view; it never pulls
+the page up and takes the composer under the thread off the screen. The jump
+button may go either way. Set `--ck-follow-gap` (a length, default 0) on the
+thread or any ancestor to keep room under the latest turn for what you put
+below it, e.g. `--ck-follow-gap: 10rem` for a composer and a receipt. While
+the reader has sent nothing, the page does not move at all.

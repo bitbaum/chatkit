@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.27.0 — `Messenger`: people talking to people, and to the agents among them
+## 0.29.0 — `Messenger`: people talking to people, and to the agents among them
 
 Owner, 2026-11-12, looking at OrangeCat's direct messages on a phone: the Cat had answered in a conversation between two people and "it's hard to tell whether it was the cat or my friend"; nothing said an AI was taking part; "you scroll down and then the half screen is taken"; and nothing could be attached. That messenger was built in the app (about 8,700 lines), so none of it could be fixed for the next product either. This is the messenger as a package.
 
@@ -12,6 +12,49 @@ Owner, 2026-11-12, looking at OrangeCat's direct messages on a phone: the Cat ha
 - The Messenger's state is one pure function (`messengerReducer`), so its rules are tests that run in Node (`test/messenger.test.js`, 35). `test/browser-messenger.mjs` drives `demo/messenger.html` at 390px, 320px dark and 1280px: the box at the bottom with nothing under it, the thread filling the rest, 16px, 44px targets, no cut words, and every flow above. It found two defects before any product did: a read mark that cleared the badge on screen without telling the server, and a page of history that pulled the reader to the end of the thread.
 - New dependency: `@bitbaum/threadkit` (the rules: who may write, how messages merge; it has no dependencies of its own). threadkit 0.1.2 adds the attachment policy, the mention matcher and `readState`; it was merged and tagged on 2026-11-12 but its npm publish was refused (the workflow is not yet the package's trusted publisher), so those three are carried word for word in `src/thread-rules.ts`, with threadkit's own tests (`test/thread-rules.test.js`) and a check against the installed threadkit wherever it already has them. The file says when it goes.
 
+## 0.28.1 — Dictation and Improve respect a field's `maxLength`
+
+A dictated take or an Improve rewrite never leaves the field past its `maxLength`. The attribute only stops typing and pasting; a value set in code went straight past it (found reviewing Loki's converted fields, which set 300 and 1000). `clipToMaxLength(text, maxLength)` cuts at the limit, back to a whole word when one is near, and is exported.
+
+## Unreleased — Your first message no longer pushes the composer off the screen
+
+Found 2026-11-12 on bitbaum.orangecat.ch `/hire/` at 390x844: the contact box is a card holding a `ChatThread`, a receipt link and the `Composer`, mid-page. The thread is short, so the document owns the scroll. Sending the first message pinned the end of the thread to the bottom of the viewport, which scrolled the page UP by about 300px (5310 to 5026) and pushed the receipt and the composer below the fold, with focus still in the hidden text area. Following exists to bring a new turn into view; here it took the box out of view.
+
+- When the document owns the scroll, following only moves the page down: when the end of the thread is already on screen, nothing moves. A thread that scrolls itself, or inside a scrolling panel, is unchanged, and the jump button still goes to the latest turn in either direction, because the reader asked.
+- `--ck-follow-gap` (a length, default 0): set on the thread's wrapper or any ancestor, it leaves that much room under the latest turn when the page follows, so a composer under the thread stays in view (`--ck-follow-gap: 10rem`). The browser resolves the length, so rem, em, px and `calc()` all work; unset, negative or invalid is 0.
+- The rule from the previous fix holds: while the document owns the scroll and the reader has sent nothing, nothing moves.
+- Checked in `test/browser-scroll.mjs` on a new fixture (`demo/scroll.html?owner=page&greeting&below`, the box between 3,000px of page and 1,500px more) at 390 and 1280px: with the composer mid-screen the first message does not scroll the page up and the composer stays on screen; as the thread grows past the foot of the screen the page follows and stops with the thread's end at the bottom of the viewport, or 160px above it with `10rem`, 120px with `6em` at 20px, 90px with `90px`, and at the bottom again with an invalid value. Both checks fail on the code before this fix (the page went up 397px at 390px; with `10rem` the end sat at the bottom). The existing page, panel, ancestor, greeting, screen and missing-root cases pass unchanged.
+
+## 0.28.0 — A refused comment says why
+
+`CommentThread` always said "The comment could not be posted… try again" whatever the server answered, so a comment that was too short or over a rate limit was retried forever (seen on Substrata, 2026-11-12). A transport may now throw `new CommentRefused(words)` from `post` or `remove`; the thread shows those words. Any other error still shows `postFailed` / `removeFailed`, so a raw error or a server's English never reaches a reader by accident. `commentFailure(error, fallback)` is exported for apps that build their own box.
+
+## Unreleased — You can see where you are typing
+
+Found 2026-11-12 on bitbaum.orangecat.ch (`/`, `/hire/`, `/builders/`, `/loki/`): with keyboard focus in the composer's text area there was nothing to see. The text area drops its outline, and the only sign was the composer's 1px border stepping from 90% to 82% grey, 1.5:1 against the composer in light and 1.35:1 in dark with the design tokens, and the same colour focused and unfocused in a consumer's theme. In `ChatScreen`'s floating composer the border did not change at all. WCAG 2.4.7 asks for a visible focus indicator and 1.4.11 for 3:1 against what is next to it.
+
+- While the composer holds focus its border takes `--ck-focus`, which defaults to the secondary ink (`--ck-fg-2`) and so follows the theme: 5.7:1 on the composer in light, 7.0:1 in dark, in every composer shape (comfortable, compact and `ChatScreen`'s dock). Still a 1px border and no ring, so a click into the box looks as quiet as before; the composer keeps its size.
+- An app can set `--ck-focus` to its own colour, as with every `--ck-*` variable.
+- Checked in `test/browser.mjs` on the demo and the full screen at 390 and 1280px, light and dark: Tab reaches the text area, the border changes, it contrasts at least 3:1 with the composer's own background (computed in the page), and the composer measures the same focused and unfocused. The test fails on 0.27.0.
+
+## 0.27.0 — A form's text area can be `DictationField`: name, error, submit keys, a blur that waits for the words
+
+Loki has 34 text areas made by hand, with no microphone, and they could not become `DictationField` because a form needs things the field did not pass through. Measured in Loki's source (36 text areas): `onKeyDown` 10 (Enter or Cmd+Enter submits, Escape cancels), `maxLength` 9, `id` 7, `autoFocus` 7, `disabled` 5, `onBlur` 2 and `onFocus` 1 (an inline editor saves when focus leaves), `name` 2 (a native form post), `spellCheck` 1, and forms that show a validation error on the field. All new props are optional; without them the markup and behaviour are unchanged, except that a `hint` is now linked to the field with `aria-describedby` and Enter in Improve's box applies the instruction (below).
+
+- `name`, `autoFocus` and `readOnly`. A read-only field draws no microphone, no Improve and no Undo: nothing may change its text.
+- `invalid` and `error`: `aria-invalid="true"`, the frame drawn in `--ck-danger` (light and dark), and the error in words under the field as `<p class="ck-field-error" role="alert">`, so colour is never the only sign. `error` implies `invalid`; an empty `error` (`""`, `0`) is none, so a valid field is never drawn as invalid with nothing said. Error and `hint` are linked to the field with `aria-describedby` (`<id>-error`, `<id>-hint`).
+- `onSubmit`: the submit keys belong to the package, so a person meets the same ones in every app. Cmd+Enter or Ctrl+Enter in a text area, Enter in a one-line field; never while an IME composition is open, never while disabled or read-only, never while a take is recorded or transcribed. With `onSubmit` set, Enter in a one-line field never also runs the browser's form post (Shift+Enter, during a take, read-only), so a form is not sent mid-take without the words. `onKeyDown` runs first and can `preventDefault()` to stop it.
+- `onFocus` and `onBlur` are the whole field's: moving between the text box, the microphone, Improve and its panel is not a blur, so pressing the microphone does not close an inline editor under the person's finger. Leaving while a take is recorded or transcribed is reported after the take's words have gone through `onValueChange`, so a host that unmounts on blur never loses what was said. Waiting for Improve, which disables its own box, is not a blur. A field the host unmounts while its blur is held reports none; its words still arrive. A tap on empty page is a blur; switching to another window or app is not.
+- `inputProps` (`DictationFieldInputProps`): `spellCheck`, `autoComplete`, `autoCapitalize`, `inputMode`, `enterKeyHint`, `minLength`, `aria-*`, `data-*`, spread before the managed props so the field's own win.
+- Enter in Improve's "What should change?" box now applies the instruction, instead of sending whatever form the field sits in.
+- Checked in `test/browser-field.mjs` on a new form fixture (`demo/field-form.html`, a development build under Strict Mode) at 390px and desktop, light and dark: the submit keys, a composing Enter, a suppressed Enter, the microphone and a whole take without a blur, one blur to another element and one to empty page, a blur held until the words land, Improve applied from the keyboard while it works, Enter while listening and Shift+Enter sending no native form, the native form post, and the error seen in both themes with no control under 44px and no sideways scroll at 390 and 320px.
+
+## Unreleased — A greeting on a page no longer takes the page
+
+Found 2026-11-12 on bitbaum.orangecat.ch: `/hire/` and `/builders/` opened scrolled down to the contact box, past the headline and the prices (3,400px down at desktop width, 5,500px on a phone). The box is a `ChatThread` holding one greeting. A thread that short has no scroll of its own, so the document owned the scroll, and `useStickToBottom` pinned the document to the thread's end on mount.
+
+- While the document owns the scroll and the reader has sent nothing, the thread does not move the page and shows no jump button. The reader's first message starts the following, as before. A conversation that already holds a turn from the reader still opens at its latest turn.
+- Checked in `test/browser-scroll.mjs` on a new fixture (`demo/scroll.html?owner=page&greeting`, a greeting under 3,000px of page) at 390 and 1280px: the page opens at its top, a resize does not take it, the reader scrolls freely with no jump button, and the first message is followed. The test fails on 0.26.0.
 ## Unreleased — No microphone on a page that may not use one
 
 A host that sends `Permissions-Policy: microphone=()` (the fleet's starter template, and orangecat.ch for a while) made every take fail with "blocked", a problem the person cannot fix, while every `Composer` and `DictationField` still drew the mic. `useDictation`'s `supported` is now false when the page's policy refuses the microphone, so the mic is not drawn. `microphoneAllowedByPolicy(document)` is exported for apps that draw their own. A browser without the policy API behaves as before. Found by the package audit of 2026-11-12; Loki's widget hand-rolled this check.

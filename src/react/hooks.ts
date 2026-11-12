@@ -41,11 +41,43 @@ export function useClipboard(resetMs = 1500) {
 }
 
 /**
+ * `--ck-follow-gap` on the thread's wrapper (or any ancestor), in pixels. The
+ * browser resolves the length: a hidden probe takes it as `min-height`, whose
+ * computed value is absolute pixels for rem, em, px and calc(). Unset, a
+ * percentage, a negative or an invalid value is 0.
+ */
+function followGap(thread: HTMLElement | null): number {
+  const wrapper = thread?.parentElement ?? thread;
+  if (!wrapper) return 0;
+  if (!getComputedStyle(wrapper).getPropertyValue("--ck-follow-gap").trim()) return 0;
+  const probe = document.createElement("div");
+  probe.style.display = "none";
+  probe.style.minHeight = "var(--ck-follow-gap)";
+  wrapper.appendChild(probe);
+  const value = getComputedStyle(probe).minHeight;
+  probe.remove();
+  const px = value.endsWith("px") ? parseFloat(value) : 0;
+  return Number.isFinite(px) && px > 0 ? px : 0;
+}
+
+/**
  * Follow the thread until the reader scrolls up. The scroll owner may be the
  * thread, a bounded ancestor, or the document (a conversation embedded in a
  * case page). Never scroll other ancestors as a side effect of following.
  * `grew` counts new user turns: an arriving assistant turn is not permission
  * to take the reader away from an older answer.
+ *
+ * A greeting on a page is not a conversation yet. While the document owns the
+ * scroll and the reader has sent nothing (`grew` is 0), the thread neither
+ * moves the page nor offers a way back down: a contact box at the foot of a
+ * long page opened that page at the box, past everything above it (bitbaum
+ * /hire/ and /builders/, 2026-11-12). The first turn the reader sends starts
+ * the following.
+ *
+ * When the document owns the scroll, following only ever moves the page DOWN,
+ * to bring the end of the thread into view, plus `--ck-follow-gap` (a length
+ * on the thread's wrapper, default 0) so what the host puts under the thread
+ * stays in view too. The jump button may move either way: the reader asked.
  */
 export function useStickToBottom(changes: DependencyList, grew: number) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +86,8 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
   const [pageScroll, setPageScroll] = useState(false);
   const followingRef = useRef(true);
   const owner = useRef<HTMLElement | null>(null);
+  const turns = useRef(grew);
+  turns.current = grew;
   const previousTop = useRef(0);
   const downwardIntent = useRef(false);
   const draggingScrollbar = useRef(false);
@@ -81,23 +115,38 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
     else if (top > previousTop.current + 1 && isAtBottom(el)) follow(true);
     previousTop.current = top;
   }, [follow]);
-  const pin = useCallback((smooth = false) => {
+  // `asked`: the reader pressed the jump button, so the page may move either
+  // way. Following on its own only ever brings a new turn INTO view.
+  const pin = useCallback((smooth = false, asked = false) => {
     const el = owner.current,
       end = endRef.current;
     if (!el || !end) return;
     const page = el === document.scrollingElement;
+    if (page && turns.current === 0) return;
     const bottom = end.getBoundingClientRect().bottom;
-    const top = page
-      ? el.scrollTop + bottom - window.innerHeight
-      : el.scrollTop + bottom - el.getBoundingClientRect().top - el.clientTop - el.clientHeight;
-    // A thread-owned scroller includes its padding below the end marker.
-    const target = el === scrollRef.current ? el.scrollHeight : top;
-    el.scrollTo({ top: target, behavior: smooth ? "smooth" : "instant" });
+    if (page) {
+      // A page that scrolls is the host's page: the composer, a receipt and
+      // more page sit under the thread. Following never scrolls it UP: on
+      // bitbaum /hire/ (2026-11-12) the first message pulled the end of the
+      // thread down to the foot of the screen and pushed the composer the
+      // reader was typing in below the fold. `--ck-follow-gap` keeps room
+      // under the latest turn for what follows it.
+      const target = el.scrollTop + bottom - window.innerHeight + followGap(scrollRef.current);
+      if (!asked && target <= el.scrollTop) return;
+      el.scrollTo({ top: target, behavior: smooth ? "smooth" : "instant" });
+    } else {
+      // A thread-owned scroller includes its padding below the end marker.
+      const target =
+        el === scrollRef.current
+          ? el.scrollHeight
+          : el.scrollTop + bottom - el.getBoundingClientRect().top - el.clientTop - el.clientHeight;
+      el.scrollTo({ top: target, behavior: smooth ? "smooth" : "instant" });
+    }
     previousTop.current = el.scrollTop;
   }, []);
   const jumpToBottom = useCallback(() => {
     follow(true);
-    pin(true);
+    pin(true, true);
   }, [follow, pin]);
 
   // Resolve on every render: an initially empty panel may become scrollable.
@@ -234,7 +283,15 @@ export function useStickToBottom(changes: DependencyList, grew: number) {
     previous.current = grew;
   }, [grew, follow, pin]);
 
-  return { scrollRef, endRef, following, pageScroll, onScroll, jumpToBottom };
+  return {
+    scrollRef,
+    endRef,
+    // Nothing to jump to before the reader has said anything on a page.
+    following: following || (pageScroll && grew === 0),
+    pageScroll,
+    onScroll,
+    jumpToBottom,
+  };
 }
 
 /**
