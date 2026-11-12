@@ -534,7 +534,10 @@ The conversation under anything: an article, a page, a listing.
 The component owns the list, the optimistic removal (rolled back, in words, if
 it fails) and every failure message; the box is `Composer`, so it has the
 microphone, 16px text and Enter-to-send; a refused post keeps the draft in the
-box. A comment is shown as text, never as markup, with its line breaks. Times
+box. To say why a post was refused ("Write a longer comment", a rate
+limit), throw `new CommentRefused(words)` from `post` or `remove`: the thread
+shows those words instead of the generic "try again", which would fail the
+same way forever; any other error shows the label. A comment is shown as text, never as markup, with its line breaks. Times
 render in `timeZone` (UTC by default, so the server's and the browser's markup
 agree), or through your own `formatTime`.
 
@@ -1050,3 +1053,11 @@ including close to the bottom. Status updates and incoming assistant turns keep
 the reading position. Sending a new user turn or choosing return-to-latest
 resumes following. Full-screen `ChatScreen` keeps its bounded scroll containment;
 embedded threads allow gestures to reach their surrounding page.
+
+When the page itself scrolls (a short thread in a card mid-page), following
+only ever moves the page down, to bring a new turn into view; it never pulls
+the page up and takes the composer under the thread off the screen. The jump
+button may go either way. Set `--ck-follow-gap` (a length, default 0) on the
+thread or any ancestor to keep room under the latest turn for what you put
+below it, e.g. `--ck-follow-gap: 10rem` for a composer and a receipt. While
+the reader has sent nothing, the page does not move at all.

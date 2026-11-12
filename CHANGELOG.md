@@ -1,8 +1,29 @@
 # Changelog
 
-## 0.27.1 — Dictation and Improve respect a field's `maxLength`
+## 0.28.1 — Dictation and Improve respect a field's `maxLength`
 
 A dictated take or an Improve rewrite never leaves the field past its `maxLength`. The attribute only stops typing and pasting; a value set in code went straight past it (found reviewing Loki's converted fields, which set 300 and 1000). `clipToMaxLength(text, maxLength)` cuts at the limit, back to a whole word when one is near, and is exported.
+
+## Unreleased — Your first message no longer pushes the composer off the screen
+
+Found 2026-11-12 on bitbaum.orangecat.ch `/hire/` at 390x844: the contact box is a card holding a `ChatThread`, a receipt link and the `Composer`, mid-page. The thread is short, so the document owns the scroll. Sending the first message pinned the end of the thread to the bottom of the viewport, which scrolled the page UP by about 300px (5310 to 5026) and pushed the receipt and the composer below the fold, with focus still in the hidden text area. Following exists to bring a new turn into view; here it took the box out of view.
+
+- When the document owns the scroll, following only moves the page down: when the end of the thread is already on screen, nothing moves. A thread that scrolls itself, or inside a scrolling panel, is unchanged, and the jump button still goes to the latest turn in either direction, because the reader asked.
+- `--ck-follow-gap` (a length, default 0): set on the thread's wrapper or any ancestor, it leaves that much room under the latest turn when the page follows, so a composer under the thread stays in view (`--ck-follow-gap: 10rem`). The browser resolves the length, so rem, em, px and `calc()` all work; unset, negative or invalid is 0.
+- The rule from the previous fix holds: while the document owns the scroll and the reader has sent nothing, nothing moves.
+- Checked in `test/browser-scroll.mjs` on a new fixture (`demo/scroll.html?owner=page&greeting&below`, the box between 3,000px of page and 1,500px more) at 390 and 1280px: with the composer mid-screen the first message does not scroll the page up and the composer stays on screen; as the thread grows past the foot of the screen the page follows and stops with the thread's end at the bottom of the viewport, or 160px above it with `10rem`, 120px with `6em` at 20px, 90px with `90px`, and at the bottom again with an invalid value. Both checks fail on the code before this fix (the page went up 397px at 390px; with `10rem` the end sat at the bottom). The existing page, panel, ancestor, greeting, screen and missing-root cases pass unchanged.
+
+## 0.28.0 — A refused comment says why
+
+`CommentThread` always said "The comment could not be posted… try again" whatever the server answered, so a comment that was too short or over a rate limit was retried forever (seen on Substrata, 2026-11-12). A transport may now throw `new CommentRefused(words)` from `post` or `remove`; the thread shows those words. Any other error still shows `postFailed` / `removeFailed`, so a raw error or a server's English never reaches a reader by accident. `commentFailure(error, fallback)` is exported for apps that build their own box.
+
+## Unreleased — You can see where you are typing
+
+Found 2026-11-12 on bitbaum.orangecat.ch (`/`, `/hire/`, `/builders/`, `/loki/`): with keyboard focus in the composer's text area there was nothing to see. The text area drops its outline, and the only sign was the composer's 1px border stepping from 90% to 82% grey, 1.5:1 against the composer in light and 1.35:1 in dark with the design tokens, and the same colour focused and unfocused in a consumer's theme. In `ChatScreen`'s floating composer the border did not change at all. WCAG 2.4.7 asks for a visible focus indicator and 1.4.11 for 3:1 against what is next to it.
+
+- While the composer holds focus its border takes `--ck-focus`, which defaults to the secondary ink (`--ck-fg-2`) and so follows the theme: 5.7:1 on the composer in light, 7.0:1 in dark, in every composer shape (comfortable, compact and `ChatScreen`'s dock). Still a 1px border and no ring, so a click into the box looks as quiet as before; the composer keeps its size.
+- An app can set `--ck-focus` to its own colour, as with every `--ck-*` variable.
+- Checked in `test/browser.mjs` on the demo and the full screen at 390 and 1280px, light and dark: Tab reaches the text area, the border changes, it contrasts at least 3:1 with the composer's own background (computed in the page), and the composer measures the same focused and unfocused. The test fails on 0.27.0.
 
 ## 0.27.0 — A form's text area can be `DictationField`: name, error, submit keys, a blur that waits for the words
 

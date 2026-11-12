@@ -44,7 +44,12 @@ export type {
   DictationFieldInputProps,
   ImproveRun,
 } from "./DictationField.js";
-export { CommentThread, DEFAULT_COMMENT_THREAD_LABELS } from "./CommentThread.js";
+export {
+  CommentThread,
+  CommentRefused,
+  commentFailure,
+  DEFAULT_COMMENT_THREAD_LABELS,
+} from "./CommentThread.js";
 export type {
   CommentItem,
   CommentTransport,
