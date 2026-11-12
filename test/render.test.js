@@ -424,6 +424,115 @@ test("DictationField: Improve is offered only when there is text and a way to im
   assert.doesNotMatch(none, /ck-field-improve/);
 });
 
+test("DictationField: a form's field — name, autofocus and the app's own attributes", () => {
+  const html = renderToStaticMarkup(
+    h(DictationField, {
+      value: "hi",
+      onValueChange: () => {},
+      label: "Note",
+      id: "note",
+      name: "note",
+      autoFocus: true,
+      inputProps: {
+        spellCheck: false,
+        autoCapitalize: "sentences",
+        minLength: 3,
+        "data-testid": "note-box",
+        // Managed props win: the app cannot take the field's id, class or label wiring.
+        id: "stolen",
+        className: "mine",
+        // Not in the type (16px text is the package's), but a JS caller can pass it.
+        style: { fontSize: "8px" },
+        "aria-describedby": "app-note",
+      },
+      hint: "At least 3 characters",
+    }),
+  );
+  const area = /<textarea[^>]*>/.exec(html)?.[0] ?? "";
+  assert.match(area, /name="note"/);
+  assert.match(area, /autofocus=""/i);
+  assert.match(area, /spellcheck="false"/i);
+  assert.match(area, /autocapitalize="sentences"/i);
+  assert.match(area, /minlength="3"/i);
+  assert.match(area, /data-testid="note-box"/);
+  assert.match(area, /id="note"/, "the managed id wins over inputProps.id");
+  assert.doesNotMatch(area, /stolen|class="mine"|style=/);
+  assert.match(area, /class="ck-field-input"/);
+  assert.match(area, /aria-describedby="app-note note-hint"/, "an app's description is joined");
+  assert.match(html, /<div id="note-hint" class="ck-field-hint">At least 3 characters<\/div>/);
+  assert.doesNotMatch(area, /aria-invalid/, "no error, no aria-invalid");
+  assert.doesNotMatch(html, /ck-field-invalid|ck-field-error/);
+  const plain = renderToStaticMarkup(
+    h(DictationField, { value: "", onValueChange: () => {}, ariaLabel: "Plain" }),
+  );
+  assert.doesNotMatch(plain, /aria-describedby|aria-invalid|readonly|name=|autofocus/i);
+});
+
+test("DictationField: read-only shows the text with no microphone and no Improve", () => {
+  const html = renderToStaticMarkup(
+    h(DictationField, {
+      value: "settled",
+      onValueChange: () => {},
+      ariaLabel: "Note",
+      readOnly: true,
+      improve: { run: async () => "x" },
+      voice: { transcribeUrl: "/api/transcribe" },
+    }),
+  );
+  assert.match(html, /<textarea[^>]*readonly=""/i);
+  assert.doesNotMatch(html, /ck-mic|ck-field-improve/);
+});
+
+test("DictationField: an error is said under the field and wired to it", () => {
+  const html = renderToStaticMarkup(
+    h(DictationField, {
+      value: "",
+      onValueChange: () => {},
+      label: "Title",
+      id: "title",
+      multiline: false,
+      error: "A title is needed.",
+      hint: "One line",
+    }),
+  );
+  const input = /<input[^>]*class="ck-field-input"[^>]*>/.exec(html)?.[0] ?? "";
+  assert.match(input, /aria-invalid="true"/, "error implies invalid");
+  assert.match(html, /class="ck-field-wrap ck-field-invalid"/);
+  assert.match(
+    html,
+    /<p id="title-error" class="ck-field-error" role="alert">A title is needed\.<\/p>/,
+  );
+  const ids = /aria-describedby="([^"]+)"/.exec(input)?.[1].split(" ") ?? [];
+  assert.deepEqual(ids, ["title-error", "title-hint"]);
+  for (const id of ids) assert.ok(html.includes(`id="${id}"`), `${id} exists in the markup`);
+  const flagged = renderToStaticMarkup(
+    h(DictationField, { value: "", onValueChange: () => {}, ariaLabel: "x", invalid: true }),
+  );
+  assert.match(flagged, /aria-invalid="true"/);
+  assert.doesNotMatch(
+    flagged,
+    /ck-field-error|aria-describedby/,
+    "invalid alone adds no empty error",
+  );
+  // A host's `error={msg ?? ""}` or `error={n && msg}` on a valid field: no
+  // danger frame and no "invalid" with nothing said.
+  for (const empty of ["", 0]) {
+    const quiet = renderToStaticMarkup(
+      h(DictationField, { value: "", onValueChange: () => {}, ariaLabel: "x", error: empty }),
+    );
+    assert.doesNotMatch(
+      quiet,
+      /ck-field-invalid|aria-invalid|ck-field-error|aria-describedby/,
+      `error=${JSON.stringify(empty)} is no error`,
+    );
+  }
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.ck-field-invalid > \.ck-field-frame > \.ck-field[^{]*\{[^}]*var\(--ck-danger\)/,
+  );
+});
+
 test("CommentThread: count heading, oldest first, text not markup, and a way to sign in", () => {
   const comments = [
     { id: "1", author: "Ana", body: "<b>first</b>", createdAt: "2026-11-05T10:00:00Z" },

@@ -2588,6 +2588,23 @@ a.ck-turn-chip:hover {
   font-size: 0.875rem;
   color: var(--ck-muted);
 }
+/* The error state. The frame turns the danger colour (a 2px edge, drawn
+   inside so nothing moves; only this field's frame, not the improve box in
+   its panel), and the error is said in words under it: colour
+   is never the only sign. */
+.ck-field-invalid > .ck-field-frame > .ck-field,
+.ck-field-invalid > .ck-field-frame > .ck-field:focus-within {
+  border-color: var(--ck-danger);
+  box-shadow: inset 0 0 0 1px var(--ck-danger);
+}
+.ck-field-error {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ck-danger);
+  overflow-wrap: anywhere;
+}
 :where(.ck-field-wrap, .ck-comments) button:focus-visible,
 .ck-comment-signin-link:focus-visible {
   outline: 2px solid var(--ck-accent);
