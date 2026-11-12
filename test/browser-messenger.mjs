@@ -530,12 +530,16 @@ try {
     // leaving the end of the thread, and the thread would rightly follow on.
     // Up to the top and no further, so what happens next is the loading.
     await page.mouse.move(195, 400);
-    for (let i = 0; i < 40; i++) {
+    const loaded = () => page.locator(".ck-msgr-bubble").count();
+    for (let i = 0; i < 40 && (await loaded()) === 30; i++) {
       if ((await page.$eval(".ck-msgr-scroll", (el) => el.scrollTop)) <= 0) break;
       await page.mouse.wheel(0, -300);
       await page.waitForTimeout(20);
     }
-    await page.waitForFunction(() => document.querySelectorAll(".ck-msgr-bubble").length === 60);
+    // The wheel stops here: what moves the thread from now on is the page of
+    // history arriving, not the reader.
+    await page.waitForFunction(() => document.querySelectorAll(".ck-msgr-bubble").length >= 60);
+    check((await loaded()) === 60, "long: reaching the top loads the page before it, once");
     const kept = await page.evaluate((text) => {
       const scroller = document.querySelector(".ck-msgr-scroll").getBoundingClientRect();
       const bubble = [...document.querySelectorAll(".ck-msgr-bubble")].find(
