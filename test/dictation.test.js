@@ -151,3 +151,28 @@ test("a server leg that cannot record falls back to the recogniser", () => {
   assert.equal(dictationLeg({ ...phone, canRecord: false }), "browser");
   assert.equal(dictationLeg({ ...phone, canRecord: false, hasRecogniser: false }), "none");
 });
+
+test("a page whose policy blocks the microphone offers no mic", async () => {
+  const { microphoneAllowedByPolicy } = await import("../dist/index.js");
+  const doc = (allowed) => ({
+    permissionsPolicy: { allowsFeature: (f) => (f === "microphone" ? allowed : true) },
+  });
+  assert.equal(microphoneAllowedByPolicy(doc(false)), false);
+  assert.equal(microphoneAllowedByPolicy(doc(true)), true);
+  // The older name some browsers still carry.
+  assert.equal(microphoneAllowedByPolicy({ featurePolicy: { allowsFeature: () => false } }), false);
+  // No policy API, no document: allowed, as before.
+  assert.equal(microphoneAllowedByPolicy({}), true);
+  assert.equal(microphoneAllowedByPolicy(null), true);
+  // A throwing implementation does not take the mic away.
+  assert.equal(
+    microphoneAllowedByPolicy({
+      permissionsPolicy: {
+        allowsFeature: () => {
+          throw new Error("x");
+        },
+      },
+    }),
+    true,
+  );
+});

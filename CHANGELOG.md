@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — No microphone on a page that may not use one
+
+A host that sends `Permissions-Policy: microphone=()` (the fleet's starter template, and orangecat.ch for a while) made every take fail with "blocked", a problem the person cannot fix, while every `Composer` and `DictationField` still drew the mic. `useDictation`'s `supported` is now false when the page's policy refuses the microphone, so the mic is not drawn. `microphoneAllowedByPolicy(document)` is exported for apps that draw their own. A browser without the policy API behaves as before. Found by the package audit of 2026-11-12; Loki's widget hand-rolled this check.
+
 ## Unreleased — Agents are members: an "Agent" mark and whom it works for
 
 In a room where people and agents both answer, a reader has to know which is which and who answers for an agent's words. `ChatSpeaker` gains `kind: "agent" | "person"` (an agent gets a small "Agent" mark beside its name) and `onBehalfOf` (drawn as "Loki · for Georgy"). Both labels are translatable (`labels.agent`, `labels.onBehalfOf` with `{name}`), both optional, so existing apps are unchanged. The streaming turn shows the same line.
