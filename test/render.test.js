@@ -441,6 +441,8 @@ test("DictationField: a form's field — name, autofocus and the app's own attri
         // Managed props win: the app cannot take the field's id, class or label wiring.
         id: "stolen",
         className: "mine",
+        // Not in the type (16px text is the package's), but a JS caller can pass it.
+        style: { fontSize: "8px" },
         "aria-describedby": "app-note",
       },
       hint: "At least 3 characters",
@@ -454,7 +456,7 @@ test("DictationField: a form's field — name, autofocus and the app's own attri
   assert.match(area, /minlength="3"/i);
   assert.match(area, /data-testid="note-box"/);
   assert.match(area, /id="note"/, "the managed id wins over inputProps.id");
-  assert.doesNotMatch(area, /stolen|class="mine"/);
+  assert.doesNotMatch(area, /stolen|class="mine"|style=/);
   assert.match(area, /class="ck-field-input"/);
   assert.match(area, /aria-describedby="app-note note-hint"/, "an app's description is joined");
   assert.match(html, /<div id="note-hint" class="ck-field-hint">At least 3 characters<\/div>/);
@@ -512,6 +514,18 @@ test("DictationField: an error is said under the field and wired to it", () => {
     /ck-field-error|aria-describedby/,
     "invalid alone adds no empty error",
   );
+  // A host's `error={msg ?? ""}` or `error={n && msg}` on a valid field: no
+  // danger frame and no "invalid" with nothing said.
+  for (const empty of ["", 0]) {
+    const quiet = renderToStaticMarkup(
+      h(DictationField, { value: "", onValueChange: () => {}, ariaLabel: "x", error: empty }),
+    );
+    assert.doesNotMatch(
+      quiet,
+      /ck-field-invalid|aria-invalid|ck-field-error|aria-describedby/,
+      `error=${JSON.stringify(empty)} is no error`,
+    );
+  }
   const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
   assert.match(
     css,

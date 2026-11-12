@@ -78,7 +78,7 @@
     "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run build && pnpm test && pnpm run test:browser",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "demo": "esbuild demo/demo.tsx --bundle --jsx=automatic --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=demo/dist/demo.js --log-level=warning",
+    "demo": "esbuild demo/demo.tsx --bundle --jsx=automatic --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=demo/dist/demo.js --log-level=warning && esbuild demo/demo.tsx --bundle --jsx=automatic --format=iife --define:process.env.NODE_ENV='\"development\"' --outfile=demo/dist/demo-dev.js --log-level=warning",
     "test:browser": "pnpm run demo && node test/browser.mjs && node test/browser-scroll.mjs && node test/browser-app.mjs && node test/browser-pdf.mjs && node test/browser-field.mjs"
   },
   "devDependencies": {

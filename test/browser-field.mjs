@@ -382,6 +382,37 @@ try {
     );
     delay = 0;
 
+    // Improve at work disables its own box: focus falls off it with nowhere
+    // to go, long after any press. The person is still in the field.
+    await reset();
+    await note.click();
+    await wrap.getByRole("button", { name: "Improve" }).click();
+    const what = page.locator(".ck-field-improve-panel input");
+    await what.fill("slow please");
+    await page.waitForTimeout(1100);
+    const asked = await note.inputValue();
+    await what.press("Enter");
+    await page
+      .waitForFunction(
+        () => document.querySelector("#note").value.includes("[slow please]"),
+        null,
+        {
+          timeout: 5000,
+        },
+      )
+      .catch(() => {});
+    await page.waitForTimeout(200);
+    check(
+      (await note.inputValue()) === `${asked} [slow please]` && (await count("blur:")) === 0,
+      `${name}: applying Improve from the keyboard while it works is not a blur (${await logOf()})`,
+    );
+    await page.locator("#elsewhere").click();
+    await page.waitForTimeout(100);
+    check(
+      (await count("blur:note")) === 1,
+      `${name}: and leaving afterwards is one blur (${await logOf()})`,
+    );
+
     // A one-line field: Enter submits, Shift+Enter and a composing Enter do not.
     await reset();
     await title.click();
@@ -426,9 +457,26 @@ try {
     await title.pressSequentially("My title");
     await title.press("Shift+Enter");
     check(
-      (await count("submit:title:")) === 1,
-      `${name}: Shift+Enter does not submit a one-line field`,
+      (await count("submit:title:")) === 1 && (await count("native-submit")) === 0,
+      `${name}: Shift+Enter submits neither the field nor its native form (${await logOf()})`,
     );
+    // Enter during a take: no submit, and the native form is not sent without
+    // the words being said.
+    await page.locator("#native .ck-mic").click();
+    await page.locator("#native .ck-voice-confirm").waitFor({ timeout: 5000 });
+    await title.focus();
+    await title.press("Enter");
+    check(
+      (await count("submit:title:")) === 1 && (await count("native-submit")) === 0,
+      `${name}: Enter while listening sends nothing (${await logOf()})`,
+    );
+    await page.locator("#native .ck-voice-confirm").click();
+    await page
+      .waitForFunction(() => document.querySelector("#title").value.includes("said aloud"), null, {
+        timeout: 8000,
+      })
+      .catch(() => {});
+    await title.fill("My title");
     await title.evaluate((el) =>
       el.dispatchEvent(
         new KeyboardEvent("keydown", {

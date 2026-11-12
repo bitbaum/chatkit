@@ -10,15 +10,17 @@ import { type FocusEvent as ReactFocusEvent } from "react";
  *
  * Focus can also go nowhere (`relatedTarget` null): a tap on empty page, a
  * button that takes no focus (Safari), a control the field itself removes or
- * disables during a take, or the window losing focus. Once focus has settled
+ * disables while busy, or the window losing focus. Once focus has settled
  * the field decides: back inside, or the window switched away → still here; a
  * recent press inside → still here (the press was on the field); a recent
  * press outside → left. Until a later press or focus lands outside, the field
  * counts as focused, and the document listeners report the blur then.
  *
- * A blur while `busy` (a take is recorded or transcribed) is held and
- * reported once the take has ended, which is after its words were delivered,
- * so a host that unmounts the field on blur never loses what was said.
+ * A blur while `busy` (a take is recorded or transcribed, or Improve is at
+ * work) is held and reported once that has ended, which is after a take's
+ * words were delivered, so a host that unmounts the field on blur never loses
+ * what was said. A field unmounted while its blur is held reports none: the
+ * words still reach `onValueChange`, the blur does not.
  */
 export declare function useFieldFocus({ busy, onFocus, onBlur, }: {
     busy: boolean;

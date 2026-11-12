@@ -462,7 +462,9 @@ surface).
 
 A field in a form needs more than a note box: a name for the post, an error,
 the keys that submit it, and a blur an inline editor can save on. All of it is
-optional; without these props the field is what it was.
+optional; without these props the field is what it was, except that a `hint`
+is now linked to the field with `aria-describedby`, and Enter in Improve's
+"What should change?" box applies the instruction.
 
 ```tsx
 <form action="/api/listing" method="post">
@@ -483,14 +485,16 @@ optional; without these props the field is what it was.
   change the text), `id`, `maxLength`, `disabled`, `required`.
 - `invalid` and `error`: `aria-invalid="true"`, the frame in `--ck-danger`, and
   the error in words under the field (`<p class="ck-field-error" role="alert">`).
-  `error` implies `invalid`. The error and `hint` describe the field through
+  `error` implies `invalid`; an empty `error` (`""`, `0`) is no error. The error and `hint` describe the field through
   `aria-describedby` (ids `<id>-error`, `<id>-hint`).
 - `onSubmit`: the submit keys are the package's, so they are the same in every
   app. Cmd+Enter or Ctrl+Enter in a multi-line field, Enter in a one-line one
   (Shift+Enter does nothing there). Never during an IME composition, never
   while disabled or read-only, never while a take is recorded or transcribed.
-  The key's default is prevented, so a one-line field does not also send its
-  native form.
+  With `onSubmit` set, Enter in a one-line field is the package's whether it
+  submits or not: the browser's own form post never runs, so a form is not
+  sent mid-take without the words. An Enter that ends an IME composition is
+  left to the browser.
 - `onKeyDown` runs first, on every key (Escape to cancel an inline editor);
   `event.preventDefault()` there stops `onSubmit`.
 - `onFocus` / `onBlur` belong to the whole field: the text box, the
@@ -498,8 +502,10 @@ optional; without these props the field is what it was.
   pressing the microphone does not close an inline editor that saves on blur.
   Leaving while a take is recorded or transcribed is reported once the take
   has ended and its words have gone through `onValueChange`, so a host that
-  unmounts the field on blur keeps what was said. A switch to another window
-  or app is not a blur.
+  unmounts the field on blur keeps what was said. Waiting for Improve is not
+  a blur either. A switch to another window or app is not a blur. A field
+  unmounted by the host while its blur is held reports no blur (the words
+  still arrive through `onValueChange`).
 - `inputProps`: what the box itself may also take — `spellCheck`,
   `autoComplete`, `autoCapitalize`, `inputMode`, `enterKeyHint`, `minLength`,
   `aria-*`, `data-*` (`DictationFieldInputProps`). Spread before the managed

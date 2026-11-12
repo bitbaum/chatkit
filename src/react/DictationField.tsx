@@ -232,15 +232,25 @@ export function DictationField({
   const voiceOn = voice !== false && dictation.supported && !readOnly;
   const listening = dictation.status === "listening";
   const transcribing = dictation.status === "transcribing";
-  const focus = useFieldFocus({ busy: dictation.status !== "idle", onFocus, onBlur });
-  const isInvalid = invalid || (error !== undefined && error !== null && error !== false);
+  const [open, setOpen] = useState(false);
+  const [working, setWorking] = useState(false);
+  // Improve at work disables its own box and button, so focus falls off them
+  // with nowhere to go: the person is still in the field, waiting.
+  const focus = useFieldFocus({
+    busy: dictation.status !== "idle" || working,
+    onFocus,
+    onBlur,
+  });
+  // An error with no words (`error=""` from a `?? ""`, a `0` from `n && msg`)
+  // is no error: colour must never be the only sign.
+  const hasError =
+    error !== undefined && error !== null && error !== false && error !== "" && error !== 0;
+  const isInvalid = invalid || hasError;
   const hintId = hint ? `${fieldId}-hint` : undefined;
-  const errorId = isInvalid && error ? `${fieldId}-error` : undefined;
+  const errorId = hasError ? `${fieldId}-error` : undefined;
   const describedBy =
     [inputProps?.["aria-describedby"], errorId, hintId].filter(Boolean).join(" ") || undefined;
 
-  const [open, setOpen] = useState(false);
-  const [working, setWorking] = useState(false);
   const [failed, setFailed] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [undo, setUndo] = useState<string | null>(null);
@@ -269,6 +279,7 @@ export function DictationField({
   const common = {
     id: fieldId,
     className: "ck-field-input",
+    style: undefined,
     value,
     placeholder: listening ? labels.listening : placeholder,
     maxLength,
@@ -287,10 +298,13 @@ export function DictationField({
     // An Enter that confirms an IME composition (Japanese, Chinese, Korean)
     // is the person choosing a word, not sending.
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-    if (disabled || readOnly || dictation.status !== "idle") return;
     const chord = e.metaKey || e.ctrlKey;
-    if (multiline ? !chord : e.shiftKey || e.altKey) return;
+    if (multiline && !chord) return; // a new line
+    // From here the key is the package's: in a one-line field the browser
+    // would otherwise send the native form, mid-take, without the words.
     e.preventDefault();
+    if (disabled || readOnly || dictation.status !== "idle") return;
+    if (!multiline && (e.shiftKey || e.altKey)) return;
     onSubmit();
   };
   const onChange = (next: string) => {

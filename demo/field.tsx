@@ -100,7 +100,14 @@ function FormFixture() {
         value={note}
         onValueChange={setNote}
         voice={{ transcribeUrl: "/api/transcribe" }}
-        improve={{ suggestions: ["Make it tighter"], run: async (t) => t }}
+        improve={{
+          suggestions: ["Make it tighter"],
+          run: async (t, what) => {
+            // "slow": longer than a press explains a lost focus (field-focus.ts).
+            if (/slow/.test(what)) await new Promise((r) => setTimeout(r, 1500));
+            return /slow/.test(what) ? `${t} [${what}]` : t;
+          },
+        }}
         onFocus={() => log("focus:note")}
         onBlur={() => log(`blur:note:${note}`)}
         onSubmit={() => log(`submit:note:${note}`)}
@@ -145,7 +152,8 @@ export function mountFieldFixture() {
   if (el) createRoot(el).render(<Fixture />);
   const form = document.getElementById("form-fixture");
   // Strict Mode on purpose: the document listeners must clean up, and a held
-  // blur must not be reported twice.
+  // blur must not be reported twice. field-form.html loads the development
+  // bundle (demo-dev.js), where Strict Mode actually runs effects twice.
   if (form)
     createRoot(form).render(
       <StrictMode>
