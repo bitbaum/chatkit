@@ -314,6 +314,11 @@ try {
       `${name}: and brings it to the top of the list`,
     );
     await page.locator(".ck-msgr-row", { hasText: "Ben Ito" }).click();
+    // Side by side, the conversation that was open may still be on screen with
+    // a "New" line of its own: wait for THIS one before reading the thread.
+    await page.waitForFunction(
+      () => document.querySelector(".ck-msgr-top-name")?.textContent?.includes("Ben Ito") === true,
+    );
     await page.waitForSelector(".ck-msgr-unread-line");
     check(
       (await page.locator(".ck-msgr-unread-line").textContent()) === "New",
