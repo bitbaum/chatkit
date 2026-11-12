@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, dictationLeg, fallbackCanRescue, heardFromResults, liveWords, problemFor, problemForTranscription, retryableProblem, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
+import { MAX_AUDIO_FILE_BYTES, MAX_RECORDING_MS, PERMISSION_WAIT_MS, RECORDING_MIME_CANDIDATES, START_TIMEOUT_MS, audioFileName, deadRecogniserStillTrusted, dictationLeg, fallbackCanRescue, heardFromResults, liveWords, microphoneAllowedByPolicy, problemFor, problemForTranscription, retryableProblem, problemForRecording, reasonFromBody, reasonOf, TranscriptionError, } from "../dictation.js";
 function recogniser() {
     if (typeof window === "undefined")
         return undefined;
@@ -74,7 +74,8 @@ export function useDictation(opts) {
     const { prefer, maxRecordingMs = MAX_RECORDING_MS, maxAudioFileBytes = MAX_AUDIO_FILE_BYTES, } = opts;
     const rememberKey = opts.rememberKey === undefined ? DEFAULT_REMEMBER_KEY : opts.rememberKey;
     const hasServer = Boolean(opts.transcribe || opts.transcribeUrl);
-    const supported = useSyncExternalStore(noSubscribe, () => Boolean(recogniser()) || (hasServer && canRecord()), () => false);
+    const supported = useSyncExternalStore(noSubscribe, () => microphoneAllowedByPolicy(typeof document === "undefined" ? null : document) &&
+        (Boolean(recogniser()) || (hasServer && canRecord())), () => false);
     const [status, setStatus] = useState("idle");
     const [startedAt, setStartedAt] = useState(null);
     const [liveText, setLiveText] = useState("");

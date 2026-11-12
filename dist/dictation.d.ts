@@ -210,4 +210,14 @@ export declare function reasonFromBody(body: unknown): string | null;
 export declare function reasonOf(error: unknown): string | null;
 /** The default words for each problem. Override per app (and per language). */
 export declare const DEFAULT_DICTATION_MESSAGES: Record<DictationProblem, string>;
+/**
+ * Whether the page's Permissions-Policy lets it use the microphone.
+ *
+ * A host that sends `microphone=()` (the fleet's starter template did, and so
+ * did orangecat.ch for a while) makes every take fail with "blocked", which the
+ * person cannot fix. Without this check every composer still drew a mic that
+ * could only fail; Loki's widget hand-rolled the same test to avoid it. A
+ * browser without the policy API is assumed to allow it, as before.
+ */
+export declare function microphoneAllowedByPolicy(doc: unknown): boolean;
 //# sourceMappingURL=dictation.d.ts.map

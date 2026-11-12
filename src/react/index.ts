@@ -38,7 +38,12 @@ export type {
   ThreadLabels,
 } from "./Thread.js";
 export { DictationField, DEFAULT_DICTATION_FIELD_LABELS } from "./DictationField.js";
-export type { DictationFieldProps, DictationFieldLabels, ImproveRun } from "./DictationField.js";
+export type {
+  DictationFieldProps,
+  DictationFieldLabels,
+  DictationFieldInputProps,
+  ImproveRun,
+} from "./DictationField.js";
 export {
   CommentThread,
   CommentRefused,

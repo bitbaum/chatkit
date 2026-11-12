@@ -6,7 +6,10 @@
 // microphone and 16px text (iOS zooms below it), every control must be a
 // thumb's size, nothing may scroll sideways at 320px, a failed take or a
 // failed "improve" must say so and keep the person's text, and a comment
-// must post, list and be removable without a reload.
+// must post, list and be removable without a reload. On field-form.html: the
+// submit keys a form needs, focus and blur for the whole field (the mic is not
+// a blur; a blur during a take waits for the words), and an error that is
+// seen in both themes and said in words.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -239,6 +242,303 @@ try {
       (await empty.locator(".ck-comments-title").innerText()) === "No comments yet",
       "comments: an empty thread says so",
     );
+    await page.close();
+  }
+
+  // ── a form's field: submit keys, field-level focus, the error state ──────
+  // On demo/field-form.html: an inline editor (Note) that logs focus, blur
+  // and submit, a one-line Title with a name and an error inside a native
+  // <form>, and an "Elsewhere" button to take focus to.
+  const formUrl = base.replace("field.html", "field-form.html");
+  for (const [name, width, dark] of [
+    ["form phone light", 390, false],
+    ["form phone dark", 390, true],
+    ["form desktop light", 1280, false],
+    ["form desktop dark", 1280, true],
+  ]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    let delay = 0;
+    await page.route("**/api/transcribe", async (route) => {
+      await new Promise((r) => setTimeout(r, delay));
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ text: "said aloud" }),
+      });
+    });
+    await page.goto(formUrl);
+    if (dark) await page.evaluate(() => document.documentElement.classList.add("dark"));
+    const note = page.locator("#note");
+    const title = page.locator("#title");
+    await note.waitFor();
+    const logOf = () => page.evaluate(() => window.__log.slice());
+    const count = async (prefix) => (await logOf()).filter((e) => e.startsWith(prefix)).length;
+    const reset = () => page.evaluate(() => (window.__log.length = 0));
+
+    // Submit keys in a multi-line field: Enter is a new line, Cmd/Ctrl+Enter submits.
+    await note.click();
+    check((await count("focus:note")) === 1, `${name}: focus entering the field is reported once`);
+    await note.pressSequentially("hello");
+    await note.press("Enter");
+    check(
+      (await count("submit:")) === 0 && (await note.inputValue()) === "hello\n",
+      `${name}: Enter in a multi-line field is a new line, not a submit`,
+    );
+    await note.press("Control+Enter");
+    await note.press("Meta+Enter");
+    check((await count("submit:note")) === 2, `${name}: Ctrl+Enter and Cmd+Enter submit`);
+    check(
+      (await note.inputValue()) === "hello\n",
+      `${name}: a submitting Enter adds no line break`,
+    );
+    await note.evaluate((el) =>
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          ctrlKey: true,
+          isComposing: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    check(
+      (await count("submit:note")) === 2,
+      `${name}: an Enter ending an IME composition does not submit`,
+    );
+    await page.evaluate(() => (window.__suppressEnter = true));
+    await note.press("Control+Enter");
+    await page.evaluate(() => (window.__suppressEnter = false));
+    check(
+      (await count("submit:note")) === 2,
+      `${name}: onKeyDown's preventDefault stops the submit`,
+    );
+    await note.press("Escape");
+    check((await count("cancel:note")) === 1, `${name}: the app's onKeyDown sees every key`);
+
+    // Field-level focus: the microphone and Improve are part of the field.
+    await reset();
+    const wrap = page.locator(".ck-field-wrap").first();
+    await wrap.getByRole("button", { name: "Improve" }).click();
+    await wrap.getByRole("button", { name: "Improve" }).click();
+    await wrap.locator(".ck-mic").first().click();
+    await page.locator(".ck-voice-confirm").first().waitFor({ timeout: 5000 });
+    check((await count("blur:")) === 0, `${name}: pressing the microphone is not a blur`);
+    await page.waitForTimeout(300);
+    await page.locator(".ck-voice-confirm").first().click();
+    await page
+      .waitForFunction(() => document.querySelector("#note").value.includes("said aloud"), null, {
+        timeout: 8000,
+      })
+      .catch(() => {});
+    await page.waitForTimeout(100);
+    check(
+      (await note.inputValue()).includes("said aloud") && (await count("blur:")) === 0,
+      `${name}: a whole take, pressed through to done, is not a blur (${await logOf()})`,
+    );
+    await note.click();
+    await page.locator("#elsewhere").click();
+    await page.waitForTimeout(100);
+    check(
+      (await count("blur:note")) === 1,
+      `${name}: focus moving to another element is one blur (${await logOf()})`,
+    );
+    // A tap on empty page: focus goes nowhere (relatedTarget null), still a blur.
+    await note.click();
+    await page.mouse.click(4, 890);
+    await page.waitForTimeout(100);
+    check(
+      (await count("blur:note")) === 2 && (await count("focus:note")) === 1,
+      `${name}: a tap on empty page is one blur (${await logOf()})`,
+    );
+
+    // A blur during a take waits for the words.
+    await reset();
+    delay = 1200;
+    await note.click();
+    await wrap.locator(".ck-mic").first().click();
+    await page.locator(".ck-voice-confirm").first().waitFor({ timeout: 5000 });
+    await page.waitForTimeout(300);
+    const before = await note.inputValue();
+    await page.locator(".ck-voice-confirm").first().click();
+    await page.locator("#elsewhere").click();
+    await page.waitForTimeout(300);
+    check(
+      (await count("blur:")) === 0,
+      `${name}: leaving while the take is transcribed holds the blur (${await logOf()})`,
+    );
+    await page
+      .waitForFunction((b) => document.querySelector("#note").value.length > b.length, before, {
+        timeout: 8000,
+      })
+      .catch(() => {});
+    await page.waitForTimeout(100);
+    const after = await note.inputValue();
+    const blurs = (await logOf()).filter((e) => e.startsWith("blur:note:"));
+    check(
+      blurs.length === 1 && blurs[0] === `blur:note:${after}` && after.length > before.length,
+      `${name}: the held blur comes once, after the words landed (${blurs})`,
+    );
+    delay = 0;
+
+    // Improve at work disables its own box: focus falls off it with nowhere
+    // to go, long after any press. The person is still in the field.
+    await reset();
+    await note.click();
+    await wrap.getByRole("button", { name: "Improve" }).click();
+    const what = page.locator(".ck-field-improve-panel input");
+    await what.fill("slow please");
+    await page.waitForTimeout(1100);
+    const asked = await note.inputValue();
+    await what.press("Enter");
+    await page
+      .waitForFunction(
+        () => document.querySelector("#note").value.includes("[slow please]"),
+        null,
+        {
+          timeout: 5000,
+        },
+      )
+      .catch(() => {});
+    await page.waitForTimeout(200);
+    check(
+      (await note.inputValue()) === `${asked} [slow please]` && (await count("blur:")) === 0,
+      `${name}: applying Improve from the keyboard while it works is not a blur (${await logOf()})`,
+    );
+    await page.locator("#elsewhere").click();
+    await page.waitForTimeout(100);
+    check(
+      (await count("blur:note")) === 1,
+      `${name}: and leaving afterwards is one blur (${await logOf()})`,
+    );
+
+    // A one-line field: Enter submits, Shift+Enter and a composing Enter do not.
+    await reset();
+    await title.click();
+    await title.press("Enter");
+    check((await count("submit:title:")) === 1, `${name}: Enter submits a one-line field`);
+    check((await count("native-submit")) === 0, `${name}: and the native form is not also sent`);
+    const err = page.locator(".ck-field-error");
+    await err.waitFor({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(300); // the frame's border-color transition
+    const look = await page.evaluate(() => {
+      const noteBox = document.querySelector("#note").closest(".ck-field");
+      const titleBox = document.querySelector("#title").closest(".ck-field");
+      const input = document.querySelector("#title");
+      const error = document.querySelector(".ck-field-error");
+      return {
+        valid: getComputedStyle(noteBox).borderTopColor,
+        invalid: getComputedStyle(titleBox).borderTopColor,
+        ariaInvalid: input.getAttribute("aria-invalid"),
+        describedBy: (input.getAttribute("aria-describedby") ?? "")
+          .split(" ")
+          .map((id) => document.getElementById(id)?.textContent ?? "(missing)"),
+        role: error?.getAttribute("role"),
+        text: error?.textContent ?? "",
+        errorColour: error ? getComputedStyle(error).color : "",
+        textColour: getComputedStyle(document.querySelector(".ck-field-label")).color,
+      };
+    });
+    check(
+      look.valid !== look.invalid,
+      `${name}: the invalid frame is drawn in another colour (${look.invalid} vs ${look.valid})`,
+    );
+    check(
+      look.text.includes("A title is needed") && look.role === "alert",
+      `${name}: the error is said in words, as an alert`,
+    );
+    check(
+      look.ariaInvalid === "true" &&
+        look.describedBy.join("|") ===
+          "A title is needed before this can be saved.|One line, said or typed.",
+      `${name}: aria-invalid, and the error and hint describe the field (${look.describedBy})`,
+    );
+    await title.pressSequentially("My title");
+    await title.press("Shift+Enter");
+    check(
+      (await count("submit:title:")) === 1 && (await count("native-submit")) === 0,
+      `${name}: Shift+Enter submits neither the field nor its native form (${await logOf()})`,
+    );
+    // Enter during a take: no submit, and the native form is not sent without
+    // the words being said.
+    await page.locator("#native .ck-mic").click();
+    await page.locator("#native .ck-voice-confirm").waitFor({ timeout: 5000 });
+    await title.focus();
+    await title.press("Enter");
+    check(
+      (await count("submit:title:")) === 1 && (await count("native-submit")) === 0,
+      `${name}: Enter while listening sends nothing (${await logOf()})`,
+    );
+    await page.locator("#native .ck-voice-confirm").click();
+    await page
+      .waitForFunction(() => document.querySelector("#title").value.includes("said aloud"), null, {
+        timeout: 8000,
+      })
+      .catch(() => {});
+    await title.fill("My title");
+    await title.evaluate((el) =>
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          isComposing: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    check((await count("submit:title:")) === 1, `${name}: a composing Enter does not submit`);
+    await title.press("Enter");
+    check(
+      (await logOf()).includes("submit:title:My title"),
+      `${name}: Enter submits the one-line field with its text`,
+    );
+    check(
+      (await page.evaluate(() => new FormData(document.querySelector("#native")).get("title"))) ===
+        "My title",
+      `${name}: the field posts with its form under its name`,
+    );
+    check(
+      (await page.locator(".ck-field-error").count()) === 0 &&
+        (await title.getAttribute("aria-invalid")) === null,
+      `${name}: the error goes once it is fixed`,
+    );
+    check(errors.length === 0, `${name}: no page errors ${errors.join(" | ")}`);
+    await page.close();
+  }
+
+  // ── an error shown at phone widths: nothing small, nothing sideways ──────
+  for (const [name, width, dark] of [
+    ["error 390 light", 390, false],
+    ["error 390 dark", 390, true],
+    ["error 320 light", 320, false],
+    ["error 320 dark", 320, true],
+  ]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    await page.goto(formUrl);
+    if (dark) await page.evaluate(() => document.documentElement.classList.add("dark"));
+    await page.locator("#title").click();
+    await page.locator("#title").press("Enter");
+    await page
+      .locator(".ck-field-error")
+      .waitFor({ timeout: 2000 })
+      .catch(() => {});
+    const m = await page.evaluate(() => ({
+      error: document.querySelector(".ck-field-error")?.getBoundingClientRect().height ?? 0,
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+      small: [...document.querySelectorAll(".ck-field-wrap button")]
+        .map((e) => e.getBoundingClientRect())
+        .filter((r) => r.width > 0 && (r.width < 44 || r.height < 44)).length,
+      fontMin: Math.min(
+        ...[...document.querySelectorAll(".ck-field-input")].map((e) =>
+          parseFloat(getComputedStyle(e).fontSize),
+        ),
+      ),
+    }));
+    check(m.error > 0, `${name}: the error is shown`);
+    check(m.overflow <= 0, `${name}: no horizontal scroll with an error (${m.overflow}px over)`);
+    check(m.small === 0, `${name}: every control >= 44px with an error (${m.small} smaller)`);
+    check(m.fontMin >= 16, `${name}: field text stays >= 16px (${m.fontMin}px)`);
     await page.close();
   }
 } finally {

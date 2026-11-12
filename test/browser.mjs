@@ -727,6 +727,114 @@ try {
     await desk.close();
   }
 
+  // Keyboard focus in the composer is visible (WCAG 2.4.7) and contrasts 3:1
+  // with the composer's own background (1.4.11). Measured on
+  // bitbaum.orangecat.ch (2026-11-12): the text area drops its outline, and
+  // the only sign of focus was a 1px border stepping from 90% to 82% grey,
+  // the same colour focused and unfocused in a consumer's theme. Tab to the
+  // box, then read the border off the page: it must change, contrast 3:1 with
+  // what is behind it, and the composer must not move or resize.
+  for (const [file, scope] of [
+    ["index.html", ".ck-composer"],
+    ["screen.html", ".ck-screen-dock .ck-composer"],
+  ]) {
+    for (const width of [390, 1280]) {
+      for (const dark of [false, true]) {
+        const name = `composer focus, ${file} ${width}px ${dark ? "dark" : "light"}`;
+        const page = await browser.newPage({ viewport: { width, height: 844 } });
+        await page.goto(base.replace("index.html", file));
+        if (dark) await page.evaluate(() => document.documentElement.classList.add("dark"));
+        await page.waitForSelector(`${scope} .ck-input`);
+        await page.waitForTimeout(200);
+        const read = (sel) =>
+          page.evaluate((sel) => {
+            const ctx = Object.assign(document.createElement("canvas"), {
+              width: 1,
+              height: 1,
+            }).getContext("2d", { willReadFrequently: true });
+            const rgba = (c) => {
+              ctx.clearRect(0, 0, 1, 1);
+              ctx.fillStyle = "rgba(0,0,0,0)";
+              ctx.fillStyle = c;
+              ctx.fillRect(0, 0, 1, 1);
+              const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+              return [r, g, b, a / 255];
+            };
+            const over = ([r, g, b, a], [R, G, B]) => [
+              r * a + R * (1 - a),
+              g * a + G * (1 - a),
+              b * a + B * (1 - a),
+            ];
+            const lum = (c) => {
+              const [r, g, b] = c.map((v) => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+              });
+              return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            };
+            const el = document.querySelector(sel);
+            // What the composer is drawn on: its own background over every
+            // ancestor's, down to the canvas.
+            const layers = [];
+            for (let e = el; e; e = e.parentElement) {
+              layers.push(rgba(getComputedStyle(e).backgroundColor));
+            }
+            let bg = [255, 255, 255];
+            for (const layer of layers.reverse()) bg = over(layer, bg);
+            const cs = getComputedStyle(el);
+            const border = over(rgba(cs.borderTopColor), bg);
+            const [hi, lo] = [lum(border), lum(bg)].sort((a, b) => b - a);
+            const r = el.getBoundingClientRect();
+            return {
+              border: border.map(Math.round).join(","),
+              shadow: cs.boxShadow,
+              contrast: (hi + 0.05) / (lo + 0.05),
+              size: `${r.width}x${r.height}`,
+              focused: !!el.querySelector(".ck-input:focus-visible"),
+            };
+          }, sel);
+        // The first composer in tab order; on the full screen, the dock's.
+        let target = null;
+        for (let i = 0; i < 300 && !target; i++) {
+          await page.keyboard.press("Tab");
+          target = await page.evaluate((scope) => {
+            const a = document.activeElement;
+            if (!a?.classList.contains("ck-input")) return null;
+            const box = a.closest(scope);
+            if (!box) return null;
+            box.dataset.focusProbe = "1";
+            return "[data-focus-probe]";
+          }, scope);
+        }
+        check(!!target, `${name}: Tab reaches the text area`);
+        if (target) {
+          // Unfocused: the same composer, read with focus moved off it.
+          await page.evaluate(() => document.activeElement.blur());
+          await page.waitForTimeout(300);
+          const before = await read(target);
+          await page.keyboard.press("Shift+Tab");
+          await page.keyboard.press("Tab");
+          await page.waitForTimeout(300);
+          const after = await read(target);
+          check(after.focused, `${name}: the text area has keyboard focus`);
+          check(
+            after.border !== before.border || after.shadow !== before.shadow,
+            `${name}: focus changes the border (${before.border} -> ${after.border})`,
+          );
+          check(
+            after.contrast >= 3,
+            `${name}: the focused border contrasts ${after.contrast.toFixed(2)}:1 with the composer (>= 3; unfocused ${before.contrast.toFixed(2)}:1)`,
+          );
+          check(
+            after.size === before.size,
+            `${name}: the composer keeps its size (${before.size} -> ${after.size})`,
+          );
+        }
+        await page.close();
+      }
+    }
+  }
+
   // An empty box is ONE row on the narrowest phone, however long the
   // placeholder: it is cut at the edge, never wrapped into a clipped second
   // line (320px, 2026-10-21).
