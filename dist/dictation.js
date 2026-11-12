@@ -361,4 +361,25 @@ export const DEFAULT_DICTATION_MESSAGES = {
     busy: "Voice input is busy right now. Try again in a moment.",
     fileTooLarge: `That recording is too large to transcribe here (max ${Math.round(MAX_AUDIO_FILE_BYTES / 1024 / 1024)} MB).`,
 };
+/**
+ * Whether the page's Permissions-Policy lets it use the microphone.
+ *
+ * A host that sends `microphone=()` (the fleet's starter template did, and so
+ * did orangecat.ch for a while) makes every take fail with "blocked", which the
+ * person cannot fix. Without this check every composer still drew a mic that
+ * could only fail; Loki's widget hand-rolled the same test to avoid it. A
+ * browser without the policy API is assumed to allow it, as before.
+ */
+export function microphoneAllowedByPolicy(doc) {
+    const d = doc;
+    const policy = d?.permissionsPolicy ?? d?.featurePolicy;
+    if (!policy || typeof policy.allowsFeature !== "function")
+        return true;
+    try {
+        return policy.allowsFeature("microphone") !== false;
+    }
+    catch {
+        return true;
+    }
+}
 //# sourceMappingURL=dictation.js.map

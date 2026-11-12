@@ -13,6 +13,7 @@ import {
   fallbackCanRescue,
   heardFromResults,
   liveWords,
+  microphoneAllowedByPolicy,
   problemFor,
   problemForTranscription,
   retryableProblem,
@@ -194,7 +195,9 @@ export function useDictation(opts: UseDictationOptions): DictationController {
 
   const supported = useSyncExternalStore(
     noSubscribe,
-    () => Boolean(recogniser()) || (hasServer && canRecord()),
+    () =>
+      microphoneAllowedByPolicy(typeof document === "undefined" ? null : document) &&
+      (Boolean(recogniser()) || (hasServer && canRecord())),
     () => false,
   );
 
