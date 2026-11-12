@@ -21,6 +21,11 @@ export declare function useClipboard(resetMs?: number): {
  * long page opened that page at the box, past everything above it (bitbaum
  * /hire/ and /builders/, 2026-11-12). The first turn the reader sends starts
  * the following.
+ *
+ * When the document owns the scroll, following only ever moves the page DOWN,
+ * to bring the end of the thread into view, plus `--ck-follow-gap` (a length
+ * on the thread's wrapper, default 0) so what the host puts under the thread
+ * stays in view too. The jump button may move either way: the reader asked.
  */
 export declare function useStickToBottom(changes: DependencyList, grew: number): {
     scrollRef: RefObject<HTMLDivElement | null>;

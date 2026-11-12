@@ -10,6 +10,9 @@ function ScrollFixture() {
   // `?greeting`: a contact box at the foot of a long page. One greeting from
   // the assistant, nothing from the reader yet.
   const greeting = new URLSearchParams(location.search).has("greeting");
+  // `&below`: more page after the composer, so the box sits mid-page as on a
+  // real site (bitbaum /hire/: a receipt, then the composer, then the footer).
+  const below = new URLSearchParams(location.search).has("below");
   const [messages, setMessages] = useState<ChatMessageData[]>(
     greeting
       ? [{ id: "hello", role: "assistant", content: "Hello. What would you like done?" }]
@@ -102,6 +105,11 @@ function ScrollFixture() {
           />
         </div>
       </div>
+      {below && (
+        <div id="fixture-below" style={{ height: "1500px" }}>
+          The page below the contact box.
+        </div>
+      )}
     </>
   );
 }
