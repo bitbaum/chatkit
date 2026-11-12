@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — You can see where you are typing
+
+Found 2026-11-12 on bitbaum.orangecat.ch (`/`, `/hire/`, `/builders/`, `/loki/`): with keyboard focus in the composer's text area there was nothing to see. The text area drops its outline, and the only sign was the composer's 1px border stepping from 90% to 82% grey, 1.5:1 against the composer in light and 1.35:1 in dark with the design tokens, and the same colour focused and unfocused in a consumer's theme. In `ChatScreen`'s floating composer the border did not change at all. WCAG 2.4.7 asks for a visible focus indicator and 1.4.11 for 3:1 against what is next to it.
+
+- While the composer holds focus its border takes `--ck-focus`, which defaults to the secondary ink (`--ck-fg-2`) and so follows the theme: 5.7:1 on the composer in light, 7.0:1 in dark, in every composer shape (comfortable, compact and `ChatScreen`'s dock). Still a 1px border and no ring, so a click into the box looks as quiet as before; the composer keeps its size.
+- An app can set `--ck-focus` to its own colour, as with every `--ck-*` variable.
+- Checked in `test/browser.mjs` on the demo and the full screen at 390 and 1280px, light and dark: Tab reaches the text area, the border changes, it contrasts at least 3:1 with the composer's own background (computed in the page), and the composer measures the same focused and unfocused. The test fails on 0.27.0.
+
 ## 0.27.0 — A form's text area can be `DictationField`: name, error, submit keys, a blur that waits for the words
 
 Loki has 34 text areas made by hand, with no microphone, and they could not become `DictationField` because a form needs things the field did not pass through. Measured in Loki's source (36 text areas): `onKeyDown` 10 (Enter or Cmd+Enter submits, Escape cancels), `maxLength` 9, `id` 7, `autoFocus` 7, `disabled` 5, `onBlur` 2 and `onFocus` 1 (an inline editor saves when focus leaves), `name` 2 (a native form post), `spellCheck` 1, and forms that show a validation error on the field. All new props are optional; without them the markup and behaviour are unchanged, except that a `hint` is now linked to the field with `aria-describedby` and Enter in Improve's box applies the instruction (below).
