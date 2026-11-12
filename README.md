@@ -534,7 +534,10 @@ The conversation under anything: an article, a page, a listing.
 The component owns the list, the optimistic removal (rolled back, in words, if
 it fails) and every failure message; the box is `Composer`, so it has the
 microphone, 16px text and Enter-to-send; a refused post keeps the draft in the
-box. A comment is shown as text, never as markup, with its line breaks. Times
+box. To say why a post was refused ("Write a longer comment", a rate
+limit), throw `new CommentRefused(words)` from `post` or `remove`: the thread
+shows those words instead of the generic "try again", which would fail the
+same way forever; any other error shows the label. A comment is shown as text, never as markup, with its line breaks. Times
 render in `timeZone` (UTC by default, so the server's and the browser's markup
 agree), or through your own `formatTime`.
 

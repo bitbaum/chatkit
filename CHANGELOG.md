@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.28.0 — A refused comment says why
+
+`CommentThread` always said "The comment could not be posted… try again" whatever the server answered, so a comment that was too short or over a rate limit was retried forever (seen on Substrata, 2026-11-12). A transport may now throw `new CommentRefused(words)` from `post` or `remove`; the thread shows those words. Any other error still shows `postFailed` / `removeFailed`, so a raw error or a server's English never reaches a reader by accident. `commentFailure(error, fallback)` is exported for apps that build their own box.
+
 ## Unreleased — You can see where you are typing
 
 Found 2026-11-12 on bitbaum.orangecat.ch (`/`, `/hire/`, `/builders/`, `/loki/`): with keyboard focus in the composer's text area there was nothing to see. The text area drops its outline, and the only sign was the composer's 1px border stepping from 90% to 82% grey, 1.5:1 against the composer in light and 1.35:1 in dark with the design tokens, and the same colour focused and unfocused in a consumer's theme. In `ChatScreen`'s floating composer the border did not change at all. WCAG 2.4.7 asks for a visible focus indicator and 1.4.11 for 3:1 against what is next to it.

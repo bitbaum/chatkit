@@ -10,7 +10,7 @@
 export { Composer, DEFAULT_COMPOSER_LABELS } from "./Composer.js";
 export { ChatThread, ChatMessage, ChatReplies, ChatStarters, starterParts, ThinkingRow, formatThinkingDuration, DEFAULT_THREAD_LABELS, } from "./Thread.js";
 export { DictationField, DEFAULT_DICTATION_FIELD_LABELS } from "./DictationField.js";
-export { CommentThread, DEFAULT_COMMENT_THREAD_LABELS } from "./CommentThread.js";
+export { CommentThread, CommentRefused, commentFailure, DEFAULT_COMMENT_THREAD_LABELS, } from "./CommentThread.js";
 export { ChatScreen } from "./Screen.js";
 export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
 export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";

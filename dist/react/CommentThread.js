@@ -2,6 +2,25 @@
 import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
 import { createElement, useId, useState } from "react";
 import { Composer } from "./Composer.js";
+/**
+ * Throw this from `transport.post` or `transport.remove` to say why in the
+ * reader's words: the thread shows `message` under the box instead of its
+ * generic `postFailed` / `removeFailed`, so "Write a longer comment" or "You
+ * have posted a lot this hour" reaches the reader rather than "try again",
+ * which would fail the same way forever. Any other error shows the label: a
+ * raw `TypeError` or a server's English is never shown (the same rule as
+ * `ChatTurnError`).
+ */
+export class CommentRefused extends Error {
+    constructor(message, options = {}) {
+        super(message, options.cause === undefined ? undefined : { cause: options.cause });
+        this.name = "CommentRefused";
+    }
+}
+/** What a failed post or removal says: a `CommentRefused`'s words, else the label. */
+export function commentFailure(error, fallback) {
+    return error instanceof CommentRefused && error.message.trim() ? error.message : fallback;
+}
 export const DEFAULT_COMMENT_THREAD_LABELS = {
     count: (n) => (n === 0 ? "No comments yet" : n === 1 ? "1 comment" : `${n} comments`),
     placeholder: "Say something about this…",
@@ -47,8 +66,8 @@ export function CommentThread({ comments, transport, viewer, signInHref, canRemo
             setList((current) => [...current, created]);
             return true;
         }
-        catch {
-            setError(labels.postFailed);
+        catch (e) {
+            setError(commentFailure(e, labels.postFailed));
             return false;
         }
         finally {
@@ -64,9 +83,9 @@ export function CommentThread({ comments, transport, viewer, signInHref, canRemo
         try {
             await transport.remove(id);
         }
-        catch {
+        catch (e) {
             setList(before);
-            setError(labels.removeFailed);
+            setError(commentFailure(e, labels.removeFailed));
         }
     };
     const heading = createElement(`h${headingLevel}`, { id: headingId, className: "ck-comments-title" }, labels.count(list.length));
