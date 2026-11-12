@@ -32,6 +32,14 @@ export declare function composerOutgoingText(text: string, attachmentCount: numb
 export declare function shouldClearDraft(result: ComposerSendResult): boolean;
 /** Dictated words join the draft with one space, never glued to the last word. */
 export declare function appendTranscript(draft: string, said: string): string;
+/**
+ * Text a field sets itself (a dictated take, a rewrite) kept within the
+ * field's `maxLength`. The attribute stops typing and pasting at the limit
+ * and nothing else: a value set in code goes straight past it, and the form
+ * then refuses or cuts what the person said. Cut at the limit, on a word
+ * where one is near, so the field never holds more than it may send.
+ */
+export declare function clipToMaxLength(text: string, maxLength: number | undefined): string;
 /** `75` → `1:15`. The recording timer. */
 export declare function formatElapsed(seconds: number): string;
 //# sourceMappingURL=composer.d.ts.map

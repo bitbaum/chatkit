@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.28.1 — Dictation and Improve respect a field's `maxLength`
+
+A dictated take or an Improve rewrite never leaves the field past its `maxLength`. The attribute only stops typing and pasting; a value set in code went straight past it (found reviewing Loki's converted fields, which set 300 and 1000). `clipToMaxLength(text, maxLength)` cuts at the limit, back to a whole word when one is near, and is exported.
+
 ## Unreleased — Your first message no longer pushes the composer off the screen
 
 Found 2026-11-12 on bitbaum.orangecat.ch `/hire/` at 390x844: the contact box is a card holding a `ChatThread`, a receipt link and the `Composer`, mid-page. The thread is short, so the document owns the scroll. Sending the first message pinned the end of the thread to the bottom of the viewport, which scrolled the page UP by about 300px (5310 to 5026) and pushed the receipt and the composer below the fold, with focus still in the hidden text area. Following exists to bring a new turn into view; here it took the box out of view.

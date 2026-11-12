@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   appendTranscript,
+  clipToMaxLength,
   composerCanSend,
   composerOutgoingText,
   deadRecogniserStillTrusted,
@@ -77,6 +78,17 @@ test("dictated words join the draft with one space", () => {
   assert.equal(appendTranscript("keep", "  "), "keep");
   assert.equal(formatElapsed(75.9), "1:15");
   assert.equal(formatElapsed(-3), "0:00");
+});
+
+test("clipToMaxLength: text a field sets itself never passes its maxLength", () => {
+  assert.equal(clipToMaxLength("short", 300), "short");
+  assert.equal(clipToMaxLength("no limit at all", undefined), "no limit at all");
+  // Cut back to a whole word when one is near the limit.
+  assert.equal(clipToMaxLength("opening hours and a map", 20), "opening hours and a");
+  // One long word: cut at the limit, never over it.
+  assert.equal(clipToMaxLength("a".repeat(40), 10), "a".repeat(10));
+  const said = appendTranscript("x".repeat(295), "and then quite a lot more words");
+  assert.ok(clipToMaxLength(said, 300).length <= 300);
 });
 
 test("mic: live words are the settled ones then the guess, trimmed, never a stray space", () => {
