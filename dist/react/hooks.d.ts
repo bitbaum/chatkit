@@ -14,6 +14,13 @@ export declare function useClipboard(resetMs?: number): {
  * case page). Never scroll other ancestors as a side effect of following.
  * `grew` counts new user turns: an arriving assistant turn is not permission
  * to take the reader away from an older answer.
+ *
+ * A greeting on a page is not a conversation yet. While the document owns the
+ * scroll and the reader has sent nothing (`grew` is 0), the thread neither
+ * moves the page nor offers a way back down: a contact box at the foot of a
+ * long page opened that page at the box, past everything above it (bitbaum
+ * /hire/ and /builders/, 2026-11-12). The first turn the reader sends starts
+ * the following.
  */
 export declare function useStickToBottom(changes: DependencyList, grew: number): {
     scrollRef: RefObject<HTMLDivElement | null>;

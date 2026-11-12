@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — A greeting on a page no longer takes the page
+
+Found 2026-11-12 on bitbaum.orangecat.ch: `/hire/` and `/builders/` opened scrolled down to the contact box, past the headline and the prices (3,400px down at desktop width, 5,500px on a phone). The box is a `ChatThread` holding one greeting. A thread that short has no scroll of its own, so the document owned the scroll, and `useStickToBottom` pinned the document to the thread's end on mount.
+
+- While the document owns the scroll and the reader has sent nothing, the thread does not move the page and shows no jump button. The reader's first message starts the following, as before. A conversation that already holds a turn from the reader still opens at its latest turn.
+- Checked in `test/browser-scroll.mjs` on a new fixture (`demo/scroll.html?owner=page&greeting`, a greeting under 3,000px of page) at 390 and 1280px: the page opens at its top, a resize does not take it, the reader scrolls freely with no jump button, and the first message is followed. The test fails on 0.26.0.
 ## Unreleased — No microphone on a page that may not use one
 
 A host that sends `Permissions-Policy: microphone=()` (the fleet's starter template, and orangecat.ch for a while) made every take fail with "blocked", a problem the person cannot fix, while every `Composer` and `DictationField` still drew the mic. `useDictation`'s `supported` is now false when the page's policy refuses the microphone, so the mic is not drawn. `microphoneAllowedByPolicy(document)` is exported for apps that draw their own. A browser without the policy API behaves as before. Found by the package audit of 2026-11-12; Loki's widget hand-rolled this check.

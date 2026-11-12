@@ -7,14 +7,21 @@ function ScrollFixture() {
   const [tick, setTick] = useState(0);
   const [sending, setSending] = useState(false);
   const complete = useRef<(() => void) | null>(null);
-  const [messages, setMessages] = useState<ChatMessageData[]>([
-    { id: "question", role: "user", content: "Explain the synthetic example." },
-    {
-      id: "answer",
-      role: "assistant",
-      content: "A synthetic paragraph for scroll testing.\n\n".repeat(90),
-    },
-  ]);
+  // `?greeting`: a contact box at the foot of a long page. One greeting from
+  // the assistant, nothing from the reader yet.
+  const greeting = new URLSearchParams(location.search).has("greeting");
+  const [messages, setMessages] = useState<ChatMessageData[]>(
+    greeting
+      ? [{ id: "hello", role: "assistant", content: "Hello. What would you like done?" }]
+      : [
+          { id: "question", role: "user", content: "Explain the synthetic example." },
+          {
+            id: "answer",
+            role: "assistant",
+            content: "A synthetic paragraph for scroll testing.\n\n".repeat(90),
+          },
+        ],
+  );
   useEffect(() => {
     const timer = setInterval(() => setTick((n) => n + 1), 150);
     return () => clearInterval(timer);
@@ -51,6 +58,11 @@ function ScrollFixture() {
         <output id="fixture-sending">{String(sending)}</output>
         <output id="fixture-tick">{tick}</output>
       </div>
+      {greeting && (
+        <div id="fixture-page" style={{ height: "3000px" }}>
+          The page above the contact box.
+        </div>
+      )}
       <div
         id="fixture-owner"
         style={mode === "ancestor" ? { height: "90vh", overflowY: "auto" } : {}}
@@ -60,7 +72,10 @@ function ScrollFixture() {
             mode === "panel" ? { height: "90vh", display: "flex", flexDirection: "column" } : {}
           }
         >
-          <ChatThread messages={messages} live={{ status: `Checking details ${tick}` }} />
+          <ChatThread
+            messages={messages}
+            live={greeting ? null : { status: `Checking details ${tick}` }}
+          />
           <Composer
             placeholder="Synthetic message"
             voice={false}

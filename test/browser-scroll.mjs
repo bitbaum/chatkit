@@ -140,6 +140,46 @@ try {
       );
     }
 
+  // A contact box at the foot of a long page (bitbaum /hire/ and /builders/,
+  // 2026-11-12). The thread holds one greeting and the reader has sent
+  // nothing, so the document owns the scroll and there is nothing to follow:
+  // the page must open at its top, stay where the reader puts it, and offer no
+  // jump button. The reader's first message starts the following.
+  for (const width of [390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(
+      `http://localhost:${server.address().port}/demo/scroll.html?owner=page&greeting`,
+    );
+    await page.waitForSelector(".ck-thread");
+    await page.waitForTimeout(400);
+    const top = () => page.evaluate(() => document.scrollingElement.scrollTop);
+    const jump = () => page.evaluate(() => !!document.querySelector(".ck-jump"));
+    assert.equal(await top(), 0, `greeting ${width}: the page opens at its top`);
+    await page.setViewportSize({ width, height: 760 });
+    await page.waitForTimeout(300);
+    assert.equal(await top(), 0, `greeting ${width}: a resize does not take the page`);
+    await page.mouse.move(width / 2, 400);
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(200);
+    const reading = await top();
+    assert.ok(reading > 600, `greeting ${width}: the reader scrolls the page (${reading})`);
+    await page.mouse.wheel(0, -300);
+    await page.waitForTimeout(300);
+    assert.ok(Math.abs((await top()) - (reading - 300)) < 4, `greeting ${width}: and back up`);
+    assert.ok(!(await jump()), `greeting ${width}: no jump button before the reader has written`);
+    await page.evaluate(() => document.querySelector("#user-turn").click());
+    await page.waitForTimeout(350);
+    assert.ok(
+      (await top()) > 2000,
+      `greeting ${width}: the reader's first message is followed (${await top()})`,
+    );
+    assert.deepEqual(errors, [], `greeting ${width}: no browser errors`);
+    await page.close();
+    console.log(`PASS greeting ${width}: a greeting on a page leaves the page alone`);
+  }
+
   // ChatScreen on a phone, driven by a finger (OrangeCat's Diplodoctor chat,
   // 2026-11-01). Read up, come back down by hand: a finger rocks back a
   // pixel or two as it lifts, and that last move used to read as "scrolling
