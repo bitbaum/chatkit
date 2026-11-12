@@ -1,10 +1,11 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, } from "react";
 import { appendTranscript } from "../composer.js";
 import { DEFAULT_DICTATION_MESSAGES } from "../dictation.js";
 import { useDictation } from "./use-dictation.js";
 import { useAutoGrow } from "./hooks.js";
+import { useFieldFocus } from "./field-focus.js";
 import { VoiceBar, VoiceProblem } from "./Voice.js";
 import { IconMic, IconSpinner } from "./icons.js";
 export const DEFAULT_DICTATION_FIELD_LABELS = {
@@ -39,7 +40,7 @@ export const DEFAULT_DICTATION_FIELD_LABELS = {
  * has text offers one more control: pick a suggestion or say or type what to
  * change, the text is replaced, and Undo puts it back until the next edit.
  */
-export function DictationField({ value, onValueChange, label, ariaLabel, id, placeholder, multiline = true, rows = 3, maxLength, disabled = false, required, voice = {}, improve, hint, inputRef, labels: overrides, className, }) {
+export function DictationField({ value, onValueChange, label, ariaLabel, id, placeholder, multiline = true, rows = 3, maxLength, disabled = false, required, name, autoFocus, readOnly = false, invalid = false, error, onKeyDown, onSubmit, onFocus, onBlur, inputProps, voice = {}, improve, hint, inputRef, labels: overrides, className, }) {
     const labels = {
         ...DEFAULT_DICTATION_FIELD_LABELS,
         ...overrides,
@@ -65,9 +66,14 @@ export function DictationField({ value, onValueChange, label, ariaLabel, id, pla
             set(appendTranscript(valueRef.current, said));
         },
     });
-    const voiceOn = voice !== false && dictation.supported;
+    const voiceOn = voice !== false && dictation.supported && !readOnly;
     const listening = dictation.status === "listening";
     const transcribing = dictation.status === "transcribing";
+    const focus = useFieldFocus({ busy: dictation.status !== "idle", onFocus, onBlur });
+    const isInvalid = invalid || (error !== undefined && error !== null && error !== false);
+    const hintId = hint ? `${fieldId}-hint` : undefined;
+    const errorId = isInvalid && error ? `${fieldId}-error` : undefined;
+    const describedBy = [inputProps?.["aria-describedby"], errorId, hintId].filter(Boolean).join(" ") || undefined;
     const [open, setOpen] = useState(false);
     const [working, setWorking] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -97,7 +103,7 @@ export function DictationField({ value, onValueChange, label, ariaLabel, id, pla
             setWorking(false);
         }
     };
-    const canImprove = Boolean(improve) && value.trim().length > 0;
+    const canImprove = Boolean(improve) && !readOnly && value.trim().length > 0;
     const common = {
         id: fieldId,
         className: "ck-field-input",
@@ -105,8 +111,29 @@ export function DictationField({ value, onValueChange, label, ariaLabel, id, pla
         placeholder: listening ? labels.listening : placeholder,
         maxLength,
         required,
+        name,
+        autoFocus,
+        readOnly: readOnly || undefined,
         disabled: disabled || transcribing,
         "aria-label": label ? undefined : (ariaLabel ?? placeholder),
+        "aria-invalid": isInvalid ? true : undefined,
+        "aria-describedby": describedBy,
+    };
+    const handleKeyDown = (e) => {
+        onKeyDown?.(e);
+        if (!onSubmit || e.defaultPrevented || e.key !== "Enter")
+            return;
+        // An Enter that confirms an IME composition (Japanese, Chinese, Korean)
+        // is the person choosing a word, not sending.
+        if (e.nativeEvent.isComposing || e.keyCode === 229)
+            return;
+        if (disabled || readOnly || dictation.status !== "idle")
+            return;
+        const chord = e.metaKey || e.ctrlKey;
+        if (multiline ? !chord : e.shiftKey || e.altKey)
+            return;
+        e.preventDefault();
+        onSubmit();
     };
     const onChange = (next) => {
         setUndo(null);
@@ -120,9 +147,11 @@ export function DictationField({ value, onValueChange, label, ariaLabel, id, pla
         else if (inputRef)
             inputRef.current = el;
     };
-    return (_jsxs("div", { className: className ? `ck-field-wrap ${className}` : "ck-field-wrap", children: [label && (_jsx("label", { className: "ck-field-label", htmlFor: fieldId, children: label })), _jsxs("div", { className: "ck-field-frame", children: [_jsx(VoiceBar, { dictation: dictation, labels: labels }), _jsxs("div", { className: multiline ? "ck-field" : "ck-field ck-field-single", children: [multiline ? (_jsx("textarea", { ...common, ref: setRefs, rows: rows, onChange: (e) => onChange(e.target.value) })) : (_jsx("input", { ...common, ref: setRefs, type: "text", enterKeyHint: "done", onChange: (e) => onChange(e.target.value) })), _jsxs("div", { className: "ck-field-actions", children: [canImprove && (_jsx("button", { type: "button", className: "ck-field-improve", "aria-expanded": open, disabled: disabled || working, onClick: () => setOpen((o) => !o), children: labels.improve })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) }))] })] })] }), open && improve && (_jsxs("div", { className: "ck-field-improve-panel", children: [improve.suggestions && improve.suggestions.length > 0 && (_jsx("div", { className: "ck-field-suggestions", role: "group", children: improve.suggestions.map((s) => (_jsx("button", { type: "button", className: "ck-field-suggestion", disabled: working, onClick: () => void run(s), children: s }, s))) })), _jsxs("div", { className: "ck-field-improve-row", children: [_jsx(DictationField, { value: instruction, onValueChange: setInstruction, multiline: false, placeholder: labels.improveWhat, ariaLabel: labels.improveWhat, voice: voice, disabled: working, labels: overrides }), _jsx("button", { type: "button", className: "ck-field-apply", disabled: working || !instruction.trim(), onClick: () => void run(instruction), children: working ? labels.improveWorking : labels.improveApply })] }), failed && (_jsx("p", { className: "ck-problem", role: "alert", children: _jsx("span", { children: labels.improveFailed }) }))] })), undo !== null && (_jsxs("p", { className: "ck-field-undo", role: "status", children: [_jsx("span", { children: labels.improved }), _jsx("button", { type: "button", className: "ck-problem-retry", onClick: () => {
+    return (_jsxs("div", { ref: focus.wrapRef, className: ["ck-field-wrap", isInvalid && "ck-field-invalid", className]
+            .filter(Boolean)
+            .join(" "), onFocus: focus.onFocus, onBlur: focus.onBlur, children: [label && (_jsx("label", { className: "ck-field-label", htmlFor: fieldId, children: label })), _jsxs("div", { className: "ck-field-frame", children: [_jsx(VoiceBar, { dictation: dictation, labels: labels }), _jsxs("div", { className: multiline ? "ck-field" : "ck-field ck-field-single", children: [multiline ? (_jsx("textarea", { ...inputProps, ...common, ref: setRefs, rows: rows, onChange: (e) => onChange(e.target.value), onKeyDown: handleKeyDown })) : (_jsx("input", { ...inputProps, ...common, ref: setRefs, type: "text", enterKeyHint: inputProps?.enterKeyHint ?? "done", onChange: (e) => onChange(e.target.value), onKeyDown: handleKeyDown })), _jsxs("div", { className: "ck-field-actions", children: [canImprove && (_jsx("button", { type: "button", className: "ck-field-improve", "aria-expanded": open, disabled: disabled || working, onClick: () => setOpen((o) => !o), children: labels.improve })), voiceOn && (_jsx("button", { type: "button", className: listening ? "ck-icon-btn ck-mic ck-mic-on" : "ck-icon-btn ck-mic", onClick: dictation.toggle, disabled: disabled || transcribing, "aria-label": listening ? labels.voiceStop : labels.voice, "aria-pressed": listening, title: listening ? labels.voiceStop : labels.voice, children: transcribing ? _jsx(IconSpinner, {}) : _jsx(IconMic, {}) }))] })] })] }), errorId && (_jsx("p", { id: errorId, className: "ck-field-error", role: "alert", children: error })), open && improve && !readOnly && (_jsxs("div", { className: "ck-field-improve-panel", children: [improve.suggestions && improve.suggestions.length > 0 && (_jsx("div", { className: "ck-field-suggestions", role: "group", children: improve.suggestions.map((s) => (_jsx("button", { type: "button", className: "ck-field-suggestion", disabled: working, onClick: () => void run(s), children: s }, s))) })), _jsxs("div", { className: "ck-field-improve-row", children: [_jsx(DictationField, { value: instruction, onValueChange: setInstruction, multiline: false, placeholder: labels.improveWhat, ariaLabel: labels.improveWhat, voice: voice, disabled: working, labels: overrides, onSubmit: () => void run(instruction) }), _jsx("button", { type: "button", className: "ck-field-apply", disabled: working || !instruction.trim(), onClick: () => void run(instruction), children: working ? labels.improveWorking : labels.improveApply })] }), failed && (_jsx("p", { className: "ck-problem", role: "alert", children: _jsx("span", { children: labels.improveFailed }) }))] })), undo !== null && !readOnly && (_jsxs("p", { className: "ck-field-undo", role: "status", children: [_jsx("span", { children: labels.improved }), _jsx("button", { type: "button", className: "ck-problem-retry", onClick: () => {
                             set(undo);
                             setUndo(null);
-                        }, children: labels.undo })] })), _jsx(VoiceProblem, { dictation: dictation, labels: labels }), hint && _jsx("div", { className: "ck-field-hint", children: hint })] }));
+                        }, children: labels.undo })] })), _jsx(VoiceProblem, { dictation: dictation, labels: labels }), hint && (_jsx("div", { id: hintId, className: "ck-field-hint", children: hint }))] }));
 }
 //# sourceMappingURL=DictationField.js.map

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.0 — A form's text area can be `DictationField`: name, error, submit keys, a blur that waits for the words
+
+Loki has 34 text areas made by hand, with no microphone, and they could not become `DictationField` because a form needs things the field did not pass through. Measured in Loki's source (36 text areas): `onKeyDown` 10 (Enter or Cmd+Enter submits, Escape cancels), `maxLength` 9, `id` 7, `autoFocus` 7, `disabled` 5, `onBlur` 2 and `onFocus` 1 (an inline editor saves when focus leaves), `name` 2 (a native form post), `spellCheck` 1, and forms that show a validation error on the field. All new props are optional; without them the markup and behaviour are unchanged.
+
+- `name`, `autoFocus` and `readOnly`. A read-only field draws no microphone, no Improve and no Undo: nothing may change its text.
+- `invalid` and `error`: `aria-invalid="true"`, the frame drawn in `--ck-danger` (light and dark), and the error in words under the field as `<p class="ck-field-error" role="alert">`, so colour is never the only sign. `error` implies `invalid`. Error and `hint` are linked to the field with `aria-describedby` (`<id>-error`, `<id>-hint`).
+- `onSubmit`: the submit keys belong to the package, so a person meets the same ones in every app. Cmd+Enter or Ctrl+Enter in a text area, Enter in a one-line field; never while an IME composition is open, never while disabled or read-only, never while a take is recorded or transcribed. `onKeyDown` runs first and can `preventDefault()` to stop it.
+- `onFocus` and `onBlur` are the whole field's: moving between the text box, the microphone, Improve and its panel is not a blur, so pressing the microphone does not close an inline editor under the person's finger. Leaving while a take is recorded or transcribed is reported after the take's words have gone through `onValueChange`, so a host that unmounts on blur never loses what was said. A tap on empty page is a blur; switching to another window or app is not.
+- `inputProps` (`DictationFieldInputProps`): `spellCheck`, `autoComplete`, `autoCapitalize`, `inputMode`, `enterKeyHint`, `minLength`, `aria-*`, `data-*`, spread before the managed props so the field's own win.
+- Enter in Improve's "What should change?" box now applies the instruction, instead of sending whatever form the field sits in.
+- Checked in `test/browser-field.mjs` on a new form fixture (`demo/field-form.html`, under Strict Mode) at 390px and desktop, light and dark: the submit keys, a composing Enter, a suppressed Enter, the microphone and a whole take without a blur, one blur to another element and one to empty page, a blur held until the words land, the native form post, and the error seen in both themes with no control under 44px and no sideways scroll at 390 and 320px.
+
 ## Unreleased — No microphone on a page that may not use one
 
 A host that sends `Permissions-Policy: microphone=()` (the fleet's starter template, and orangecat.ch for a while) made every take fail with "blocked", a problem the person cannot fix, while every `Composer` and `DictationField` still drew the mic. `useDictation`'s `supported` is now false when the page's policy refuses the microphone, so the mic is not drawn. `microphoneAllowedByPolicy(document)` is exported for apps that draw their own. A browser without the policy API behaves as before. Found by the package audit of 2026-11-12; Loki's widget hand-rolled this check.
