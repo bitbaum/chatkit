@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Your first message no longer pushes the composer off the screen
+
+Found 2026-11-12 on bitbaum.orangecat.ch `/hire/` at 390x844: the contact box is a card holding a `ChatThread`, a receipt link and the `Composer`, mid-page. The thread is short, so the document owns the scroll. Sending the first message pinned the end of the thread to the bottom of the viewport, which scrolled the page UP by about 300px (5310 to 5026) and pushed the receipt and the composer below the fold, with focus still in the hidden text area. Following exists to bring a new turn into view; here it took the box out of view.
+
+- When the document owns the scroll, following only moves the page down: when the end of the thread is already on screen, nothing moves. A thread that scrolls itself, or inside a scrolling panel, is unchanged, and the jump button still goes to the latest turn in either direction, because the reader asked.
+- `--ck-follow-gap` (a length, default 0): set on the thread's wrapper or any ancestor, it leaves that much room under the latest turn when the page follows, so a composer under the thread stays in view (`--ck-follow-gap: 10rem`). The browser resolves the length, so rem, em, px and `calc()` all work; unset, negative or invalid is 0.
+- The rule from the previous fix holds: while the document owns the scroll and the reader has sent nothing, nothing moves.
+- Checked in `test/browser-scroll.mjs` on a new fixture (`demo/scroll.html?owner=page&greeting&below`, the box between 3,000px of page and 1,500px more) at 390 and 1280px: with the composer mid-screen the first message does not scroll the page up and the composer stays on screen; as the thread grows past the foot of the screen the page follows and stops with the thread's end at the bottom of the viewport, or 160px above it with `10rem`, 120px with `6em` at 20px, 90px with `90px`, and at the bottom again with an invalid value. Both checks fail on the code before this fix (the page went up 397px at 390px; with `10rem` the end sat at the bottom). The existing page, panel, ancestor, greeting, screen and missing-root cases pass unchanged.
+
 ## 0.28.0 — A refused comment says why
 
 `CommentThread` always said "The comment could not be posted… try again" whatever the server answered, so a comment that was too short or over a rate limit was retried forever (seen on Substrata, 2026-11-12). A transport may now throw `new CommentRefused(words)` from `post` or `remove`; the thread shows those words. Any other error still shows `postFailed` / `removeFailed`, so a raw error or a server's English never reaches a reader by accident. `commentFailure(error, fallback)` is exported for apps that build their own box.

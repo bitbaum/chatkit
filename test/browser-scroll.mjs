@@ -180,6 +180,119 @@ try {
     console.log(`PASS greeting ${width}: a greeting on a page leaves the page alone`);
   }
 
+  // The contact box mid-page (bitbaum /hire/, 2026-11-12): page above it, the
+  // composer under the thread, more page under the composer. The reader looks
+  // at the box with the thread's end well above the foot of the screen and
+  // sends their first message. Following used to align the thread's end with
+  // the bottom of the viewport, which scrolled the page UP by about 300px and
+  // pushed the composer they were typing in below the fold. Following may
+  // only bring a new turn INTO view, and `--ck-follow-gap` keeps room for
+  // what the host puts under the thread.
+  for (const width of [390, 1280]) {
+    const page = await browser.newPage({
+      viewport: { width, height: 844 },
+      hasTouch: width === 390,
+      isMobile: width === 390,
+    });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(
+      `http://localhost:${server.address().port}/demo/scroll.html?owner=page&greeting&below`,
+    );
+    await page.waitForSelector(".ck-thread");
+    await page.waitForTimeout(400);
+    const top = () => page.evaluate(() => document.scrollingElement.scrollTop);
+    const layout = () =>
+      page.evaluate(() => {
+        const end = document.querySelector(".ck-thread-inner > :last-child");
+        const composer = document.querySelector(".ck-composer");
+        return {
+          top: document.scrollingElement.scrollTop,
+          end: end.getBoundingClientRect().bottom,
+          composerTop: composer.getBoundingClientRect().top,
+          composerBottom: composer.getBoundingClientRect().bottom,
+          viewport: window.innerHeight,
+        };
+      });
+    // The composer in the middle of the screen, as a reader who has scrolled
+    // to the box and is about to write.
+    await page.evaluate(() => {
+      const box = document.querySelector(".ck-composer").getBoundingClientRect();
+      window.scrollBy({
+        top: box.top + box.height / 2 - window.innerHeight / 2,
+        behavior: "instant",
+      });
+    });
+    await page.waitForTimeout(200);
+    const before = await layout();
+    assert.ok(before.top > 2000, `mid-page ${width}: the box is far down the page`);
+    assert.ok(
+      before.end < before.viewport - 100,
+      `mid-page ${width}: the thread's end is above the foot of the screen (${before.end})`,
+    );
+    await page.locator(".ck-input").fill("A first synthetic question.");
+    await page.locator(".ck-input").press("Enter");
+    await page.waitForFunction(
+      () => document.getElementById("fixture-sending").textContent === "true",
+    );
+    await page.waitForTimeout(350);
+    const sent = await layout();
+    assert.ok(
+      sent.top >= before.top - 1,
+      `mid-page ${width}: the first message does not scroll the page up (${before.top} -> ${sent.top})`,
+    );
+    assert.ok(
+      sent.composerBottom <= sent.viewport,
+      `mid-page ${width}: the composer stays on screen (${sent.composerBottom} of ${sent.viewport})`,
+    );
+    // The thread grows past the foot of the screen: the page follows it down
+    // and stops with the thread's end at the bottom of the viewport, or the
+    // host's gap above it.
+    const grow = async (label, gap) => {
+      const start = await top();
+      for (let i = 0; i < 40; i++) {
+        await page.evaluate(() => document.querySelector("#assistant-turn").click());
+        await page.waitForTimeout(60);
+        if ((await top()) > start + 150) break;
+      }
+      await page.waitForTimeout(250);
+      const after = await layout();
+      assert.ok(
+        after.top > start + 100,
+        `${label} ${width}: the page followed (${start} -> ${after.top})`,
+      );
+      const distance = after.viewport - after.end;
+      assert.ok(
+        Math.abs(distance - gap) <= 2,
+        `${label} ${width}: the thread's end sits ${gap}px above the foot of the screen (${distance})`,
+      );
+    };
+    await grow("no gap", 0);
+    await page.evaluate(() =>
+      document.querySelector(".ck-thread-wrap").style.setProperty("--ck-follow-gap", "10rem"),
+    );
+    await grow("--ck-follow-gap: 10rem", 160);
+    await page.evaluate(() => {
+      const wrap = document.querySelector(".ck-thread-wrap");
+      wrap.style.fontSize = "20px";
+      wrap.style.setProperty("--ck-follow-gap", "6em");
+    });
+    await grow("--ck-follow-gap: 6em", 120);
+    await page.evaluate(() =>
+      document.querySelector(".ck-thread-wrap").style.setProperty("--ck-follow-gap", "90px"),
+    );
+    await grow("--ck-follow-gap: 90px", 90);
+    await page.evaluate(() =>
+      document.querySelector(".ck-thread-wrap").style.setProperty("--ck-follow-gap", "nonsense"),
+    );
+    await grow("--ck-follow-gap: invalid", 0);
+    assert.deepEqual(errors, [], `mid-page ${width}: no browser errors`);
+    await page.close();
+    console.log(
+      `PASS mid-page ${width}: the first message keeps the composer in view; --ck-follow-gap holds`,
+    );
+  }
+
   // ChatScreen on a phone, driven by a finger (OrangeCat's Diplodoctor chat,
   // 2026-11-01). Read up, come back down by hand: a finger rocks back a
   // pixel or two as it lifts, and that last move used to read as "scrolling

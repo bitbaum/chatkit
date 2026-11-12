@@ -1053,3 +1053,11 @@ including close to the bottom. Status updates and incoming assistant turns keep
 the reading position. Sending a new user turn or choosing return-to-latest
 resumes following. Full-screen `ChatScreen` keeps its bounded scroll containment;
 embedded threads allow gestures to reach their surrounding page.
+
+When the page itself scrolls (a short thread in a card mid-page), following
+only ever moves the page down, to bring a new turn into view; it never pulls
+the page up and takes the composer under the thread off the screen. The jump
+button may go either way. Set `--ck-follow-gap` (a length, default 0) on the
+thread or any ancestor to keep room under the latest turn for what you put
+below it, e.g. `--ck-follow-gap: 10rem` for a composer and a receipt. While
+the reader has sent nothing, the page does not move at all.
