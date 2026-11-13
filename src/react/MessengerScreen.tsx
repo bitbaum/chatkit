@@ -152,7 +152,11 @@ function AmountSheet({
         )}
         <label className="ck-msgr-amount-field">
           <span>{labels.note}</span>
-          <input value={note} maxLength={140} onChange={(e) => setNote(e.target.value)} />
+          <input
+            value={note}
+            maxLength={action?.amount?.noteMaxLength ?? 140}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </label>
         <div className="ck-msgr-confirm">
           <button type="button" className="ck-msgr-btn" onClick={onClose}>
@@ -179,8 +183,9 @@ export type MessengerComposerAction = {
   detail?: string;
   icon?: ReactNode;
   /** Ask for an amount and a note first. `unit` is shown beside the number
-   *  ("CHF"); `confirm` is the sheet's button ("Request"). */
-  amount?: { unit: string; confirm: string };
+   *  ("CHF"); `confirm` is the sheet's button ("Request"); `noteMaxLength` is
+   *  how long a note the app can keep (140 when not given). */
+  amount?: { unit: string; confirm: string; noteMaxLength?: number };
   /** Leave it out of conversations it makes no sense in (a group, an agent). */
   available?: (conversation: MessengerConversation) => boolean;
   onPick: (context: {
