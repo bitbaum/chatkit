@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { newId } from "../conversations.js";
-import { AGENT_PATIENCE_MS, reviveConversation, reviveMessage, toDate, } from "../messenger.js";
+import { AGENT_PATIENCE_MS, reviveConversation, reactionOf, reviveMessage, toDate, withReaction, } from "../messenger.js";
 import { initialMessengerState, messengerReducer, newestFromOthers, readMarkToSend, } from "../messenger-state.js";
 /** How long "is typing" stays without being renewed. */
 const TYPING_TTL_MS = 6_000;
@@ -223,6 +223,7 @@ export function useMessenger(options) {
                 break;
             }
             case "message-removed":
+            case "reactions":
                 dispatch(event);
                 break;
             case "read":
@@ -363,6 +364,8 @@ export function useMessenger(options) {
             clientId,
             body: message.body,
             attachments: message.attachments ?? [],
+            ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+            ...(message.card ? { card: message.card } : {}),
         })
             .then((stored) => {
             if (!mounted.current)
@@ -383,7 +386,7 @@ export function useMessenger(options) {
         });
     }, [agentList]);
     const lastTyped = useRef(0);
-    const send = useCallback(async (body, attachments) => {
+    const send = useCallback(async (body, attachments, extra) => {
         const { state: now, transport: t } = live.current;
         const id = now.openId;
         if (!id)
@@ -399,9 +402,34 @@ export function useMessenger(options) {
             body,
             createdAt: new Date(),
             ...(attachments.length > 0 ? { attachments } : {}),
+            ...(extra?.replyTo ? { replyTo: extra.replyTo } : {}),
+            ...(extra?.card ? { card: extra.card } : {}),
         });
         return true;
     }, [deliver]);
+    const react = useCallback(async (message, emoji) => {
+        const { state: now, transport: t } = live.current;
+        if (!t.react)
+            return false;
+        const before = message.reactions ?? [];
+        const next = reactionOf(before, now.viewerId) === emoji ? null : emoji;
+        const change = (reactions) => dispatch({
+            type: "reactions",
+            conversationId: message.threadId,
+            messageId: message.id,
+            reactions,
+        });
+        change(withReaction(before, now.viewerId, next));
+        try {
+            await t.react(message, next);
+            return true;
+        }
+        catch {
+            if (mounted.current)
+                change(before);
+            return false;
+        }
+    }, []);
     const retry = useCallback((message) => deliver({ ...message, createdAt: new Date() }), [deliver]);
     const discard = useCallback((message) => {
         dispatch({ type: "message-removed", conversationId: message.threadId, messageId: message.id });
@@ -500,6 +528,7 @@ export function useMessenger(options) {
         reloadThread,
         loadOlder,
         send,
+        react,
         retry,
         discard,
         edit,

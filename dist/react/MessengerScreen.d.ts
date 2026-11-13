@@ -1,5 +1,5 @@
 import { type ReactNode, type RefObject } from "react";
-import { type MessengerAgent, type MessengerConversation, type MessengerDrafts, type MessengerParticipant, type MessengerTransport } from "../messenger.js";
+import { type MessengerAgent, type MessengerCard, type MessengerConversation, type MessengerDrafts, type MessengerMessage, type MessengerParticipant, type MessengerTransport } from "../messenger.js";
 import { type ComposerLabelOverrides, type ComposerVoice } from "./Composer.js";
 import { type ConversationListProps } from "./ConversationList.js";
 import type { RenderLink } from "./Markdown.js";
@@ -22,6 +22,34 @@ export type MessengerComposerOptions = {
     initialDraft?: (conversationId: string) => string | undefined;
     labels?: ComposerLabelOverrides;
 };
+/**
+ * Something the app lets people do from the box's "+": send money, ask for
+ * it, send a gift, share a listing. The app owns what happens; the package
+ * owns where it is offered and, with `amount`, the one sheet that asks how
+ * much — so "Request money" looks the same in every product.
+ */
+export type MessengerComposerAction = {
+    id: string;
+    label: string;
+    detail?: string;
+    icon?: ReactNode;
+    /** Ask for an amount and a note first. `unit` is shown beside the number
+     *  ("CHF"); `confirm` is the sheet's button ("Request"). */
+    amount?: {
+        unit: string;
+        confirm: string;
+    };
+    /** Leave it out of conversations it makes no sense in (a group, an agent). */
+    available?: (conversation: MessengerConversation) => boolean;
+    onPick: (context: {
+        conversation: MessengerConversation;
+        /** Set when `amount` asked for them. */
+        amount?: number;
+        note?: string;
+        /** Put a message in this conversation: words, a card, or both. */
+        send: (body: string, card?: MessengerCard) => Promise<boolean>;
+    }) => void | Promise<void>;
+};
 export type MessengerProps = {
     /** Who is using it. `id` is what their own messages carry as `authorId`. */
     viewer: {
@@ -39,6 +67,10 @@ export type MessengerProps = {
     drafts?: MessengerDrafts;
     /** Under the list's title. */
     listHeader?: ReactNode;
+    /** What the app adds to the box's "+" (see `MessengerComposerAction`). */
+    actions?: readonly MessengerComposerAction[];
+    /** At the end of a card, for this reader (a product's own control). */
+    renderCardAction?: (card: MessengerCard, message: MessengerMessage) => ReactNode;
     /** At the end of a conversation's top bar: a product's own controls. */
     headerActions?: (conversation: MessengerConversation) => ReactNode;
     /** Where the name in the top bar leads (a profile), if anywhere. */
@@ -73,5 +105,5 @@ export type MessengerProps = {
  * An app that needs its own arrangement uses the parts it is made of:
  * `useMessenger`, `ConversationList`, `MessageThread`.
  */
-export declare function Messenger({ viewer, transport, agents, conversationId, onConversationChange, composer, drafts, listHeader, headerActions, profileHref, search, renderLink, agentMark, fill, locale, timeZone, agentPatienceMs, labels: labelOverrides, className, }: MessengerProps): import("react").JSX.Element;
+export declare function Messenger({ viewer, transport, agents, conversationId, onConversationChange, composer, drafts, listHeader, actions, renderCardAction, headerActions, profileHref, search, renderLink, agentMark, fill, locale, timeZone, agentPatienceMs, labels: labelOverrides, className, }: MessengerProps): import("react").JSX.Element;
 //# sourceMappingURL=MessengerScreen.d.ts.map

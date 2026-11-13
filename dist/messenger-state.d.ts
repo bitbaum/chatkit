@@ -9,7 +9,7 @@
  * shown once" and "opening a conversation clears its badge" are tests that
  * run in Node, not hopes about an effect order.
  */
-import { type MessengerAgent, type MessengerConversation, type MessengerMessage } from "./messenger.js";
+import { type MessengerAgent, type MessengerConversation, type MessengerMessage, type MessengerReaction } from "./messenger.js";
 export type MessengerThreadState = {
     status: "loading" | "ready" | "failed";
     /** Oldest first. */
@@ -92,6 +92,11 @@ export type MessengerAction = {
     type: "message-removed";
     conversationId: string;
     messageId: string;
+} | {
+    type: "reactions";
+    conversationId: string;
+    messageId: string;
+    reactions: readonly MessengerReaction[];
 } | {
     type: "read";
     conversationId: string;

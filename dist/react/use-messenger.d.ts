@@ -1,4 +1,4 @@
-import { type MessengerAgent, type MessengerAttachment, type MessengerConversation, type MessengerMessage, type MessengerTransport } from "../messenger.js";
+import { type MessengerAgent, type MessengerAttachment, type MessengerCard, type MessengerConversation, type MessengerMessage, type MessengerQuote, type MessengerTransport } from "../messenger.js";
 import { type MessengerState, type MessengerThreadState } from "../messenger-state.js";
 export type UseMessengerOptions = {
     /** The id the viewer's own messages carry (`authorId`). */
@@ -25,7 +25,13 @@ export type MessengerController = {
     loadOlder: () => void;
     /** Send to the open conversation. Resolves once it is on its way: a message
      *  that then fails stays in the thread, marked, with its own Try again. */
-    send: (body: string, attachments: readonly MessengerAttachment[]) => Promise<boolean>;
+    send: (body: string, attachments: readonly MessengerAttachment[], extra?: {
+        replyTo?: MessengerQuote;
+        card?: MessengerCard;
+    }) => Promise<boolean>;
+    /** Put the viewer's emoji on a message; the one they already have takes it
+     *  off. Shown at once, taken back if the server refuses. */
+    react: (message: MessengerMessage, emoji: string) => Promise<boolean>;
     retry: (message: MessengerMessage) => void;
     discard: (message: MessengerMessage) => void;
     edit: (message: MessengerMessage, body: string) => Promise<boolean>;

@@ -5,13 +5,18 @@ import { newId } from "../conversations.js";
 import {
   AGENT_PATIENCE_MS,
   reviveConversation,
+  reactionOf,
   reviveMessage,
   toDate,
+  withReaction,
   type MessengerAgent,
   type MessengerAttachment,
+  type MessengerCard,
   type MessengerConversation,
   type MessengerEvent,
   type MessengerMessage,
+  type MessengerQuote,
+  type MessengerReaction,
   type MessengerTransport,
 } from "../messenger.js";
 import {
@@ -49,7 +54,14 @@ export type MessengerController = {
   loadOlder: () => void;
   /** Send to the open conversation. Resolves once it is on its way: a message
    *  that then fails stays in the thread, marked, with its own Try again. */
-  send: (body: string, attachments: readonly MessengerAttachment[]) => Promise<boolean>;
+  send: (
+    body: string,
+    attachments: readonly MessengerAttachment[],
+    extra?: { replyTo?: MessengerQuote; card?: MessengerCard },
+  ) => Promise<boolean>;
+  /** Put the viewer's emoji on a message; the one they already have takes it
+   *  off. Shown at once, taken back if the server refuses. */
+  react: (message: MessengerMessage, emoji: string) => Promise<boolean>;
   retry: (message: MessengerMessage) => void;
   discard: (message: MessengerMessage) => void;
   edit: (message: MessengerMessage, body: string) => Promise<boolean>;
@@ -282,6 +294,7 @@ export function useMessenger(options: UseMessengerOptions): MessengerController 
           break;
         }
         case "message-removed":
+        case "reactions":
           dispatch(event);
           break;
         case "read":
@@ -424,6 +437,8 @@ export function useMessenger(options: UseMessengerOptions): MessengerController 
         clientId,
         body: message.body,
         attachments: message.attachments ?? [],
+        ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+        ...(message.card ? { card: message.card } : {}),
       })
         .then((stored) => {
           if (!mounted.current) return;
@@ -447,7 +462,11 @@ export function useMessenger(options: UseMessengerOptions): MessengerController 
 
   const lastTyped = useRef(0);
   const send = useCallback(
-    async (body: string, attachments: readonly MessengerAttachment[]) => {
+    async (
+      body: string,
+      attachments: readonly MessengerAttachment[],
+      extra?: { replyTo?: MessengerQuote; card?: MessengerCard },
+    ) => {
       const { state: now, transport: t } = live.current;
       const id = now.openId;
       if (!id) return false;
@@ -462,11 +481,35 @@ export function useMessenger(options: UseMessengerOptions): MessengerController 
         body,
         createdAt: new Date(),
         ...(attachments.length > 0 ? { attachments } : {}),
+        ...(extra?.replyTo ? { replyTo: extra.replyTo } : {}),
+        ...(extra?.card ? { card: extra.card } : {}),
       });
       return true;
     },
     [deliver],
   );
+
+  const react = useCallback(async (message: MessengerMessage, emoji: string) => {
+    const { state: now, transport: t } = live.current;
+    if (!t.react) return false;
+    const before = message.reactions ?? [];
+    const next = reactionOf(before, now.viewerId) === emoji ? null : emoji;
+    const change = (reactions: readonly MessengerReaction[]) =>
+      dispatch({
+        type: "reactions",
+        conversationId: message.threadId,
+        messageId: message.id,
+        reactions,
+      });
+    change(withReaction(before, now.viewerId, next));
+    try {
+      await t.react(message, next);
+      return true;
+    } catch {
+      if (mounted.current) change(before);
+      return false;
+    }
+  }, []);
 
   const retry = useCallback(
     (message: MessengerMessage) => deliver({ ...message, createdAt: new Date() }),
@@ -578,6 +621,7 @@ export function useMessenger(options: UseMessengerOptions): MessengerController 
     reloadThread,
     loadOlder,
     send,
+    react,
     retry,
     discard,
     edit,

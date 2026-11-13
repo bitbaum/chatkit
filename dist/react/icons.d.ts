@@ -5,6 +5,7 @@ export declare const IconCheck: () => import("react").JSX.Element;
 export declare const IconX: () => import("react").JSX.Element;
 export declare const IconStop: () => import("react").JSX.Element;
 export declare const IconSpinner: () => import("react").JSX.Element;
+export declare const IconReply: () => import("react").JSX.Element;
 export declare const IconCopy: () => import("react").JSX.Element;
 export declare const IconRetry: () => import("react").JSX.Element;
 export declare const IconPaperclip: () => import("react").JSX.Element;

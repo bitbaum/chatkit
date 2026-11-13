@@ -201,6 +201,48 @@ export function conversationPreview(conversation, viewerId, labels) {
         return labels.empty;
     return last.authorId === viewerId ? `${labels.you}${said}` : said;
 }
+// ── Replies and reactions ───────────────────────────────────────────────────
+/** How much of a message its quote carries. */
+export const QUOTE_MAX = 140;
+/** A message as the one line another message quotes. */
+export function quoteOf(message) {
+    const words = message.body.replace(/\s+/g, " ").trim();
+    const kinds = (message.attachments ?? []).map((a) => a.kind);
+    return {
+        id: message.id,
+        authorId: message.authorId,
+        body: words.length > QUOTE_MAX ? `${words.slice(0, QUOTE_MAX - 1).trimEnd()}…` : words,
+        ...(kinds.length > 0 ? { attachments: kinds } : {}),
+    };
+}
+/** What a quote says in one line: its words, else what its files are, else
+ *  the card's title. */
+export function quoteText(quote, labels) {
+    return quote.body || attachmentSummary(quote.attachments ?? [], labels) || labels.empty;
+}
+/** The emoji offered first. Six, because six fit one row of 44px targets on
+ *  a 320px phone. */
+export const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+/** The emoji `actorId` has on a message, if any. */
+export function reactionOf(reactions, actorId) {
+    return reactions?.find((r) => r.actorIds.includes(actorId))?.emoji ?? null;
+}
+/**
+ * Reactions after `actorId` chose `emoji` (`null` takes theirs off). One per
+ * person: the old one goes. Order is first-used first, so chips do not jump
+ * about as counts change.
+ */
+export function withReaction(reactions, actorId, emoji) {
+    const without = (reactions ?? [])
+        .map((r) => ({ emoji: r.emoji, actorIds: r.actorIds.filter((a) => a !== actorId) }))
+        .filter((r) => r.actorIds.length > 0 || r.emoji === emoji);
+    if (emoji === null)
+        return without.filter((r) => r.actorIds.length > 0);
+    const at = without.findIndex((r) => r.emoji === emoji);
+    if (at === -1)
+        return [...without, { emoji, actorIds: [actorId] }];
+    return without.map((r, i) => (i === at ? { emoji, actorIds: [...r.actorIds, actorId] } : r));
+}
 // ── The thread ──────────────────────────────────────────────────────────────
 /** Messages by one author this close together are drawn as one run. */
 export const RUN_GAP_MS = 5 * 60 * 1000;

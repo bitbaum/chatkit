@@ -20,6 +20,7 @@ import {
   type MessengerAgent,
   type MessengerConversation,
   type MessengerMessage,
+  type MessengerReaction,
 } from "./messenger.js";
 
 export type MessengerThreadState = {
@@ -77,6 +78,12 @@ export type MessengerAction =
     }
   | { type: "send-failed"; conversationId: string; clientId: string }
   | { type: "message-removed"; conversationId: string; messageId: string }
+  | {
+      type: "reactions";
+      conversationId: string;
+      messageId: string;
+      reactions: readonly MessengerReaction[];
+    }
   | { type: "read"; conversationId: string; actorId: string; at: Date }
   | { type: "typing"; conversationId: string; actorId: string; typing: boolean }
   | { type: "presence"; actorId: string; online: boolean }
@@ -305,6 +312,17 @@ export function messengerReducer(state: MessengerState, action: MessengerAction)
         threads: withThread(state, action.conversationId, (t) => ({
           ...t,
           messages: t.messages.filter((m) => m.id !== action.messageId),
+        })),
+      };
+
+    case "reactions":
+      return {
+        ...state,
+        threads: withThread(state, action.conversationId, (t) => ({
+          ...t,
+          messages: t.messages.map((m) =>
+            m.id === action.messageId ? { ...m, reactions: action.reactions } : m,
+          ),
         })),
       };
 
