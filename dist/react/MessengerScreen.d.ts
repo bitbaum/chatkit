@@ -34,10 +34,12 @@ export type MessengerComposerAction = {
     detail?: string;
     icon?: ReactNode;
     /** Ask for an amount and a note first. `unit` is shown beside the number
-     *  ("CHF"); `confirm` is the sheet's button ("Request"). */
+     *  ("CHF"); `confirm` is the sheet's button ("Request"); `noteMaxLength` is
+     *  how long a note the app can keep (140 when not given). */
     amount?: {
         unit: string;
         confirm: string;
+        noteMaxLength?: number;
     };
     /** Leave it out of conversations it makes no sense in (a group, an agent). */
     available?: (conversation: MessengerConversation) => boolean;
