@@ -578,6 +578,7 @@ width (a container query) the two sit side by side.
 | `edit` · `remove` | Edit and Delete on the viewer's own messages (long press, right click, or "…") |
 | `react(message, emoji \| null)` | six emoji on every message, chips with counts, one per person (0.31) |
 | `people` · `open` | "New": find people, start a conversation |
+| `suggestions()` | who "New" offers before anything is typed: the viewer's agents, recent people (0.33) |
 | `leave` | "Delete conversation" (for the viewer only) |
 | `conversation(id)` | a link to a conversation the list has not loaded |
 | `usage()` | the storage quota checked before an upload starts |

@@ -68,17 +68,21 @@ function NewConversation({ open, onClose, transport, onStart, labels, }) {
     }, [open]);
     useEffect(() => {
         const people = transport.people;
+        const suggest = transport.suggestions;
         const asked = query.trim();
-        if (!open || !people || !asked) {
+        if (!open || !people || (!asked && !suggest)) {
             setFound([]);
             setState("idle");
             return;
         }
         const request = new AbortController();
-        setState("searching");
+        // Nothing typed: who the app suggests, at once and without a spinner (an
+        // empty sheet that fills in is calmer than one that starts by waiting).
+        if (asked)
+            setState("searching");
         // A pause in typing, not every letter, is a question worth asking.
         const timer = setTimeout(() => {
-            people(asked, { signal: request.signal })
+            (asked ? people(asked, { signal: request.signal }) : suggest({ signal: request.signal }))
                 .then((list) => {
                 if (request.signal.aborted)
                     return;
@@ -86,22 +90,28 @@ function NewConversation({ open, onClose, transport, onStart, labels, }) {
                 setState("idle");
             })
                 .catch(() => {
-                if (!request.signal.aborted)
+                if (request.signal.aborted)
+                    return;
+                // Suggestions that could not be read leave the hint: the search
+                // still works, and nothing was asked for that failed.
+                if (asked)
                     setState("failed");
+                else
+                    setFound([]);
             });
-        }, 250);
+        }, asked ? 250 : 0);
         return () => {
             clearTimeout(timer);
             request.abort();
         };
-    }, [open, query, transport.people]);
+    }, [open, query, transport.people, transport.suggestions]);
     const toggle = (person) => setPicked((current) => current.some((p) => p.id === person.id)
         ? current.filter((p) => p.id !== person.id)
         : [...current, person]);
     const rows = [...picked, ...found.filter((f) => !picked.some((p) => p.id === f.id))];
     return (_jsx(Sheet, { open: open, onClose: onClose, title: labels.newTitle, closeLabel: labels.close, children: _jsxs("div", { className: "ck-msgr-new", children: [_jsxs("label", { className: "ck-msgr-search", children: [_jsx(IconSearch, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.peopleSearch }), _jsx("input", { type: "search", value: query, onChange: (e) => setQuery(e.target.value), placeholder: labels.peoplePlaceholder, enterKeyHint: "search" })] }), _jsxs("div", { className: "ck-msgr-new-body", "aria-live": "polite", children: [rows.length === 0 && (_jsx("p", { className: "ck-msgr-hint", children: state === "searching" ? (_jsx(IconSpinner, {})) : state === "failed" ? (labels.peopleFailed) : query.trim() ? (labels.peopleEmpty) : (labels.peopleHint) })), rows.length > 0 && (_jsx("ul", { className: "ck-msgr-rows", children: rows.map((person) => {
                                 const on = picked.some((p) => p.id === person.id);
-                                return (_jsx("li", { children: _jsxs("button", { type: "button", className: "ck-msgr-row", "aria-pressed": on, onClick: () => toggle(person), children: [_jsx("span", { className: "ck-msgr-row-face", children: _jsx(MessengerAvatar, { name: person.name, src: person.avatarUrl, agent: person.kind === "agent", size: "lg" }) }), _jsxs("span", { className: "ck-msgr-row-text", children: [_jsx("span", { className: "ck-msgr-row-name ck-truncate", children: person.name }), person.handle && (_jsxs("span", { className: "ck-msgr-row-preview ck-truncate", children: ["@", person.handle] }))] }), _jsx("span", { className: "ck-msgr-pick", "aria-hidden": "true", children: on && _jsx(IconCheck, {}) })] }) }, person.id));
+                                return (_jsx("li", { children: _jsxs("button", { type: "button", className: "ck-msgr-row", "aria-pressed": on, onClick: () => toggle(person), children: [_jsx("span", { className: "ck-msgr-row-face", children: _jsx(MessengerAvatar, { name: person.name, src: person.avatarUrl, agent: person.kind === "agent", size: "lg" }) }), _jsxs("span", { className: "ck-msgr-row-text", children: [_jsx("span", { className: "ck-msgr-row-name ck-truncate", children: person.name }), person.kind === "agent" ? (_jsx("span", { className: "ck-msgr-row-preview ck-truncate", children: labels.agent })) : (person.handle && (_jsxs("span", { className: "ck-msgr-row-preview ck-truncate", children: ["@", person.handle] })))] }), _jsx("span", { className: "ck-msgr-pick", "aria-hidden": "true", children: on && _jsx(IconCheck, {}) })] }) }, person.id));
                             }) }))] }), problem && (_jsx("p", { className: "ck-msgr-problem", role: "alert", children: problem })), _jsxs("button", { type: "button", className: "ck-msgr-btn ck-msgr-btn-primary ck-msgr-btn-wide", disabled: picked.length === 0 || starting, onClick: async () => {
                         setStarting(true);
                         setProblem(null);

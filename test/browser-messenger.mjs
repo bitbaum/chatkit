@@ -802,8 +802,23 @@ try {
     await page.tap(".ck-msgr-back");
     await page.locator(".ck-msgr-btn-primary", { hasText: "New" }).tap();
     await page.waitForSelector(".ck-sheet[open] .ck-msgr-new");
-    await page.fill(".ck-sheet[open] .ck-msgr-search input", "ada");
+    // Before anything is typed: who the app suggests, an agent marked as one.
     await page.waitForSelector(".ck-sheet[open] .ck-msgr-row");
+    const suggested = await page.$$eval(".ck-sheet[open] .ck-msgr-row", (rows) =>
+      rows.map((r) => r.querySelector(".ck-msgr-row-text")?.textContent ?? ""),
+    );
+    check(
+      suggested.join("|") === "ChefAgent|Maya Keller@maya",
+      `new: the sheet opens on the app's suggestions, an agent marked as one (${suggested.join("|")})`,
+    );
+    m = await layout(page);
+    check(m.small.length === 0, `new: every control is 44px (${m.small.join(", ")})`);
+    await page.fill(".ck-sheet[open] .ck-msgr-search input", "ada");
+    await page.locator(".ck-sheet[open] .ck-msgr-row", { hasText: "Ada Okafor" }).waitFor();
+    await page.waitForFunction(
+      () => document.querySelectorAll(".ck-sheet[open] .ck-msgr-row").length === 1,
+    );
+    check(true, "new: typing replaces the suggestions with what was searched for");
     await page.locator(".ck-sheet[open] .ck-msgr-row").tap();
     await page.locator(".ck-sheet[open] .ck-msgr-btn-primary").tap();
     await page.waitForSelector(".ck-msgr-top-name");

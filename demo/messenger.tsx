@@ -345,6 +345,14 @@ const transport: MessengerTransport = {
       { id: "ada", name: "Ada Okafor", handle: "ada" },
     ].filter((p) => `${p.name} ${p.handle}`.toLowerCase().includes(q));
   },
+  async suggestions() {
+    await wait(30);
+    if (fail === "suggestions") throw new Error("no");
+    return [
+      { id: "chef", name: "Chef", kind: "agent" as const },
+      { id: "maya", name: "Maya Keller", handle: "maya" },
+    ];
+  },
   async open(ids) {
     await wait(60);
     const existing = conversations.find(

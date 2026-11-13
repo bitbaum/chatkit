@@ -342,31 +342,41 @@ function NewConversation({
 
   useEffect(() => {
     const people = transport.people;
+    const suggest = transport.suggestions;
     const asked = query.trim();
-    if (!open || !people || !asked) {
+    if (!open || !people || (!asked && !suggest)) {
       setFound([]);
       setState("idle");
       return;
     }
     const request = new AbortController();
-    setState("searching");
+    // Nothing typed: who the app suggests, at once and without a spinner (an
+    // empty sheet that fills in is calmer than one that starts by waiting).
+    if (asked) setState("searching");
     // A pause in typing, not every letter, is a question worth asking.
-    const timer = setTimeout(() => {
-      people(asked, { signal: request.signal })
-        .then((list) => {
-          if (request.signal.aborted) return;
-          setFound(list);
-          setState("idle");
-        })
-        .catch(() => {
-          if (!request.signal.aborted) setState("failed");
-        });
-    }, 250);
+    const timer = setTimeout(
+      () => {
+        (asked ? people(asked, { signal: request.signal }) : suggest!({ signal: request.signal }))
+          .then((list) => {
+            if (request.signal.aborted) return;
+            setFound(list);
+            setState("idle");
+          })
+          .catch(() => {
+            if (request.signal.aborted) return;
+            // Suggestions that could not be read leave the hint: the search
+            // still works, and nothing was asked for that failed.
+            if (asked) setState("failed");
+            else setFound([]);
+          });
+      },
+      asked ? 250 : 0,
+    );
     return () => {
       clearTimeout(timer);
       request.abort();
     };
-  }, [open, query, transport.people]);
+  }, [open, query, transport.people, transport.suggestions]);
 
   const toggle = (person: MessengerPerson) =>
     setPicked((current) =>
@@ -426,8 +436,16 @@ function NewConversation({
                       </span>
                       <span className="ck-msgr-row-text">
                         <span className="ck-msgr-row-name ck-truncate">{person.name}</span>
-                        {person.handle && (
-                          <span className="ck-msgr-row-preview ck-truncate">@{person.handle}</span>
+                        {person.kind === "agent" ? (
+                          // An agent is offered as one: nobody picks a bot
+                          // believing it is a person.
+                          <span className="ck-msgr-row-preview ck-truncate">{labels.agent}</span>
+                        ) : (
+                          person.handle && (
+                            <span className="ck-msgr-row-preview ck-truncate">
+                              @{person.handle}
+                            </span>
+                          )
                         )}
                       </span>
                       <span className="ck-msgr-pick" aria-hidden="true">
