@@ -14,7 +14,11 @@
  * what is unread, what may be attached — are `@bitbaum/threadkit`'s.
  */
 export { Messenger } from "./MessengerScreen.js";
-export type { MessengerProps, MessengerComposerOptions } from "./MessengerScreen.js";
+export type {
+  MessengerProps,
+  MessengerComposerAction,
+  MessengerComposerOptions,
+} from "./MessengerScreen.js";
 export { useMessenger } from "./use-messenger.js";
 export type { MessengerController, UseMessengerOptions } from "./use-messenger.js";
 export { ConversationList } from "./ConversationList.js";

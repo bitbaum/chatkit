@@ -303,3 +303,9 @@ test("an app that set its attach labels before Videos existed still gets a word 
   );
   assert.match(html, />Videos</);
 });
+
+test("the messenger entry exports the type of an app's action", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const types = await readFile(new URL("../dist/react/messenger.d.ts", import.meta.url), "utf8");
+  assert.match(types, /MessengerComposerAction/);
+});
