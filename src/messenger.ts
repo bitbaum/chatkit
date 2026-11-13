@@ -245,6 +245,12 @@ export type MessengerTransport = {
   ): () => void;
   /** People the viewer can start a conversation with. Without it, no "New". */
   people?(query: string, options: { signal?: AbortSignal }): Promise<MessengerPerson[]>;
+  /**
+   * Who to offer in "New" before anything is typed: the viewer's own agents,
+   * the people they wrote to last. Without it the sheet opens on a hint and
+   * waits for a name.
+   */
+  suggestions?(options: { signal?: AbortSignal }): Promise<MessengerPerson[]>;
   /** The conversation with exactly these people, made if it does not exist. */
   open?(personIds: readonly string[]): Promise<MessengerConversation>;
   /** Take conversations off the viewer's list. Others keep theirs. */

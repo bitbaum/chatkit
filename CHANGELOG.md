@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.33.0 — `Messenger`: "New" opens on suggestions, and an agent is offered as one
+
+- `transport.suggestions()`: who to offer in "New" before anything is typed (the viewer's own agents, the people they wrote to last). The sheet shows them at once; typing replaces them with the search. Without the method the sheet opens on its hint, as before. Suggestions that cannot be read leave the hint and never an error: nothing was asked for that failed.
+- A person of `kind: "agent"` in "New" says "Agent" under its name where a person shows a handle, so nobody picks a bot believing it is a person.
+
 ## 0.32.0 — A queued message keeps its conversation; an unanswered question says so
 
 Measured on Loki's own chat on 2026-11-13: three quick messages in a new chat became three conversations, two queued messages vanished on reload, and a question whose answer died with the page showed nothing under it, with no way to ask again.
