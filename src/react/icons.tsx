@@ -63,6 +63,12 @@ export const IconSpinner = () => (
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
   </Svg>
 );
+export const IconReply = () => (
+  <Svg>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h10a6 6 0 0 1 6 6v4" />
+  </Svg>
+);
 export const IconCopy = () => (
   <Svg>
     <rect width="14" height="14" x="8" y="8" rx="2" />

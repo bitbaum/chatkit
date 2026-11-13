@@ -541,7 +541,7 @@ same way forever; any other error shows the label. A comment is shown as text, n
 render in `timeZone` (UTC by default, so the server's and the browser's markup
 agree), or through your own `formatTime`.
 
-### People talking to people — `Messenger` (0.29)
+### People talking to people — `Messenger` (0.29, 0.31)
 
 `ChatApp` is one person and a model. `Messenger` is the other chat a product
 ends up needing: a list of conversations, a thread between several people,
@@ -576,6 +576,7 @@ width (a container query) the two sit side by side.
 | `subscribe(scope, on)` | messages, read marks, typing and presence from elsewhere (`MessengerEvent`) |
 | `markRead` · `typing` | ticks on the other side; "Maya is typing…" |
 | `edit` · `remove` | Edit and Delete on the viewer's own messages (long press, right click, or "…") |
+| `react(message, emoji \| null)` | six emoji on every message, chips with counts, one per person (0.31) |
 | `people` · `open` | "New": find people, start a conversation |
 | `leave` | "Delete conversation" (for the viewer only) |
 | `conversation(id)` | a link to a conversation the list has not loaded |
@@ -619,6 +620,25 @@ What it settles, so no product decides it again:
   and Delete, and is never shown twice when the stored row and a pushed copy
   both arrive (`clientId`).
 - **Drafts survive** a visit to another conversation and a reload of the tab.
+- **Reply** (0.31): every message can be answered; the answer carries one line
+  of the original (`replyTo`), and that line leads back to it. `send` gets
+  `draft.replyTo`; store its `id` and return the quote on the message.
+- **Value in a conversation** (0.31): a message may carry a `card` (a payment
+  request, money sent, a gift), written by the app for this reader and drawn
+  in one shape. The app's own entries in the "+" are `actions`:
+
+  ```tsx
+  <Messenger
+    actions={[{
+      id: "request",
+      label: "Request money",
+      amount: { unit: "CHF", confirm: "Request" }, // the package asks "how much?"
+      available: (c) => c.participants.length === 2,
+      onPick: ({ amount, note, send }) =>
+        send("", { kind: "request", title: "Payment request", amount: `CHF ${amount}`, note }),
+    }]}
+  />
+  ```
 
 The rules are `@bitbaum/threadkit`'s: who may write, how messages merge, and
 — from threadkit 0.1.2 — the attachment policy, the mention matcher and

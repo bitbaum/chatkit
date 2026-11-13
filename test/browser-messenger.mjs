@@ -399,8 +399,14 @@ try {
       `attach: four equal cells in one row (${cells.join("/")})`,
     );
     check(
-      (await page.locator(".ck-sheet[open] .ck-attach-extra").textContent())?.includes("Ask Cat"),
+      (await page.locator(".ck-sheet[open] .ck-attach-extra").last().textContent())?.includes(
+        "Ask Cat",
+      ),
       "attach: the same sheet offers to ask the agent",
+    );
+    check(
+      (await page.locator(".ck-sheet[open] .ck-attach-extra").count()) === 1,
+      "actions: an action that does not fit a conversation is not offered in it",
     );
     await page.locator(".ck-sheet[open] .ck-sheet-close").click();
 
@@ -465,6 +471,104 @@ try {
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => !document.querySelector(".ck-msgr-viewer"));
     check(true, "viewer: Escape closes it");
+
+    // ── replies, reactions, cards ──
+    await page.goto(`${base}?open=maya`);
+    await page.waitForSelector(".ck-msgr-quote");
+    check(
+      (await page.locator(".ck-msgr-quote").first().textContent())?.includes(
+        "Fine. But they swim better",
+      ),
+      "reply: a reply shows the message it answers",
+    );
+    await page.locator(".ck-msgr-quote").first().tap();
+    await page.waitForSelector(".ck-msgr-found");
+    check(true, "reply: tapping the quote leads to that message and marks it");
+    m = await layout(page);
+    check(m.overflow <= 0, `reply: nothing scrolls sideways (${m.overflow}px)`);
+    check(m.small.length === 0, `reply: every control is 44px (${m.small.join(", ")})`);
+
+    const card = page.locator(".ck-msgr-card").first();
+    check(
+      (await card.locator(".ck-msgr-card-amount").textContent()) === "CHF 12.00",
+      "card: a payment request shows its amount",
+    );
+    check(
+      (await card.locator(".ck-msgr-card-action").textContent()) === "Pay CHF 12.00",
+      "card: and what this reader can do about it",
+    );
+
+    // A long press: react, then reply.
+    const bubble = page.locator(".ck-msgr-other .ck-msgr-bubble").last();
+    await bubble.dispatchEvent("contextmenu");
+    await page.waitForSelector(".ck-sheet[open] .ck-msgr-react");
+    const reacts = await page.$$eval(".ck-sheet[open] .ck-msgr-react", (els) =>
+      els.map((e) => Math.round(e.getBoundingClientRect().height)),
+    );
+    check(
+      reacts.length === 6 && Math.min(...reacts) >= 44,
+      `react: six emoji in one row, each 44px (${reacts.join("/")})`,
+    );
+    await page.locator(".ck-sheet[open] .ck-msgr-react").nth(1).tap();
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".ck-msgr-reaction")].some(
+        (e) => e.textContent === "❤️" && e.getAttribute("aria-pressed") === "true",
+      ),
+    );
+    check(
+      (await page.evaluate(() => window.ckMessenger.calls.react)) === 1,
+      "react: the emoji is on the message at once and the server is told once",
+    );
+    await page.locator('.ck-msgr-reaction[aria-pressed="true"]').tap();
+    await page.waitForFunction(
+      () => !document.querySelector('.ck-msgr-reaction[aria-pressed="true"]'),
+    );
+    check(true, "react: tapping your own chip takes it off");
+
+    await bubble.dispatchEvent("contextmenu");
+    await page.waitForSelector(".ck-sheet[open] .ck-attach-extra");
+    await page.locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Reply" }).tap();
+    await page.waitForSelector(".ck-msgr-replying");
+    await page.fill(".ck-input", "Answering that one");
+    await page.tap(".ck-send");
+    await page.waitForFunction(
+      () =>
+        !document.querySelector(".ck-msgr-sending") &&
+        [...document.querySelectorAll(".ck-msgr-own .ck-msgr-msg")].some(
+          (e) => e.querySelector(".ck-msgr-quote") && e.textContent.includes("Answering that one"),
+        ),
+    );
+    check(
+      (await page.locator(".ck-msgr-replying").count()) === 0,
+      "reply: the sent message carries its quote, and the box forgets it",
+    );
+    check(
+      await page.evaluate(() => {
+        const sent = window.ckMessenger.store.maya.at(-1);
+        return Boolean(sent.replyTo && sent.replyTo.id);
+      }),
+      "reply: the server is told which message was answered",
+    );
+
+    // An app's action: ask for money.
+    await page.tap(".ck-composer .ck-tools .ck-icon-btn");
+    await page.locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Request money" }).tap();
+    await page.waitForSelector(".ck-sheet[open] .ck-msgr-amount");
+    await page.locator(".ck-sheet[open] .ck-msgr-btn-primary").tap();
+    check(
+      (await page.locator(".ck-msgr-amount-error").count()) === 1,
+      "actions: no amount, no request — and the sheet says so",
+    );
+    await page.fill(".ck-msgr-amount-box input", "7,5");
+    m = await layout(page);
+    check(m.small.length === 0, `actions: every control is 44px (${m.small.join(", ")})`);
+    await page.locator(".ck-sheet[open] .ck-msgr-btn-primary").tap();
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".ck-msgr-own .ck-msgr-card-amount")].some(
+        (e) => e.textContent === "CHF 7.50",
+      ),
+    );
+    check(true, "actions: a comma is a decimal point, and the card is in the thread");
 
     // A failed upload keeps its tile, with a way to try again.
     await page.goto(`${base}?open=hike&fail=upload`);
@@ -594,8 +698,8 @@ try {
       els.map((e) => e.textContent),
     );
     check(
-      actions.join(",") === "Copy text,Edit,Delete",
-      `actions: a message of the viewer's offers Copy, Edit, Delete (${actions.join(",")})`,
+      actions.join(",") === "Reply,Copy text,Edit,Delete",
+      `actions: a message of the viewer's offers Reply, Copy, Edit, Delete (${actions.join(",")})`,
     );
     await page.locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Edit" }).tap();
     await page.waitForSelector(".ck-msgr-editing");
@@ -625,7 +729,10 @@ try {
     const theirs = await page.$$eval(".ck-sheet[open] .ck-attach-extra-text", (els) =>
       els.map((e) => e.textContent),
     );
-    check(theirs.join(",") === "Copy text", "actions: somebody else's message can only be copied");
+    check(
+      theirs.join(",") === "Reply,Copy text",
+      "actions: somebody else's message can be answered and copied, not changed",
+    );
     await page.locator(".ck-sheet[open] .ck-sheet-close").click();
 
     // A draft survives a visit to another conversation.

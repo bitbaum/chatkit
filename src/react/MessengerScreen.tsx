@@ -9,9 +9,15 @@ import {
   conversationTitle,
   failureText,
   otherPeople,
+  participantOf,
+  QUICK_REACTIONS,
+  quoteOf,
+  quoteText,
+  reactionOf,
   sessionDrafts,
   withMention,
   type MessengerAgent,
+  type MessengerCard,
   type MessengerConversation,
   type MessengerDrafts,
   type MessengerMessage,
@@ -36,6 +42,7 @@ import {
   IconFile,
   IconMore,
   IconPencil,
+  IconReply,
   IconRetry,
   IconSearch,
   IconSpinner,
@@ -79,6 +86,113 @@ export type MessengerComposerOptions = {
   labels?: ComposerLabelOverrides;
 };
 
+/** "How much?", asked once, the same way for every action that needs it. */
+function AmountSheet({
+  action,
+  onClose,
+  onConfirm,
+  labels,
+}: {
+  action: MessengerComposerAction | null;
+  onClose: () => void;
+  onConfirm: (amount: number, note: string) => void;
+  labels: MessengerLabels;
+}) {
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [invalid, setInvalid] = useState(false);
+  useEffect(() => {
+    setAmount("");
+    setNote("");
+    setInvalid(false);
+  }, [action]);
+  const unit = action?.amount?.unit ?? "";
+  return (
+    <Sheet
+      open={action !== null}
+      onClose={onClose}
+      title={action?.label ?? ""}
+      closeLabel={labels.close}
+    >
+      <form
+        className="ck-msgr-amount"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          // A comma is a decimal point for half of Europe.
+          const value = Number(amount.replace(",", ".").trim());
+          if (!Number.isFinite(value) || value <= 0) {
+            setInvalid(true);
+            return;
+          }
+          onConfirm(value, note.trim());
+        }}
+      >
+        <label className="ck-msgr-amount-field">
+          <span>{labels.amount}</span>
+          <span className="ck-msgr-amount-box">
+            <input
+              inputMode="decimal"
+              autoComplete="off"
+              value={amount}
+              aria-invalid={invalid}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setInvalid(false);
+              }}
+              placeholder="0"
+            />
+            <span className="ck-msgr-amount-unit">{unit}</span>
+          </span>
+        </label>
+        {invalid && (
+          <p className="ck-msgr-amount-error" role="alert">
+            {labels.amountInvalid}
+          </p>
+        )}
+        <label className="ck-msgr-amount-field">
+          <span>{labels.note}</span>
+          <input value={note} maxLength={140} onChange={(e) => setNote(e.target.value)} />
+        </label>
+        <div className="ck-msgr-confirm">
+          <button type="button" className="ck-msgr-btn" onClick={onClose}>
+            {labels.cancel}
+          </button>
+          <button type="submit" className="ck-msgr-btn ck-msgr-btn-primary">
+            {action?.amount?.confirm}
+          </button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+/**
+ * Something the app lets people do from the box's "+": send money, ask for
+ * it, send a gift, share a listing. The app owns what happens; the package
+ * owns where it is offered and, with `amount`, the one sheet that asks how
+ * much — so "Request money" looks the same in every product.
+ */
+export type MessengerComposerAction = {
+  id: string;
+  label: string;
+  detail?: string;
+  icon?: ReactNode;
+  /** Ask for an amount and a note first. `unit` is shown beside the number
+   *  ("CHF"); `confirm` is the sheet's button ("Request"). */
+  amount?: { unit: string; confirm: string };
+  /** Leave it out of conversations it makes no sense in (a group, an agent). */
+  available?: (conversation: MessengerConversation) => boolean;
+  onPick: (context: {
+    conversation: MessengerConversation;
+    /** Set when `amount` asked for them. */
+    amount?: number;
+    note?: string;
+    /** Put a message in this conversation: words, a card, or both. */
+    send: (body: string, card?: MessengerCard) => Promise<boolean>;
+  }) => void | Promise<void>;
+};
+
 export type MessengerProps = {
   /** Who is using it. `id` is what their own messages carry as `authorId`. */
   viewer: { id: string };
@@ -94,6 +208,10 @@ export type MessengerProps = {
   drafts?: MessengerDrafts;
   /** Under the list's title. */
   listHeader?: ReactNode;
+  /** What the app adds to the box's "+" (see `MessengerComposerAction`). */
+  actions?: readonly MessengerComposerAction[];
+  /** At the end of a card, for this reader (a product's own control). */
+  renderCardAction?: (card: MessengerCard, message: MessengerMessage) => ReactNode;
   /** At the end of a conversation's top bar: a product's own controls. */
   headerActions?: (conversation: MessengerConversation) => ReactNode;
   /** Where the name in the top bar leads (a profile), if anywhere. */
@@ -366,6 +484,8 @@ export function Messenger({
   composer = {},
   drafts,
   listHeader,
+  actions = [],
+  renderCardAction,
   headerActions,
   profileHref,
   search,
@@ -397,6 +517,8 @@ export function Messenger({
   const draftStore = useMemo(() => drafts ?? sessionDrafts(), [drafts]);
   const [draft, setDraftState] = useState("");
   const [editing, setEditing] = useState<MessengerMessage | null>(null);
+  const [replying, setReplying] = useState<MessengerMessage | null>(null);
+  const [asking, setAsking] = useState<MessengerComposerAction | null>(null);
   const beforeEdit = useRef("");
   const handle = useRef<ComposerHandle | null>(null);
   const initial = composer.initialDraft;
@@ -406,6 +528,8 @@ export function Messenger({
   });
   useEffect(() => {
     setEditing(null);
+    setReplying(null);
+    setAsking(null);
     if (!openId) {
       setDraftState("");
       return;
@@ -477,7 +601,23 @@ export function Messenger({
     labels.people.replace("{n}", String(people.length + 1))
   ) : null;
 
-  const extras: AttachExtra[] = agents.map((agent) => ({
+  const sendCard = (body: string, card?: MessengerCard) =>
+    controller.send(body, [], card ? { card } : undefined);
+  const appExtras: AttachExtra[] = open
+    ? actions
+        .filter((action) => action.available?.(open) ?? true)
+        .map((action) => ({
+          id: `action-${action.id}`,
+          label: action.label,
+          detail: action.detail,
+          icon: action.icon,
+          onPick: () => {
+            if (action.amount) setAsking(action);
+            else void action.onPick({ conversation: open, send: sendCard });
+          },
+        }))
+    : [];
+  const agentExtras: AttachExtra[] = agents.map((agent) => ({
     id: `agent-${agent.id}`,
     label: labels.askAgent.replace("{name}", agent.name),
     detail: agent.hint,
@@ -488,9 +628,32 @@ export function Messenger({
     },
   }));
 
+  const extras = [...appExtras, ...agentExtras];
+  const replyName = !replying
+    ? ""
+    : replying.authorId === viewer.id
+      ? labels.you
+      : (participantOf(open ?? undefined, replying.authorId)?.name ??
+        agents.find((a) => a.id === replying.authorId)?.name ??
+        "");
+
   const header =
-    editing || composer.header || uploads.items.length > 0 ? (
+    editing || replying || composer.header || uploads.items.length > 0 ? (
       <>
+        {replying && !editing && (
+          <div className="ck-msgr-editing ck-msgr-replying">
+            <IconReply />
+            <span className="ck-msgr-replying-text">
+              <span className="ck-truncate">{labels.replyingTo.replace("{name}", replyName)}</span>
+              <span className="ck-truncate ck-msgr-replying-quote">
+                {quoteText(quoteOf(replying), labels.preview)}
+              </span>
+            </span>
+            <button type="button" onClick={() => setReplying(null)}>
+              {labels.cancel}
+            </button>
+          </div>
+        )}
         {editing && (
           <div className="ck-msgr-editing">
             <IconPencil />
@@ -550,12 +713,17 @@ export function Messenger({
           setDraftState(beforeEdit.current);
           return false;
         }
-        const sent = await controller.send(body, uploads.attachments);
+        const sent = await controller.send(
+          body,
+          uploads.attachments,
+          replying ? { replyTo: quoteOf(replying) } : undefined,
+        );
         if (!sent) {
           setNotice(labels.sendFailed);
           return false;
         }
         uploads.clear();
+        setReplying(null);
         if (openId) draftStore.set(openId, "");
         return true;
       }}
@@ -684,6 +852,15 @@ export function Messenger({
                 onRetry={controller.retry}
                 onDiscard={controller.discard}
                 onAction={setActing}
+                onReact={
+                  transport.react
+                    ? async (message, emoji) => {
+                        const ok = await controller.react(message, emoji);
+                        if (!ok) setNotice(labels.reactFailed);
+                      }
+                    : undefined
+                }
+                renderCardAction={renderCardAction}
                 onSeen={controller.seen}
                 onFollowingChange={controller.setFollowing}
                 renderLink={renderLink}
@@ -746,6 +923,48 @@ export function Messenger({
         closeLabel={labels.close}
       >
         <div className="ck-sheet-extra ck-sheet-only">
+          {transport.react && acting && !confirming && (
+            <div
+              className="ck-msgr-react-row"
+              role="group"
+              aria-label={labels.react.replace("{emoji}", "")}
+            >
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="ck-msgr-react"
+                  aria-pressed={reactionOf(acting.reactions, viewer.id) === emoji}
+                  aria-label={labels.react.replace("{emoji}", emoji)}
+                  onClick={async () => {
+                    const message = acting;
+                    closeActions();
+                    const ok = await controller.react(message, emoji);
+                    if (!ok) setNotice(labels.reactFailed);
+                  }}
+                >
+                  <span aria-hidden>{emoji}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {acting && writable && !confirming && (
+            <button
+              type="button"
+              className="ck-attach-extra"
+              onClick={() => {
+                setEditing(null);
+                setReplying(acting);
+                closeActions();
+                setTimeout(() => handle.current?.focus(), 0);
+              }}
+            >
+              <span className="ck-attach-extra-icon" aria-hidden>
+                <IconReply />
+              </span>
+              <span className="ck-attach-extra-text">{labels.reply}</span>
+            </button>
+          )}
           {acting?.body && !confirming && (
             <button
               type="button"
@@ -854,6 +1073,19 @@ export function Messenger({
           )}
         </div>
       </Sheet>
+
+      <AmountSheet
+        action={asking}
+        onClose={() => setAsking(null)}
+        labels={labels}
+        onConfirm={(amount, note) => {
+          const action = asking;
+          setAsking(null);
+          if (action && open) {
+            void action.onPick({ conversation: open, amount, note, send: sendCard });
+          }
+        }}
+      />
 
       <NewConversation
         open={creating}

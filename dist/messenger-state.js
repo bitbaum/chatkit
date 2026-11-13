@@ -204,6 +204,14 @@ export function messengerReducer(state, action) {
                     messages: t.messages.filter((m) => m.id !== action.messageId),
                 })),
             };
+        case "reactions":
+            return {
+                ...state,
+                threads: withThread(state, action.conversationId, (t) => ({
+                    ...t,
+                    messages: t.messages.map((m) => m.id === action.messageId ? { ...m, reactions: action.reactions } : m),
+                })),
+            };
         case "read":
             return {
                 ...state,

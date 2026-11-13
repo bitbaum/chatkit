@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.31.0 — `Messenger`: replies, reactions, and things of value in a conversation
+
+Owner, 2026-11-13: the Messenger has to stand beside WhatsApp, Telegram and Signal, and carry any exchange: information, with or without an agent, and value (money, gifts).
+
+- **Reply.** Every message offers Reply (long press, right click or "…"). The box says whom is being answered, the sent message carries one line of the original above it (`MessengerMessage.replyTo`, `MessengerDraft.replyTo`, `quoteOf`), and tapping that line leads to the original and marks it.
+- **Reactions.** `transport.react(message, emoji | null)` switches them on: six emoji in the message's sheet, chips under the bubble with counts, a tap on a chip adds the same or takes yours off. One per person (`withReaction`, `reactionOf`). Shown at once, taken back if the server refuses; other people's arrive as a `reactions` event.
+- **Cards.** `MessengerMessage.card` is something of value in the thread: a payment request, money sent, a gift, an offer. The app says what it is, for this reader (title, amount, note, status, the one thing they can do); the package draws every kind in one shape.
+- **An app's own actions** (`actions`): "Request money", "Send a gift" in the box's "+", only in conversations they fit (`available`). An action with `amount` gets the package's one "how much?" sheet (a comma is a decimal point; no amount, no send) and then sends words, a card, or both.
+- Tests: 3 more in `test/messenger.test.js`; `test/browser-messenger.mjs` drives reply, reactions, a card and an action on a 390px phone, 44px targets included.
+
 ## 0.30.0 — `VoiceMode`: talking with a chat, and a microphone that cannot be opened twice
 
 Owner, 2026-11-13: Cat Bot has to be a complete equivalent of Grok Bot, which has a voice mode. The chat could take dictation and read an answer aloud, but not hold a spoken conversation.

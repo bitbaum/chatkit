@@ -1,14 +1,28 @@
 "use client";
-import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { readState } from "../thread-rules.js";
-import { clockTime, dayLabel, isAgent, linkify, needsNames, participantOf, threadItems, typingLabel, } from "../messenger.js";
+import { clockTime, dayLabel, isAgent, linkify, needsNames, participantOf, quoteText, threadItems, typingLabel, } from "../messenger.js";
 import { useStickToBottom } from "./hooks.js";
 import { IconAgent, IconAlert, IconArrowDown, IconCheck, IconChecks, IconClock, IconMore, IconSpinner, } from "./icons.js";
 import { Markdown, defaultRenderLink } from "./Markdown.js";
 import { MessageAttachments, MessengerAvatar } from "./MessageAttachments.js";
 import { DEFAULT_MESSENGER_LABELS } from "./messenger-labels.js";
 const LONG_PRESS_MS = 420;
+/** The message this one answers, above it. A button: it leads there. */
+function Quote({ quote, name, text, label, onOpen, }) {
+    return (_jsxs("button", { type: "button", className: "ck-msgr-quote", onClick: onOpen, title: label, "data-quote": quote.id, children: [_jsx("span", { className: "ck-msgr-quote-name ck-truncate", children: name }), _jsx("span", { className: "ck-msgr-quote-text ck-truncate", children: text })] }));
+}
+/** Something of value in the thread: one shape for every kind. */
+function Card({ card, renderLink, children, }) {
+    return (_jsxs("div", { className: "ck-msgr-card", "data-kind": card.kind, "data-tone": card.tone ?? "neutral", children: [_jsx("span", { className: "ck-msgr-card-title", children: card.title }), card.amount && _jsx("span", { className: "ck-msgr-card-amount", children: card.amount }), card.note && _jsx("span", { className: "ck-msgr-card-note", children: card.note }), card.status && _jsx("span", { className: "ck-msgr-card-status", children: card.status }), card.action &&
+                renderLink({
+                    href: card.action.href,
+                    internal: card.action.href.startsWith("/"),
+                    children: card.action.label,
+                    className: "ck-msgr-btn ck-msgr-card-action",
+                }), children] }));
+}
 /** A person's words: exactly as typed, with addresses made links. */
 function PlainText({ text, renderLink }) {
     return (_jsx(_Fragment, { children: linkify(text).map((part, i) => part.type === "link" ? (_jsx("span", { children: renderLink({
@@ -36,7 +50,7 @@ function Dots() {
  * only while the reader is at the end, and keeps its place when earlier
  * messages are loaded above.
  */
-export function MessageThread({ conversation, viewerId, messages, agents = [], status = "ready", onReload, hasOlder = false, loadingOlder = false, olderFailed = false, onLoadOlder, unreadFrom = null, typing = [], awaited = [], onDismissAgent, onRetry, onDiscard, onAction, onSeen, onFollowingChange, renderLink = defaultRenderLink, agentMark, locale, timeZone, labels = DEFAULT_MESSENGER_LABELS, }) {
+export function MessageThread({ conversation, viewerId, messages, agents = [], status = "ready", onReload, hasOlder = false, loadingOlder = false, olderFailed = false, onLoadOlder, unreadFrom = null, typing = [], awaited = [], onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, renderLink = defaultRenderLink, agentMark, locale, timeZone, labels = DEFAULT_MESSENGER_LABELS, }) {
     const items = useMemo(() => threadItems(messages, { viewerId, timeZone, unreadFrom }), [messages, viewerId, timeZone, unreadFrom]);
     const named = needsNames(conversation, viewerId);
     // When the viewer last wrote. It grows only when they send — never when
@@ -108,6 +122,21 @@ export function MessageThread({ conversation, viewerId, messages, agents = [], s
         press.current = null;
     };
     useEffect(() => cancelPress, []);
+    // A quote leads to its message when that message is loaded, and marks it
+    // for a moment so the eye finds it.
+    const showMessage = (id) => {
+        const root = scrollRef.current;
+        if (!root)
+            return;
+        for (const el of root.querySelectorAll("[data-message]")) {
+            if (el.dataset.message !== id)
+                continue;
+            el.scrollIntoView({ block: "center" });
+            el.classList.add("ck-msgr-found");
+            setTimeout(() => el.classList.remove("ck-msgr-found"), 1600);
+            return;
+        }
+    };
     const empty = status === "ready" && messages.length === 0;
     const typingNames = typing.map(nameOf).filter(Boolean);
     return (_jsxs("div", { className: "ck-msgr-thread-wrap", children: [_jsx("div", { className: "ck-msgr-scroll", ref: scrollRef, onScroll: onScroll, role: "log", "aria-live": "polite", "aria-relevant": "additions", tabIndex: 0, children: _jsxs("div", { className: "ck-msgr-thread-inner", children: [hasOlder && messages.length > 0 && (_jsx("button", { ref: olderRef, type: "button", className: "ck-msgr-older", onClick: () => onLoadOlder?.(), disabled: loadingOlder, children: loadingOlder ? (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), " ", labels.loadingOlder] })) : olderFailed ? (labels.olderFailed) : (labels.loadOlder) })), status === "loading" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "status", children: [_jsx(IconSpinner, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.loading })] })), status === "failed" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "alert", children: [_jsx("p", { children: labels.threadFailed }), onReload && (_jsx("button", { type: "button", className: "ck-msgr-btn", onClick: onReload, children: labels.retry }))] })), empty && (_jsxs("div", { className: "ck-msgr-state", children: [_jsx("p", { children: labels.threadEmpty }), agents.map((agent) => (_jsx("p", { className: "ck-msgr-hint", children: labels.agentHint
@@ -149,7 +178,14 @@ export function MessageThread({ conversation, viewerId, messages, agents = [], s
                                                             cancelPress();
                                                             press.current = setTimeout(() => onAction?.(message), LONG_PRESS_MS);
                                                         }
-                                                        : undefined, onTouchMove: actable ? cancelPress : undefined, onTouchEnd: actable ? cancelPress : undefined, onTouchCancel: actable ? cancelPress : undefined, children: [message.attachments && message.attachments.length > 0 && (_jsx(MessageAttachments, { attachments: message.attachments, labels: labels, caption: `${item.own ? labels.you : name} · ${clockTime(message.createdAt, locale, timeZone)}` })), message.body && (_jsx("div", { className: "ck-msgr-bubble", children: agent ? (_jsx(Markdown, { text: message.body, renderLink: renderLink, sources: false })) : (_jsx(PlainText, { text: message.body, renderLink: renderLink })) })), actable && (_jsx("button", { type: "button", className: "ck-msgr-act", onClick: () => onAction?.(message), "aria-label": labels.actions, title: labels.actions, children: _jsx(IconMore, {}) })), message.delivery === "failed" && (_jsxs("div", { className: "ck-msgr-failed-row", role: "alert", children: [_jsx(IconAlert, {}), _jsx("span", { children: labels.notSent }), onRetry && (_jsx("button", { type: "button", onClick: () => onRetry(message), children: labels.retrySend })), onDiscard && (_jsx("button", { type: "button", onClick: () => onDiscard(message), children: labels.discard }))] }))] }, message.id));
+                                                        : undefined, onTouchMove: actable ? cancelPress : undefined, onTouchEnd: actable ? cancelPress : undefined, onTouchCancel: actable ? cancelPress : undefined, children: [message.replyTo && (_jsx(Quote, { quote: message.replyTo, name: message.replyTo.authorId === viewerId
+                                                                ? labels.you
+                                                                : nameOf(message.replyTo.authorId), text: quoteText(message.replyTo, labels.preview), label: labels.quoted, onOpen: () => showMessage(message.replyTo.id) })), message.card && (_jsx(Card, { card: message.card, renderLink: renderLink, children: renderCardAction?.(message.card, message) })), message.attachments && message.attachments.length > 0 && (_jsx(MessageAttachments, { attachments: message.attachments, labels: labels, caption: `${item.own ? labels.you : name} · ${clockTime(message.createdAt, locale, timeZone)}` })), message.body && (_jsx("div", { className: "ck-msgr-bubble", children: agent ? (_jsx(Markdown, { text: message.body, renderLink: renderLink, sources: false })) : (_jsx(PlainText, { text: message.body, renderLink: renderLink })) })), message.reactions && message.reactions.length > 0 && (_jsx("div", { className: "ck-msgr-reactions", children: message.reactions.map((reaction) => {
+                                                                const mine = reaction.actorIds.includes(viewerId);
+                                                                return (_jsxs("button", { type: "button", className: "ck-msgr-reaction", "aria-pressed": mine, disabled: !onReact || Boolean(message.delivery), onClick: () => onReact?.(message, reaction.emoji), "aria-label": labels.reactionCount
+                                                                        .replace("{emoji}", reaction.emoji)
+                                                                        .replace("{n}", String(reaction.actorIds.length)), title: reaction.actorIds.map(nameOf).filter(Boolean).join(", "), children: [_jsx("span", { "aria-hidden": true, children: reaction.emoji }), reaction.actorIds.length > 1 && (_jsx("span", { "aria-hidden": true, children: reaction.actorIds.length }))] }, reaction.emoji));
+                                                            }) })), actable && (_jsx("button", { type: "button", className: "ck-msgr-act", onClick: () => onAction?.(message), "aria-label": labels.actions, title: labels.actions, children: _jsx(IconMore, {}) })), message.delivery === "failed" && (_jsxs("div", { className: "ck-msgr-failed-row", role: "alert", children: [_jsx(IconAlert, {}), _jsx("span", { children: labels.notSent }), onRetry && (_jsx("button", { type: "button", onClick: () => onRetry(message), children: labels.retrySend })), onDiscard && (_jsx("button", { type: "button", onClick: () => onDiscard(message), children: labels.discard }))] }))] }, message.id));
                                             }), !failed && (_jsxs("div", { className: "ck-msgr-meta", children: [_jsx("time", { dateTime: last.createdAt.toISOString(), children: time }), last.editedAt && _jsx("span", { children: labels.edited }), pending && (_jsx("span", { className: "ck-msgr-tick", role: "img", "aria-label": labels.sending, children: _jsx(IconClock, {}) })), receipt === "none" && (_jsx("span", { className: "ck-msgr-tick", role: "img", "aria-label": labels.sent, children: _jsx(IconCheck, {}) })), (receipt === "some" || receipt === "all") && (_jsx("span", { className: receipt === "all" ? "ck-msgr-tick ck-msgr-tick-read" : "ck-msgr-tick", role: "img", "aria-label": labels.read, children: _jsx(IconChecks, {}) }))] }))] })] }, item.key));
                         }), awaited.map((entry) => {
                             const agent = agents.find((a) => a.id === entry.agentId);

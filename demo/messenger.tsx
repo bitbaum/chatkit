@@ -99,7 +99,25 @@ const store: Record<string, MessengerMessage[]> = {
       "Read this: https://example.org/penguins-are-birds.",
       ago(2 * HOUR - 30_000),
     ),
-    message("maya", ME, "That we agree on.", ago(1.9 * HOUR)),
+    message("maya", ME, "That we agree on.", ago(1.9 * HOUR), {
+      replyTo: {
+        id: "s5",
+        authorId: "maya",
+        body: "Fine. But they swim better than they walk.",
+      },
+      reactions: [{ emoji: "👍", actorIds: ["maya"] }],
+    }),
+    message("maya", "maya", "", ago(1.8 * HOUR), {
+      card: {
+        kind: "request",
+        title: "Payment request",
+        amount: "CHF 12.00",
+        note: "Your half of the zoo tickets",
+        status: "Waiting for you",
+        tone: "pending",
+        action: { label: "Pay CHF 12.00", href: "#pay" },
+      },
+    }),
   ],
   hike: [
     message("hike", "ben", "Saturday, 8:00 at the station?", ago(30 * HOUR)),
@@ -195,7 +213,7 @@ for (const c of conversations) {
 
 const listeners = new Set<(event: MessengerEvent) => void>();
 const emit = (event: MessengerEvent) => listeners.forEach((on) => on(event));
-const calls = { send: 0, markRead: 0, upload: 0, messages: 0, typing: 0, list: 0 };
+const calls = { react: 0, send: 0, markRead: 0, upload: 0, messages: 0, typing: 0, list: 0 };
 const PAGE = 30;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let listFailed = false;
@@ -230,6 +248,8 @@ const transport: MessengerTransport = {
       body: draft.body,
       createdAt: new Date(),
       ...(draft.attachments.length > 0 ? { attachments: draft.attachments } : {}),
+      ...(draft.replyTo ? { replyTo: draft.replyTo } : {}),
+      ...(draft.card ? { card: draft.card } : {}),
     };
     store[id] = [...(store[id] ?? []), stored];
     if (/(^|\W)@cat\b/i.test(draft.body) && params.get("agent") !== "quiet") {
@@ -253,6 +273,11 @@ const transport: MessengerTransport = {
     await wait(80);
     if (fail === "edit") throw new Error("no");
     return { ...original, body, editedAt: new Date() };
+  },
+  async react() {
+    calls.react++;
+    await wait(60);
+    if (fail === "react") throw new Error("no");
   },
   async remove() {
     await wait(80);
@@ -348,6 +373,24 @@ function Fixture() {
       locale="en-GB"
       agentPatienceMs={Number(params.get("patience") ?? 90_000)}
       composer={{ voice: { transcribeUrl: "/api/transcribe" } }}
+      actions={[
+        {
+          id: "request",
+          label: "Request money",
+          detail: "They get a card with a Pay button",
+          amount: { unit: "CHF", confirm: "Request" },
+          available: (c) => c.id !== "hike",
+          onPick: ({ amount, note, send }) =>
+            void send("", {
+              kind: "request",
+              title: "Payment request",
+              amount: `CHF ${(amount ?? 0).toFixed(2)}`,
+              ...(note ? { note } : {}),
+              status: "Waiting",
+              tone: "pending",
+            }),
+        },
+      ]}
     />
   );
 }

@@ -116,6 +116,20 @@ export type MessengerLabels = {
 
   // ── what can be done to a message ──
   actions: string;
+  reply: string;
+  /** Above the box while answering: "Replying to {name}". */
+  replyingTo: string;
+  /** On a quote whose message is not loaded: a screen reader's name for it. */
+  quoted: string;
+  /** "React with {emoji}". */
+  react: string;
+  /** On a chip: "{emoji}, {n}". */
+  reactionCount: string;
+  reactFailed: string;
+  /** In the amount sheet of an app's action. */
+  amount: string;
+  note: string;
+  amountInvalid: string;
   copy: string;
   edit: string;
   remove: string;
@@ -238,6 +252,15 @@ export const DEFAULT_MESSENGER_LABELS: MessengerLabels = {
   unavailable: "This file is no longer available.",
 
   actions: "Message",
+  reply: "Reply",
+  replyingTo: "Replying to {name}",
+  quoted: "Go to the message this answers",
+  react: "React with {emoji}",
+  reactionCount: "{emoji}, {n}",
+  reactFailed: "That reaction was not saved. Try again.",
+  amount: "Amount",
+  note: "Note (optional)",
+  amountInvalid: "Enter an amount above zero.",
   copy: "Copy text",
   edit: "Edit",
   remove: "Delete",

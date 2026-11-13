@@ -3968,3 +3968,200 @@ a.ck-turn-chip:hover {
     padding-left: 1rem;
   }
 }
+
+/* ── a reply: the message it answers, above it ─────────────────────────── */
+.ck-msgr-quote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.0625rem;
+  max-width: 100%;
+  min-width: 0;
+  min-height: var(--ck-target);
+  padding: 0.25rem 0.75rem;
+  border: 0;
+  border-inline-start: 3px solid var(--ck-line-2);
+  border-radius: 0.5rem;
+  background: var(--ck-raised);
+  color: var(--ck-fg-2);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  text-align: start;
+  cursor: pointer;
+}
+.ck-msgr-quote-name {
+  max-width: 100%;
+  color: var(--ck-fg);
+  font-weight: 600;
+}
+.ck-msgr-quote-text {
+  max-width: 100%;
+}
+/* The message a quote led to, marked for a moment. */
+.ck-msgr-found > .ck-msgr-bubble,
+.ck-msgr-found > .ck-msgr-card {
+  outline: 2px solid var(--ck-fg);
+  outline-offset: 2px;
+}
+.ck-msgr-replying-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.ck-msgr-replying-text > :first-child {
+  color: var(--ck-fg);
+  font-weight: 600;
+}
+
+/* ── reactions ─────────────────────────────────────────────────────────── */
+.ck-msgr-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 100%;
+}
+.ck-msgr-own .ck-msgr-reactions {
+  justify-content: flex-end;
+}
+.ck-msgr-reaction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: var(--ck-target);
+  min-height: var(--ck-target);
+  padding: 0 0.625rem;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.ck-msgr-reaction[aria-pressed="true"] {
+  border-color: var(--ck-fg);
+}
+.ck-msgr-reaction:disabled {
+  cursor: default;
+}
+.ck-msgr-react-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0 0 0.5rem;
+}
+.ck-msgr-react {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--ck-target);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--ck-raised);
+  font-size: 1.375rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.ck-msgr-react[aria-pressed="true"] {
+  border-color: var(--ck-fg);
+}
+
+/* ── a card: money asked for or sent, a gift, an offer ─────────────────── */
+.ck-msgr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 16rem;
+  max-width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 1.125rem;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  overflow-wrap: break-word;
+}
+.ck-msgr-card-title {
+  color: var(--ck-fg-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.ck-msgr-card-amount {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.ck-msgr-card-note {
+  font-size: max(16px, var(--ck-text));
+  line-height: 1.4;
+}
+.ck-msgr-card-status {
+  color: var(--ck-fg-2);
+  font-size: 0.875rem;
+}
+.ck-msgr-card[data-tone="positive"] .ck-msgr-card-status,
+.ck-msgr-card[data-tone="negative"] .ck-msgr-card-status {
+  color: var(--ck-fg);
+  font-weight: 600;
+}
+.ck-msgr-card-action {
+  align-self: stretch;
+  margin-top: 0.375rem;
+  border-color: transparent;
+  background: var(--ck-fg);
+  color: var(--ck-bg);
+  text-decoration: none;
+}
+
+/* ── "how much?" ───────────────────────────────────────────────────────── */
+.ck-msgr-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 0 0.5rem;
+}
+.ck-msgr-amount-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--ck-fg-2);
+  font-size: 0.875rem;
+}
+.ck-msgr-amount-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ck-target);
+  padding: 0 0.75rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: var(--ck-radius-sm);
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-size: max(16px, var(--ck-text));
+}
+.ck-msgr-amount-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ck-msgr-amount-box > input {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ck-msgr-amount-unit {
+  color: var(--ck-fg);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.ck-msgr-amount-error {
+  margin: 0;
+  color: var(--ck-danger);
+  font-size: 0.875rem;
+}

@@ -630,3 +630,93 @@ test("leaving a conversation closes it and forgets its thread", () => {
   assert.equal(s.conversations.length, 0);
   assert.equal(s.threads.c1, undefined);
 });
+
+// ── replies, reactions, cards ──
+
+test("a quote carries one line of the message it answers", async () => {
+  const { quoteOf, quoteText, QUOTE_MAX } = await import("../dist/index.js");
+  const at = new Date("2026-11-13T10:00:00Z");
+  const long = quoteOf({
+    id: "a",
+    threadId: "t",
+    authorId: "maya",
+    body: `first line\nsecond   line ${"x".repeat(200)}`,
+    createdAt: at,
+  });
+  assert.equal(long.id, "a");
+  assert.equal(long.authorId, "maya");
+  assert.ok(long.body.startsWith("first line second line"));
+  assert.ok(long.body.length <= QUOTE_MAX && long.body.endsWith("…"));
+
+  const photo = quoteOf({
+    id: "b",
+    threadId: "t",
+    authorId: "maya",
+    body: "",
+    createdAt: at,
+    attachments: [
+      { id: "f", kind: "image", name: "a.jpg", mimeType: "image/jpeg", bytes: 1, url: "/a" },
+    ],
+  });
+  const labels = {
+    you: "You: ",
+    photo: "Photo",
+    photos: "{n} photos",
+    video: "Video",
+    audio: "Audio",
+    file: "File",
+    attachments: "{n} attachments",
+    empty: "No messages yet",
+  };
+  assert.equal(quoteText(photo, labels), "Photo");
+  assert.equal(quoteText(long, labels), long.body);
+});
+
+test("one reaction per person: a second choice replaces the first, the same one takes it off", async () => {
+  const { withReaction, reactionOf } = await import("../dist/index.js");
+  let r = withReaction(undefined, "me", "👍");
+  assert.deepEqual(r, [{ emoji: "👍", actorIds: ["me"] }]);
+  r = withReaction(r, "maya", "👍");
+  r = withReaction(r, "ben", "❤️");
+  assert.deepEqual(r, [
+    { emoji: "👍", actorIds: ["me", "maya"] },
+    { emoji: "❤️", actorIds: ["ben"] },
+  ]);
+  r = withReaction(r, "me", "❤️");
+  assert.deepEqual(r, [
+    { emoji: "👍", actorIds: ["maya"] },
+    { emoji: "❤️", actorIds: ["ben", "me"] },
+  ]);
+  assert.equal(reactionOf(r, "me"), "❤️");
+  r = withReaction(r, "maya", null);
+  assert.deepEqual(r, [{ emoji: "❤️", actorIds: ["ben", "me"] }]);
+  assert.equal(reactionOf(r, "maya"), null);
+});
+
+test("a reactions event replaces the reactions of that message only", () => {
+  const at = new Date("2026-11-13T10:00:00Z");
+  let state = initialMessengerState("me");
+  state = messengerReducer(state, {
+    type: "list-loaded",
+    conversations: [{ id: "t", createdAt: at, participants: [] }],
+  });
+  state = messengerReducer(state, { type: "open", id: "t" });
+  state = messengerReducer(state, {
+    type: "thread-loaded",
+    id: "t",
+    before: null,
+    messages: [
+      { id: "a", threadId: "t", authorId: "maya", body: "one", createdAt: at },
+      { id: "b", threadId: "t", authorId: "maya", body: "two", createdAt: at },
+    ],
+  });
+  state = messengerReducer(state, {
+    type: "reactions",
+    conversationId: "t",
+    messageId: "b",
+    reactions: [{ emoji: "👍", actorIds: ["me"] }],
+  });
+  const [a, b] = state.threads.t.messages;
+  assert.equal(a.reactions, undefined);
+  assert.deepEqual(b.reactions, [{ emoji: "👍", actorIds: ["me"] }]);
+});

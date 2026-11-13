@@ -49,8 +49,48 @@ export type MessengerAttachment = ThreadAttachment & {
     /** Where "Download" goes, when it is not `url`. */
     downloadUrl?: string;
 };
+/** The message another one answers, as much of it as a bubble shows. */
+export type MessengerQuote = {
+    id: string;
+    authorId: string;
+    /** Its words, cut short by `quoteOf`. Empty for a message of only files. */
+    body: string;
+    attachments?: readonly AttachmentKind[];
+};
+/** One emoji on a message, and who put it there. */
+export type MessengerReaction = {
+    emoji: string;
+    actorIds: readonly string[];
+};
+/**
+ * Something of value in a conversation: money asked for, money sent, a gift,
+ * an offer. The app decides what exists (`kind` is its word) and writes every
+ * line FOR THIS READER; the package draws them all in one shape, so a request
+ * in one product looks like a request in the next.
+ */
+export type MessengerCard = {
+    kind: string;
+    /** "Payment request". */
+    title: string;
+    /** "CHF 20.00", already formatted. */
+    amount?: string;
+    note?: string;
+    /** "Waiting", "Paid", "Declined". */
+    status?: string;
+    tone?: "neutral" | "pending" | "positive" | "negative";
+    /** What this reader can do about it: "Pay" and where. */
+    action?: {
+        label: string;
+        href: string;
+    };
+    /** The app's own fields, carried to the server on a draft. Never drawn. */
+    data?: Record<string, unknown>;
+};
 export type MessengerMessage = Message & {
     attachments?: readonly MessengerAttachment[];
+    replyTo?: MessengerQuote | null;
+    reactions?: readonly MessengerReaction[];
+    card?: MessengerCard | null;
     editedAt?: Date | null;
     /** The person an agent answered for: their id. Drawn as "Cat · for Georgy". */
     onBehalfOf?: string;
@@ -60,6 +100,7 @@ export type MessengerMessage = Message & {
 };
 /** What the list knows about a conversation's newest message. */
 export type MessengerLast = {
+    /** The words; for a card with none, its title and amount ("Payment request · CHF 20"). */
     body: string;
     authorId: string;
     createdAt: Date;
@@ -97,6 +138,9 @@ export type MessengerDraft = {
     body: string;
     /** Already uploaded (`transport.upload`): the server links them by id. */
     attachments: readonly MessengerAttachment[];
+    /** The message this one answers. The server stores its id and re-reads it. */
+    replyTo?: MessengerQuote;
+    card?: MessengerCard;
 };
 /** What the browser knows about a file before it is uploaded. */
 export type MessengerUpload = {
@@ -120,6 +164,13 @@ export type MessengerEvent = {
     type: "message-removed";
     conversationId: string;
     messageId: string;
+}
+/** The reactions on a message, whole, after somebody changed one. */
+ | {
+    type: "reactions";
+    conversationId: string;
+    messageId: string;
+    reactions: readonly MessengerReaction[];
 } | {
     type: "read";
     conversationId: string;
@@ -180,6 +231,12 @@ export type MessengerTransport = {
     }): Promise<MessengerConversation>;
     edit?(message: MessengerMessage, body: string): Promise<MessengerMessage>;
     remove?(message: MessengerMessage): Promise<void>;
+    /**
+     * The viewer put `emoji` on a message, or (`null`) took theirs off. One per
+     * person per message: a second choice replaces the first. Without it, no
+     * reactions.
+     */
+    react?(message: MessengerMessage, emoji: string | null): Promise<void>;
     /** The viewer has read the conversation up to `at`. */
     markRead?(conversationId: string, at: Date): Promise<void>;
     /** The viewer started or stopped typing. Fire-and-forget. */
@@ -299,6 +356,24 @@ export type MessengerPreviewLabels = {
 export declare function attachmentSummary(kinds: readonly AttachmentKind[], labels: MessengerPreviewLabels): string;
 /** The second line of a row in the list: the newest message, on one line. */
 export declare function conversationPreview(conversation: MessengerConversation, viewerId: string, labels: MessengerPreviewLabels): string;
+/** How much of a message its quote carries. */
+export declare const QUOTE_MAX = 140;
+/** A message as the one line another message quotes. */
+export declare function quoteOf(message: MessengerMessage): MessengerQuote;
+/** What a quote says in one line: its words, else what its files are, else
+ *  the card's title. */
+export declare function quoteText(quote: MessengerQuote, labels: MessengerPreviewLabels): string;
+/** The emoji offered first. Six, because six fit one row of 44px targets on
+ *  a 320px phone. */
+export declare const QUICK_REACTIONS: readonly string[];
+/** The emoji `actorId` has on a message, if any. */
+export declare function reactionOf(reactions: readonly MessengerReaction[] | undefined, actorId: string): string | null;
+/**
+ * Reactions after `actorId` chose `emoji` (`null` takes theirs off). One per
+ * person: the old one goes. Order is first-used first, so chips do not jump
+ * about as counts change.
+ */
+export declare function withReaction(reactions: readonly MessengerReaction[] | undefined, actorId: string, emoji: string | null): MessengerReaction[];
 /** Messages by one author this close together are drawn as one run. */
 export declare const RUN_GAP_MS: number;
 export type ThreadItem = {

@@ -9,11 +9,14 @@ import {
   linkify,
   needsNames,
   participantOf,
+  quoteText,
   threadItems,
   typingLabel,
   type MessengerAgent,
   type MessengerConversation,
+  type MessengerCard,
   type MessengerMessage,
+  type MessengerQuote,
 } from "../messenger.js";
 import type { MessengerAwaited } from "../messenger-state.js";
 import { useStickToBottom } from "./hooks.js";
@@ -57,6 +60,10 @@ export type MessageThreadProps = {
   /** Open what can be done to a message (copy, edit, delete). Given, a
    *  message answers a long press, a right click and its "…" button. */
   onAction?: (message: MessengerMessage) => void;
+  /** Tap a reaction chip: put the same emoji on, or take the viewer's off. */
+  onReact?: (message: MessengerMessage, emoji: string) => void;
+  /** At the end of a card: what the app adds to it for this reader. */
+  renderCardAction?: (card: MessengerCard, message: MessengerMessage) => ReactNode;
   /** The viewer is at the newest message and it is on screen. */
   onSeen?: () => void;
   onFollowingChange?: (following: boolean) => void;
@@ -69,6 +76,62 @@ export type MessageThreadProps = {
 };
 
 const LONG_PRESS_MS = 420;
+
+/** The message this one answers, above it. A button: it leads there. */
+function Quote({
+  quote,
+  name,
+  text,
+  label,
+  onOpen,
+}: {
+  quote: MessengerQuote;
+  name: string;
+  text: string;
+  label: string;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="ck-msgr-quote"
+      onClick={onOpen}
+      title={label}
+      data-quote={quote.id}
+    >
+      <span className="ck-msgr-quote-name ck-truncate">{name}</span>
+      <span className="ck-msgr-quote-text ck-truncate">{text}</span>
+    </button>
+  );
+}
+
+/** Something of value in the thread: one shape for every kind. */
+function Card({
+  card,
+  renderLink,
+  children,
+}: {
+  card: MessengerCard;
+  renderLink: RenderLink;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="ck-msgr-card" data-kind={card.kind} data-tone={card.tone ?? "neutral"}>
+      <span className="ck-msgr-card-title">{card.title}</span>
+      {card.amount && <span className="ck-msgr-card-amount">{card.amount}</span>}
+      {card.note && <span className="ck-msgr-card-note">{card.note}</span>}
+      {card.status && <span className="ck-msgr-card-status">{card.status}</span>}
+      {card.action &&
+        renderLink({
+          href: card.action.href,
+          internal: card.action.href.startsWith("/"),
+          children: card.action.label,
+          className: "ck-msgr-btn ck-msgr-card-action",
+        })}
+      {children}
+    </div>
+  );
+}
 
 /** A person's words: exactly as typed, with addresses made links. */
 function PlainText({ text, renderLink }: { text: string; renderLink: RenderLink }) {
@@ -135,6 +198,8 @@ export function MessageThread({
   onRetry,
   onDiscard,
   onAction,
+  onReact,
+  renderCardAction,
   onSeen,
   onFollowingChange,
   renderLink = defaultRenderLink,
@@ -225,6 +290,20 @@ export function MessageThread({
     press.current = null;
   };
   useEffect(() => cancelPress, []);
+
+  // A quote leads to its message when that message is loaded, and marks it
+  // for a moment so the eye finds it.
+  const showMessage = (id: string) => {
+    const root = scrollRef.current;
+    if (!root) return;
+    for (const el of root.querySelectorAll<HTMLElement>("[data-message]")) {
+      if (el.dataset.message !== id) continue;
+      el.scrollIntoView({ block: "center" });
+      el.classList.add("ck-msgr-found");
+      setTimeout(() => el.classList.remove("ck-msgr-found"), 1600);
+      return;
+    }
+  };
 
   const empty = status === "ready" && messages.length === 0;
   const typingNames = typing.map(nameOf).filter(Boolean);
@@ -385,6 +464,24 @@ export function MessageThread({
                         onTouchEnd={actable ? cancelPress : undefined}
                         onTouchCancel={actable ? cancelPress : undefined}
                       >
+                        {message.replyTo && (
+                          <Quote
+                            quote={message.replyTo}
+                            name={
+                              message.replyTo.authorId === viewerId
+                                ? labels.you
+                                : nameOf(message.replyTo.authorId)
+                            }
+                            text={quoteText(message.replyTo, labels.preview)}
+                            label={labels.quoted}
+                            onOpen={() => showMessage(message.replyTo!.id)}
+                          />
+                        )}
+                        {message.card && (
+                          <Card card={message.card} renderLink={renderLink}>
+                            {renderCardAction?.(message.card, message)}
+                          </Card>
+                        )}
                         {message.attachments && message.attachments.length > 0 && (
                           <MessageAttachments
                             attachments={message.attachments}
@@ -403,6 +500,32 @@ export function MessageThread({
                             ) : (
                               <PlainText text={message.body} renderLink={renderLink} />
                             )}
+                          </div>
+                        )}
+                        {message.reactions && message.reactions.length > 0 && (
+                          <div className="ck-msgr-reactions">
+                            {message.reactions.map((reaction) => {
+                              const mine = reaction.actorIds.includes(viewerId);
+                              return (
+                                <button
+                                  key={reaction.emoji}
+                                  type="button"
+                                  className="ck-msgr-reaction"
+                                  aria-pressed={mine}
+                                  disabled={!onReact || Boolean(message.delivery)}
+                                  onClick={() => onReact?.(message, reaction.emoji)}
+                                  aria-label={labels.reactionCount
+                                    .replace("{emoji}", reaction.emoji)
+                                    .replace("{n}", String(reaction.actorIds.length))}
+                                  title={reaction.actorIds.map(nameOf).filter(Boolean).join(", ")}
+                                >
+                                  <span aria-hidden>{reaction.emoji}</span>
+                                  {reaction.actorIds.length > 1 && (
+                                    <span aria-hidden>{reaction.actorIds.length}</span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                         {actable && (

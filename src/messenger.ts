@@ -58,8 +58,45 @@ export type MessengerAttachment = ThreadAttachment & {
   downloadUrl?: string;
 };
 
+/** The message another one answers, as much of it as a bubble shows. */
+export type MessengerQuote = {
+  id: string;
+  authorId: string;
+  /** Its words, cut short by `quoteOf`. Empty for a message of only files. */
+  body: string;
+  attachments?: readonly AttachmentKind[];
+};
+
+/** One emoji on a message, and who put it there. */
+export type MessengerReaction = { emoji: string; actorIds: readonly string[] };
+
+/**
+ * Something of value in a conversation: money asked for, money sent, a gift,
+ * an offer. The app decides what exists (`kind` is its word) and writes every
+ * line FOR THIS READER; the package draws them all in one shape, so a request
+ * in one product looks like a request in the next.
+ */
+export type MessengerCard = {
+  kind: string;
+  /** "Payment request". */
+  title: string;
+  /** "CHF 20.00", already formatted. */
+  amount?: string;
+  note?: string;
+  /** "Waiting", "Paid", "Declined". */
+  status?: string;
+  tone?: "neutral" | "pending" | "positive" | "negative";
+  /** What this reader can do about it: "Pay" and where. */
+  action?: { label: string; href: string };
+  /** The app's own fields, carried to the server on a draft. Never drawn. */
+  data?: Record<string, unknown>;
+};
+
 export type MessengerMessage = Message & {
   attachments?: readonly MessengerAttachment[];
+  replyTo?: MessengerQuote | null;
+  reactions?: readonly MessengerReaction[];
+  card?: MessengerCard | null;
   editedAt?: Date | null;
   /** The person an agent answered for: their id. Drawn as "Cat · for Georgy". */
   onBehalfOf?: string;
@@ -70,6 +107,7 @@ export type MessengerMessage = Message & {
 
 /** What the list knows about a conversation's newest message. */
 export type MessengerLast = {
+  /** The words; for a card with none, its title and amount ("Payment request · CHF 20"). */
   body: string;
   authorId: string;
   createdAt: Date;
@@ -110,6 +148,9 @@ export type MessengerDraft = {
   body: string;
   /** Already uploaded (`transport.upload`): the server links them by id. */
   attachments: readonly MessengerAttachment[];
+  /** The message this one answers. The server stores its id and re-reads it. */
+  replyTo?: MessengerQuote;
+  card?: MessengerCard;
 };
 
 /** What the browser knows about a file before it is uploaded. */
@@ -131,6 +172,13 @@ export type MessengerUpload = {
 export type MessengerEvent =
   | { type: "message"; message: MessengerMessage }
   | { type: "message-removed"; conversationId: string; messageId: string }
+  /** The reactions on a message, whole, after somebody changed one. */
+  | {
+      type: "reactions";
+      conversationId: string;
+      messageId: string;
+      reactions: readonly MessengerReaction[];
+    }
   | { type: "read"; conversationId: string; actorId: string; at: Date }
   | { type: "typing"; conversationId: string; actorId: string; typing: boolean }
   | { type: "presence"; actorId: string; online: boolean }
@@ -165,6 +213,12 @@ export type MessengerTransport = {
   conversation?(id: string, options: { signal?: AbortSignal }): Promise<MessengerConversation>;
   edit?(message: MessengerMessage, body: string): Promise<MessengerMessage>;
   remove?(message: MessengerMessage): Promise<void>;
+  /**
+   * The viewer put `emoji` on a message, or (`null`) took theirs off. One per
+   * person per message: a second choice replaces the first. Without it, no
+   * reactions.
+   */
+  react?(message: MessengerMessage, emoji: string | null): Promise<void>;
   /** The viewer has read the conversation up to `at`. */
   markRead?(conversationId: string, at: Date): Promise<void>;
   /** The viewer started or stopped typing. Fire-and-forget. */
@@ -489,6 +543,60 @@ export function conversationPreview(
   const said = words || attachmentSummary(last.attachments ?? [], labels);
   if (!said) return labels.empty;
   return last.authorId === viewerId ? `${labels.you}${said}` : said;
+}
+
+// ── Replies and reactions ───────────────────────────────────────────────────
+
+/** How much of a message its quote carries. */
+export const QUOTE_MAX = 140;
+
+/** A message as the one line another message quotes. */
+export function quoteOf(message: MessengerMessage): MessengerQuote {
+  const words = message.body.replace(/\s+/g, " ").trim();
+  const kinds = (message.attachments ?? []).map((a) => a.kind);
+  return {
+    id: message.id,
+    authorId: message.authorId,
+    body: words.length > QUOTE_MAX ? `${words.slice(0, QUOTE_MAX - 1).trimEnd()}…` : words,
+    ...(kinds.length > 0 ? { attachments: kinds } : {}),
+  };
+}
+
+/** What a quote says in one line: its words, else what its files are, else
+ *  the card's title. */
+export function quoteText(quote: MessengerQuote, labels: MessengerPreviewLabels): string {
+  return quote.body || attachmentSummary(quote.attachments ?? [], labels) || labels.empty;
+}
+
+/** The emoji offered first. Six, because six fit one row of 44px targets on
+ *  a 320px phone. */
+export const QUICK_REACTIONS: readonly string[] = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+/** The emoji `actorId` has on a message, if any. */
+export function reactionOf(
+  reactions: readonly MessengerReaction[] | undefined,
+  actorId: string,
+): string | null {
+  return reactions?.find((r) => r.actorIds.includes(actorId))?.emoji ?? null;
+}
+
+/**
+ * Reactions after `actorId` chose `emoji` (`null` takes theirs off). One per
+ * person: the old one goes. Order is first-used first, so chips do not jump
+ * about as counts change.
+ */
+export function withReaction(
+  reactions: readonly MessengerReaction[] | undefined,
+  actorId: string,
+  emoji: string | null,
+): MessengerReaction[] {
+  const without = (reactions ?? [])
+    .map((r) => ({ emoji: r.emoji, actorIds: r.actorIds.filter((a) => a !== actorId) }))
+    .filter((r) => r.actorIds.length > 0 || r.emoji === emoji);
+  if (emoji === null) return without.filter((r) => r.actorIds.length > 0);
+  const at = without.findIndex((r) => r.emoji === emoji);
+  if (at === -1) return [...without, { emoji, actorIds: [actorId] }];
+  return without.map((r, i) => (i === at ? { emoji, actorIds: [...r.actorIds, actorId] } : r));
 }
 
 // ── The thread ──────────────────────────────────────────────────────────────

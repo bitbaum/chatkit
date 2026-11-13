@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { type MessengerAgent, type MessengerConversation, type MessengerMessage } from "../messenger.js";
+import { type MessengerAgent, type MessengerConversation, type MessengerCard, type MessengerMessage } from "../messenger.js";
 import type { MessengerAwaited } from "../messenger-state.js";
 import { type RenderLink } from "./Markdown.js";
 import { type MessengerLabels } from "./messenger-labels.js";
@@ -29,6 +29,10 @@ export type MessageThreadProps = {
     /** Open what can be done to a message (copy, edit, delete). Given, a
      *  message answers a long press, a right click and its "…" button. */
     onAction?: (message: MessengerMessage) => void;
+    /** Tap a reaction chip: put the same emoji on, or take the viewer's off. */
+    onReact?: (message: MessengerMessage, emoji: string) => void;
+    /** At the end of a card: what the app adds to it for this reader. */
+    renderCardAction?: (card: MessengerCard, message: MessengerMessage) => ReactNode;
     /** The viewer is at the newest message and it is on screen. */
     onSeen?: () => void;
     onFollowingChange?: (following: boolean) => void;
@@ -54,5 +58,5 @@ export type MessageThreadProps = {
  * only while the reader is at the end, and keeps its place when earlier
  * messages are loaded above.
  */
-export declare function MessageThread({ conversation, viewerId, messages, agents, status, onReload, hasOlder, loadingOlder, olderFailed, onLoadOlder, unreadFrom, typing, awaited, onDismissAgent, onRetry, onDiscard, onAction, onSeen, onFollowingChange, renderLink, agentMark, locale, timeZone, labels, }: MessageThreadProps): import("react").JSX.Element;
+export declare function MessageThread({ conversation, viewerId, messages, agents, status, onReload, hasOlder, loadingOlder, olderFailed, onLoadOlder, unreadFrom, typing, awaited, onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, renderLink, agentMark, locale, timeZone, labels, }: MessageThreadProps): import("react").JSX.Element;
 //# sourceMappingURL=MessageThread.d.ts.map
