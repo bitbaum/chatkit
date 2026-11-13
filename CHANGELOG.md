@@ -2,6 +2,7 @@
 
 ## 0.31.1 — An action's amount sheet takes the app's note length
 
+- `MessengerComposerAction` is exported from `@bitbaum/chatkit/messenger` (0.31.0 used it in `MessengerProps` but did not export it, so an app could not type its own actions).
 - `MessengerComposerAction.amount.noteMaxLength`: how long a note the app can keep (140 when not given), so the sheet never lets a person type a note the server would then refuse.
 
 ## 0.31.0 — `Messenger`: replies, reactions, and things of value in a conversation
