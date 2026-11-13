@@ -573,6 +573,7 @@ width (a container query) the two sit side by side.
 | Method | With it |
 | --- | --- |
 | `upload(file, about, { progress, signal })` | the paperclip: Camera · Photos · Videos · Files, a tray with progress, Try again |
+| (with `upload`, and a policy that takes audio) | Voice message: record, listen, add to the message (0.34) |
 | `subscribe(scope, on)` | messages, read marks, typing and presence from elsewhere (`MessengerEvent`) |
 | `markRead` · `typing` | ticks on the other side; "Maya is typing…" |
 | `edit` · `remove` | Edit and Delete on the viewer's own messages (long press, right click, or "…") |

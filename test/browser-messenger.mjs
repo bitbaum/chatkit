@@ -95,9 +95,11 @@ const count = (page, text) => bubbles(page).then((all) => all.filter((b) => b ==
 const atEnd = (page) =>
   page.$eval(".ck-msgr-scroll", (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 4);
 
-const browser = await chromium.launch(
-  process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
-);
+const browser = await chromium.launch({
+  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+  // A microphone that is always there and never asks: the voice message.
+  args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
+});
 try {
   // ── the screen, at every width, light and dark ──
   for (const [name, width, height, dark] of [
@@ -405,8 +407,16 @@ try {
       "attach: the same sheet offers to ask the agent",
     );
     check(
-      (await page.locator(".ck-sheet[open] .ck-attach-extra").count()) === 1,
+      (await page
+        .locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Request money" })
+        .count()) === 0,
       "actions: an action that does not fit a conversation is not offered in it",
+    );
+    check(
+      (await page
+        .locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Voice message" })
+        .count()) === 1,
+      "voice: the same sheet offers a voice message",
     );
     await page.locator(".ck-sheet[open] .ck-sheet-close").click();
 
@@ -569,6 +579,71 @@ try {
       ),
     );
     check(true, "actions: a comma is a decimal point, and the card is in the thread");
+
+    // ── a voice message: record, listen, add, send ──
+    await page.goto(`${base}?open=maya`);
+    await page.waitForSelector(".ck-msgr-bubble");
+    await page.evaluate(() => {
+      // Every microphone track this page opens, so the test can see them closed.
+      window.ckTracks = [];
+      const open = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getUserMedia = async (c) => {
+        const stream = await open(c);
+        window.ckTracks.push(...stream.getTracks());
+        return stream;
+      };
+    });
+    const liveTracks = () =>
+      page.evaluate(() => window.ckTracks.filter((t) => t.readyState === "live").length);
+    await page.tap(".ck-composer .ck-tools .ck-icon-btn");
+    await page.locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Voice message" }).tap();
+    await page.waitForSelector(".ck-sheet[open] .ck-msgr-voice-btn");
+    m = await layout(page);
+    check(m.small.length === 0, `voice: every control is 44px (${m.small.join(", ")})`);
+    await page.locator(".ck-sheet[open] .ck-msgr-voice-btn").tap();
+    await page.waitForSelector('.ck-msgr-voice[data-phase="recording"]');
+    check((await liveTracks()) === 1, "voice: recording opens one microphone");
+    await page.waitForFunction(() =>
+      /Recording 0:0[1-9]/.test(document.querySelector(".ck-msgr-voice-line")?.textContent ?? ""),
+    );
+    check(true, "voice: the take counts its seconds");
+    await page.locator(".ck-sheet[open] .ck-msgr-voice-btn").tap();
+    await page.waitForSelector('.ck-msgr-voice[data-phase="recorded"] audio');
+    check((await liveTracks()) === 0, "voice: stopping closes the microphone");
+    const voiceBefore = await page.locator(".ck-msgr-thread-wrap .ck-msgr-audio").count();
+    await page.locator(".ck-sheet[open] .ck-msgr-btn-primary").tap();
+    await page.waitForSelector('.ck-msgr-upload[data-upload="done"]');
+    check(
+      (await page.locator(".ck-sheet[open] .ck-msgr-voice").count()) === 0,
+      "voice: the take is in the tray like any file, and the sheet is gone",
+    );
+    await page.tap(".ck-send");
+    await page.waitForFunction(
+      (n) =>
+        document.querySelectorAll(".ck-msgr-thread-wrap .ck-msgr-audio").length === n + 1 &&
+        !document.querySelector(".ck-msgr-sending"),
+      voiceBefore,
+    );
+    check(
+      await page.evaluate(() => {
+        const sent = window.ckMessenger.store.maya.at(-1).attachments?.[0];
+        return (
+          sent?.kind === "audio" &&
+          /^voice-\d{4}-\d{2}-\d{2}-\d{4}\.(webm|m4a|ogg)$/.test(sent.name)
+        );
+      }),
+      "voice: it is sent as an audio file with a name a person can find again",
+    );
+    // Closing the sheet mid-take closes the microphone too.
+    await page.tap(".ck-composer .ck-tools .ck-icon-btn");
+    await page.locator(".ck-sheet[open] .ck-attach-extra", { hasText: "Voice message" }).tap();
+    await page.locator(".ck-sheet[open] .ck-msgr-voice-btn").tap();
+    await page.waitForSelector('.ck-msgr-voice[data-phase="recording"]');
+    await page.locator(".ck-sheet[open] .ck-sheet-close").click();
+    await page.waitForFunction(() => window.ckTracks.every((t) => t.readyState === "ended"));
+    check(true, "voice: closing the sheet while recording closes the microphone");
+    m = await layout(page);
+    check(m.overflow <= 0, `voice: nothing scrolls sideways (${m.overflow}px)`);
 
     // ── inside a host's own base styles, with a photo that is not square ──
     // What a person saw on a phone on 2026-11-13: the field drawn as a box

@@ -8,12 +8,13 @@ import { agentsPresent, conversationTitle, failureText, otherPeople, participant
 import { Composer, } from "./Composer.js";
 import { ConversationList } from "./ConversationList.js";
 import { useViewportHeight } from "./hooks.js";
-import { IconAgent, IconArrowLeft, IconCheck, IconCopy, IconFile, IconMore, IconPencil, IconReply, IconRetry, IconSearch, IconSpinner, IconTrash, IconUsers, IconVideo, IconX, } from "./icons.js";
+import { IconAgent, IconArrowLeft, IconCheck, IconCopy, IconFile, IconMic, IconMore, IconPencil, IconReply, IconRetry, IconSearch, IconSpinner, IconTrash, IconUsers, IconVideo, IconX, } from "./icons.js";
 import { MessengerAvatar } from "./MessageAttachments.js";
 import { MessageThread } from "./MessageThread.js";
 import { messengerLabels, } from "./messenger-labels.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import { useMessenger } from "./use-messenger.js";
+import { VoiceRecorder, canRecordVoice } from "./VoiceRecorder.js";
 import { useUploads, } from "./use-uploads.js";
 /** "How much?", asked once, the same way for every action that needs it. */
 function AmountSheet({ action, onClose, onConfirm, labels, }) {
@@ -168,6 +169,7 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
         setEditing(null);
         setReplying(null);
         setAsking(null);
+        setRecordingVoice(false);
         if (!openId) {
             setDraftState("");
             return;
@@ -241,6 +243,21 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
             },
         }))
         : [];
+    // A voice message: recorded here, then a file like any other.
+    const [recordingVoice, setRecordingVoice] = useState(false);
+    const [voiceSupported, setVoiceSupported] = useState(false);
+    useEffect(() => setVoiceSupported(canRecordVoice()), []);
+    const voiceExtras = canUpload && voiceSupported && policy.maxBytes.audio > 0
+        ? [
+            {
+                id: "voice-message",
+                label: labels.voiceMessage,
+                detail: labels.voiceHint,
+                icon: _jsx(IconMic, {}),
+                onPick: () => setRecordingVoice(true),
+            },
+        ]
+        : [];
     const agentExtras = agents.map((agent) => ({
         id: `agent-${agent.id}`,
         label: labels.askAgent.replace("{name}", agent.name),
@@ -251,7 +268,7 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
             setTimeout(() => handle.current?.focus(), 0);
         },
     }));
-    const extras = [...appExtras, ...agentExtras];
+    const extras = [...voiceExtras, ...appExtras, ...agentExtras];
     const replyName = !replying
         ? ""
         : replying.authorId === viewer.id
@@ -350,7 +367,10 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
                                             const ok = await controller.leave(id);
                                             if (!ok)
                                                 setNotice(failureText(null, labels.leaveFailed));
-                                        }, children: labels.leave })] })] })) }) }), _jsx(AmountSheet, { action: asking, onClose: () => setAsking(null), labels: labels, onConfirm: (amount, note) => {
+                                        }, children: labels.leave })] })] })) }) }), _jsx(Sheet, { open: recordingVoice, onClose: () => setRecordingVoice(false), title: labels.voiceMessage, closeLabel: labels.close, children: recordingVoice && (_jsx(VoiceRecorder, { labels: labels, onDone: (file) => {
+                        setRecordingVoice(false);
+                        uploads.add([file]);
+                    } })) }), _jsx(AmountSheet, { action: asking, onClose: () => setAsking(null), labels: labels, onConfirm: (amount, note) => {
                     const action = asking;
                     setAsking(null);
                     if (action && open) {

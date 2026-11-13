@@ -15,6 +15,7 @@
  */
 export { Messenger } from "./MessengerScreen.js";
 export type { MessengerProps, MessengerComposerAction, MessengerComposerOptions, } from "./MessengerScreen.js";
+export { VoiceRecorder, VOICE_MESSAGE_MAX_MS, canRecordVoice, voiceFileName, voiceMimeType, } from "./VoiceRecorder.js";
 export { useMessenger } from "./use-messenger.js";
 export type { MessengerController, UseMessengerOptions } from "./use-messenger.js";
 export { ConversationList } from "./ConversationList.js";

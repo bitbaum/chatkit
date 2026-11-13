@@ -4213,3 +4213,47 @@ a.ck-turn-chip:hover {
   color: var(--ck-danger);
   font-size: 0.875rem;
 }
+
+/* ── a voice message: one button, then listen ──────────────────────────── */
+.ck-msgr-voice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0 0.75rem;
+}
+.ck-msgr-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.ck-msgr-voice-btn-on {
+  border-color: transparent;
+  background: var(--ck-danger);
+  color: var(--ck-on-danger);
+}
+.ck-msgr-voice-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.ck-msgr-voice-line {
+  margin: 0;
+  color: var(--ck-fg-2);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.ck-msgr-voice > .ck-msgr-audio {
+  width: 100%;
+}
+.ck-msgr-voice > .ck-msgr-confirm {
+  align-self: stretch;
+}

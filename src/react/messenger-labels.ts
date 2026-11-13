@@ -89,6 +89,17 @@ export type MessengerLabels = {
   editing: string;
   cancel: string;
   waitForUploads: string;
+  // ── a voice message ──
+  voiceMessage: string;
+  voiceHint: string;
+  voiceStart: string;
+  voiceStop: string;
+  /** "Recording {time}". */
+  voiceRecording: string;
+  voiceFailed: string;
+  voiceTake: string;
+  voiceAgain: string;
+  voiceAdd: string;
   sendFailed: string;
   editFailed: string;
   removeFailed: string;
@@ -216,6 +227,15 @@ export const DEFAULT_MESSENGER_LABELS: MessengerLabels = {
   editing: "Editing your message",
   cancel: "Cancel",
   waitForUploads: "Wait for the upload to finish",
+  voiceMessage: "Voice message",
+  voiceHint: "Record it, listen, then send",
+  voiceStart: "Start recording",
+  voiceStop: "Stop recording",
+  voiceRecording: "Recording {time}",
+  voiceFailed: "The microphone could not be opened. Allow it for this site and try again.",
+  voiceTake: "Your recording",
+  voiceAgain: "Record again",
+  voiceAdd: "Add to message",
   sendFailed: "The message was not sent. It is still in the box; try again.",
   editFailed: "The change was not saved. Try again.",
   removeFailed: "The message could not be deleted. Try again.",
