@@ -570,6 +570,55 @@ try {
     );
     check(true, "actions: a comma is a decimal point, and the card is in the thread");
 
+    // ── inside a host's own base styles, with a photo that is not square ──
+    // What a person saw on a phone on 2026-11-13: the field drawn as a box
+    // inside the box, the name pushed off its subtitle, a photo as an oval.
+    await page.goto(`${base}?open=maya&host=hostile`);
+    await page.waitForSelector(".ck-msgr-bubble");
+    await page.locator(".ck-input").focus();
+    const host = await page.evaluate(() => {
+      const box = (s) => {
+        const r = document.querySelector(s)?.getBoundingClientRect();
+        return r ? [Math.round(r.width), Math.round(r.height)] : null;
+      };
+      const style = (s, k) => {
+        const e = document.querySelector(s);
+        return e ? getComputedStyle(e)[k] : null;
+      };
+      return {
+        avatar: box(".ck-msgr-top .ck-msgr-avatar img"),
+        name: box(".ck-msgr-top-name"),
+        top: box(".ck-msgr-top"),
+        ring: style(".ck-input", "boxShadow"),
+        radius: style(".ck-input", "borderRadius"),
+        bubble: style(".ck-msgr-from-agent .ck-msgr-bubble", "lineHeight"),
+        paragraph: style(".ck-msgr-from-agent .ck-msgr-bubble p", "lineHeight"),
+        link: style(".ck-msgr-link", "minHeight"),
+      };
+    });
+    check(
+      host.avatar?.[0] === host.avatar?.[1] && host.avatar?.[0] === 36,
+      `host styles: a photo that is not square is still a circle (${host.avatar})`,
+    );
+    check(
+      host.ring === "none" && host.radius === "0px",
+      `host styles: the field has no ring of its own inside the composer (${host.ring})`,
+    );
+    check(
+      (host.name?.[1] ?? 99) < 30 && (host.top?.[1] ?? 99) <= 60,
+      `host styles: the name sits on its subtitle (name ${host.name?.[1]}px, bar ${host.top?.[1]}px)`,
+    );
+    check(
+      host.bubble === host.paragraph,
+      `host styles: an agent's answer is spaced like a person's (${host.paragraph} / ${host.bubble})`,
+    );
+    check(
+      host.link === "0px" || host.link === "auto",
+      `host styles: a link in a sentence is text, not a 44px target (min-height ${host.link})`,
+    );
+    m = await layout(page);
+    check(m.overflow <= 0, `host styles: nothing scrolls sideways (${m.overflow}px)`);
+
     // A failed upload keeps its tile, with a way to try again.
     await page.goto(`${base}?open=hike&fail=upload`);
     await page.waitForSelector(".ck-msgr-bubble");

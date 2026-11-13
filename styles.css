@@ -3034,6 +3034,11 @@ a.ck-turn-chip:hover {
   user-select: none;
 }
 .ck-msgr-avatar > img {
+  /* Out of flow and pinned to the circle: a percentage height does not
+     resolve inside this grid, so a photo that is not square was drawn at its
+     own shape, as a tall oval (found on a phone, 2026-11-13). */
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -3497,6 +3502,34 @@ a.ck-turn-chip:hover {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 0.15em;
+}
+/* ── inside a host's own base styles ───────────────────────────────────────
+   A product's stylesheet has rules for bare elements: a focus ring on every
+   control, a minimum size on every link, a line height on every paragraph.
+   The Messenger says what its own elements are, so none of those reach in.
+   test/browser-messenger.mjs loads such a stylesheet and measures. */
+.ck-msgr .ck-input,
+.ck-msgr .ck-input:focus,
+.ck-msgr .ck-input:focus-visible {
+  /* The composer's border shows the focus; a ring on the field is a box
+     inside the box. */
+  outline: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ck-msgr .ck-msgr-top-name,
+.ck-msgr .ck-msgr-link,
+.ck-msgr .ck-md a {
+  /* A link in a sentence is text, not a 44px target. */
+  min-width: 0;
+  min-height: 0;
+}
+.ck-msgr .ck-msgr-bubble p {
+  margin-block: 0;
+  line-height: inherit;
+}
+.ck-msgr .ck-msgr-bubble p + p {
+  margin-block-start: 0.5em;
 }
 @media (pointer: coarse) {
   /* A long press opens what can be done to a message; it must not start a

@@ -158,8 +158,25 @@ store.long = Array.from({ length: 120 }, (_, i) =>
   ),
 );
 
+// `?host=hostile`: the Messenger inside a product's own base styles, the kind
+// that style bare elements, and with a profile photo that is not square.
+const hostile = params.get("host") === "hostile";
+if (hostile) {
+  const style = document.createElement("style");
+  style.textContent = `
+    p { margin-bottom: 1rem; line-height: 1.625; }
+    a { min-height: 44px; min-width: 44px; }
+    h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    img { height: auto; }
+    textarea { min-height: 44px; border-radius: 6px; font-size: 16px !important; }
+    *:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #999; }
+  `;
+  document.head.append(style);
+}
+
 const people: Record<string, MessengerParticipant> = {
   maya: person("maya", "Maya Keller", {
+    ...(hostile ? { avatarUrl: picture("M", 20, 300, 500) } : {}),
     handle: "maya",
     online: true,
     lastReadAt: ago(1.9 * HOUR),
