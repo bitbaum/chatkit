@@ -1197,12 +1197,15 @@ a.ck-cite:hover {
   color: var(--ck-fg-2);
   font-size: var(--ck-text);
 }
+/* One column at every width: a row of choices is never wrapping pills (fleet
+   AGENTS.md, "One shape per kind"). Each starter is a full-width row. */
 .ck-starters-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
 }
 .ck-starter {
+  width: 100%;
   min-height: var(--ck-target);
   padding: 0.5rem 0.875rem;
   border: 1px solid var(--ck-line);

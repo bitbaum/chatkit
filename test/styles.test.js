@@ -75,3 +75,11 @@ test("message text is 16px and wraps a long address without widening the thread"
   assert.match(source, /\.ck-msgr-bubble\s*\{[^}]*overflow-wrap:\s*break-word/);
   assert.match(source, /\.ck-msgr-search > input\s*\{[^}]*font-size:\s*max\(16px/);
 });
+
+test("starters are one column at every width, never wrapping pills", () => {
+  assert.match(source, /\.ck-starters-list\s*\{[^}]*flex-direction:\s*column/);
+  assert.doesNotMatch(source, /\.ck-starters-list\s*\{[^}]*flex-wrap:\s*wrap/);
+  assert.match(source, /\.ck-starter\s*\{[^}]*width:\s*100%/);
+  assert.match(source, /\.ck-starter\s*\{[^}]*min-height:\s*var\(--ck-target\)/);
+  assert.match(source, /\.ck-starter\s*\{[^}]*text-align:\s*left/);
+});
