@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.3 — Starters are one column at every width
+
+- The empty chat's starters (`.ck-starters-list`) wrapped into a row of pills of different widths, so on a phone two short ones shared a line and a long one sat alone. The fleet rule "One shape per kind" says a row of choices is never wrapping pills (found in OrangeCat's UX audit, 2026-11-12, auth-firstrun#5). The list is now one column at every width and each `.ck-starter` is a full-width row, text on the left, still 44px tall. Every product's chat changes with it. Checked in `test/styles.test.js` and in `test/browser-app.mjs` at 390px and 1440px.
+
 ## 0.31.2 — `MessengerComposerAction` is exported
 
 - 0.31.0 took an app's actions in `MessengerProps` but did not export their type from `@bitbaum/chatkit/messenger`, so an app could not type its own action list (found wiring OrangeCat's "Request money"). It is exported now.

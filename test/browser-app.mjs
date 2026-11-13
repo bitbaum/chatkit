@@ -95,6 +95,28 @@ try {
       (await page.locator(".ck-app-rail").count()) === (phone ? 0 : 1),
       `${name}: the chat list is ${phone ? "a drawer" : "a rail beside the chat"}`,
     );
+    // Starters are one column at every width, each a full-width row with its
+    // text on the left: a row of choices is never wrapping pills (fleet
+    // AGENTS.md, "One shape per kind").
+    const starters = await page.$$eval(".ck-starter", (els) => {
+      const list = els[0].parentElement.getBoundingClientRect();
+      return els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return {
+          left: Math.round(r.left - list.left),
+          width: Math.round(r.width - list.width),
+          height: r.height,
+          align: getComputedStyle(e).textAlign,
+        };
+      });
+    });
+    check(
+      starters.length > 1 &&
+        starters.every(
+          (s) => s.left === 0 && s.width === 0 && s.height >= 44 && s.align !== "center",
+        ),
+      `${name}: starters are one full-width column, left-aligned, 44px tall (${JSON.stringify(starters)})`,
+    );
 
     // Send, and the answer streams in.
     await page.fill(".ck-input", "How do Lightning invoices expire?");
