@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.2 — `MessengerComposerAction` is exported
+
+- 0.31.0 took an app's actions in `MessengerProps` but did not export their type from `@bitbaum/chatkit/messenger`, so an app could not type its own action list (found wiring OrangeCat's "Request money"). It is exported now.
+
 ## 0.31.1 — An action's amount sheet takes the app's note length
 
 - `MessengerComposerAction.amount.noteMaxLength`: how long a note the app can keep (140 when not given), so the sheet never lets a person type a note the server would then refuse.
