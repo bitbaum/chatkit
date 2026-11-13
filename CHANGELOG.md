@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.32.0 — A queued message keeps its conversation; an unanswered question says so
+
+Measured on Loki's own chat on 2026-11-13: three quick messages in a new chat became three conversations, two queued messages vanished on reload, and a question whose answer died with the page showed nothing under it, with no way to ask again.
+
+- **New, pure (`send-queue`):** `takeQueuedFor(queue, conversationId)` takes the next waiting message for the conversation whose turn just landed; `queuedFor` lists one conversation's; `storableQueue` / `serializeQueue` / `parseStoredQueue` keep the words across a reload (a message carrying files is not stored; a damaged store costs the queue, never the chat). For an app with its own chat state.
+- **New: `unansweredTurn(messages, state)`** finds the person's last message when nothing is answering it. An optimistic or failed bubble is not one.
+- **`ChatThread` takes `unanswered`**: it says "This was not answered…" (`labels.unanswered`) and, with `onRetry`, offers Try again. `ChatApp` passes it, so a reload mid-answer no longer leaves a dead end.
+
 ## 0.31.3 — Starters are one column at every width
 
 - The empty chat's starters (`.ck-starters-list`) wrapped into a row of pills of different widths, so on a phone two short ones shared a line and a long one sat alone. The fleet rule "One shape per kind" says a row of choices is never wrapping pills (found in OrangeCat's UX audit, 2026-11-12, auth-firstrun#5). The list is now one column at every width and each `.ck-starter` is a full-width row, text on the left, still 44px tall. Every product's chat changes with it. Checked in `test/styles.test.js` and in `test/browser-app.mjs` at 390px and 1440px.

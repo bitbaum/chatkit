@@ -97,6 +97,8 @@ export type ThreadLabels = AnswerActionsLabels & {
     thinking: string;
     working: string;
     stopped: string;
+    /** Under a question nothing answered: the page closed, or the turn was cut off. */
+    unanswered: string;
     jump: string;
     failed: string;
     loading: string;
@@ -173,7 +175,7 @@ export declare function ThinkingRow({ thinking, live, labels, }: {
  * bottom, with a button back down once they are not; a turn in flight can be
  * stopped from where it is being written.
  */
-export declare function ChatThread({ messages, live, loading, stopped, onStop, onRetry, onReply, renderLink, renderFooter, showSpeakers, speaker, share, onFeedback, renderers, empty, children, labels: labelOverrides, }: {
+export declare function ChatThread({ messages, live, loading, stopped, unanswered, onStop, onRetry, onReply, renderLink, renderFooter, showSpeakers, speaker, share, onFeedback, renderers, empty, children, labels: labelOverrides, }: {
     messages: ChatMessageData[];
     /** Thumbs under every answer (chatkit's feedback loop, README). */
     onFeedback?: (feedback: AnswerFeedback) => void;
@@ -194,6 +196,13 @@ export declare function ChatThread({ messages, live, loading, stopped, onStop, o
     loading?: boolean;
     /** The person stopped the last turn themselves. */
     stopped?: boolean;
+    /**
+     * The last message is the person's and nothing is answering it
+     * (`unansweredTurn`): the thread says so and, with `onRetry`, offers to ask
+     * again. Without this a reload mid-answer left a question with nothing
+     * under it and no way forward.
+     */
+    unanswered?: boolean;
     onStop?: () => void;
     /** Retry the last answer (offered on it, and on a failed one). */
     onRetry?: () => void;
