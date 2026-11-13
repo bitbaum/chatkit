@@ -1,0 +1,154 @@
+/* ── VoiceMode: a spoken conversation ─────────────────────────────────────
+   Its own section (and styles/voice.css) so a widget that embeds only the
+   chat sheet does not carry a full-screen call it never opens. */
+/* One big button whose look is
+   the phase (listening pulses, thinking waits, speaking is filled), the words
+   under it, and End. A native <dialog>, so it is in the top layer everywhere. */
+.ck-voicemode {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+}
+.ck-voicemode[open] {
+  display: flex;
+  flex-direction: column;
+}
+.ck-voicemode::backdrop {
+  background: var(--ck-bg);
+}
+.ck-voicemode-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem;
+}
+.ck-voicemode-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+.ck-voicemode-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  min-height: 0;
+  padding: 1rem 1.5rem;
+  text-align: center;
+}
+.ck-voicemode-orb {
+  position: relative;
+  display: grid;
+  width: 9rem;
+  height: 9rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 2px solid var(--ck-accent);
+  border-radius: 999px;
+  background: var(--ck-accent-soft);
+  cursor: pointer;
+}
+.ck-voicemode-orb:disabled {
+  cursor: default;
+  border-color: var(--ck-line-2);
+  background: var(--ck-bg);
+}
+.ck-voicemode-orb[data-phase="speaking"] {
+  background: var(--ck-accent);
+}
+.ck-voicemode-orb:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 4px;
+}
+.ck-voicemode-ring {
+  position: absolute;
+  inset: -0.75rem;
+  border: 2px solid var(--ck-accent);
+  border-radius: 999px;
+  opacity: 0;
+}
+.ck-voicemode-orb[data-phase="listening"] .ck-voicemode-ring {
+  animation: ck-voicemode-ring 1.6s ease-out infinite;
+}
+.ck-voicemode-orb[data-phase="thinking"] .ck-voicemode-ring {
+  inset: 0.5rem;
+  border-color: var(--ck-fg-3);
+  border-top-color: transparent;
+  opacity: 1;
+  animation: ck-spin 1s linear infinite;
+}
+@keyframes ck-voicemode-ring {
+  from {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+.ck-voicemode-status {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--ck-fg-2);
+}
+.ck-voicemode-line {
+  max-width: 34rem;
+  max-height: 34vh;
+  margin: 0;
+  overflow-y: auto;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  color: var(--ck-fg);
+}
+.ck-voicemode-line[data-phase="thinking"] {
+  color: var(--ck-fg-2);
+}
+.ck-voicemode-reason {
+  max-width: 28rem;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ck-fg);
+}
+.ck-voicemode-foot {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+.ck-voicemode-end,
+.ck-voicemode-again {
+  min-width: 8rem;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--ck-line-2);
+  border-radius: 999px;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ck-voicemode-again {
+  border-color: var(--ck-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-voicemode-orb .ck-voicemode-ring {
+    animation: none;
+    opacity: 0.6;
+  }
+}

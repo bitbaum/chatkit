@@ -111,6 +111,8 @@ export function useDictation(opts) {
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
     const cancelledRef = useRef(false);
+    /** True from the request for a microphone until the browser answers it. */
+    const openingRef = useRef(false);
     const capTimer = useRef(null);
     const locale = useCallback(() => {
         const l = optsRef.current.lang ??
@@ -206,6 +208,14 @@ export function useDictation(opts) {
             setStatus("idle");
             return;
         }
+        // One microphone at a time. `status` stays "idle" until the browser hands
+        // the microphone over, so a second start in that gap (a double tap, an
+        // effect that runs twice) used to open a second microphone and orphan the
+        // first: its track stayed live with nothing left to stop it. Found by
+        // voice mode's browser test, 2026-11-13.
+        if (openingRef.current)
+            return;
+        openingRef.current = true;
         setProblem(null);
         cancelledRef.current = false;
         let stream;
@@ -213,8 +223,17 @@ export function useDictation(opts) {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         }
         catch (e) {
+            openingRef.current = false;
             setProblem(problemForRecording(e));
             setStatus("idle");
+            return;
+        }
+        openingRef.current = false;
+        // Cancelled while the browser was still opening it: this microphone was
+        // never wanted, so it is closed here, where it arrives.
+        if (cancelledRef.current) {
+            for (const t of stream.getTracks())
+                t.stop();
             return;
         }
         streamRef.current = stream;

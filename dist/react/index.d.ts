@@ -20,6 +20,10 @@ export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "
 export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";
 export type { AnswerActionsLabels } from "./AnswerActions.js";
 export { useSpeech } from "./use-speech.js";
+export { useVoiceMode } from "./use-voice-mode.js";
+export type { UseVoiceModeOptions, VoiceModeController } from "./use-voice-mode.js";
+export { VoiceMode, DEFAULT_VOICE_MODE_LABELS } from "./VoiceMode.js";
+export type { VoiceModeProps, VoiceModeLabels } from "./VoiceMode.js";
 export type { SpeechController } from "./use-speech.js";
 export { Sheet, prefersSheet } from "./Sheet.js";
 export type { CitationMap, RenderLink, RenderCitation, RenderSources } from "./Markdown.js";
