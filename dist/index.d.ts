@@ -19,4 +19,5 @@ export * from "./stores.js";
 export * from "./messenger.js";
 export * from "./messenger-state.js";
 export * from "./thread-rules.js";
+export * from "./send-queue.js";
 //# sourceMappingURL=index.d.ts.map

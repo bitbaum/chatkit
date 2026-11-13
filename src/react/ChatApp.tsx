@@ -17,6 +17,7 @@ import {
 } from "../attachments.js";
 import type { ConversationStore, ConversationSummary } from "../conversations.js";
 import { localConversationStore } from "../stores.js";
+import { unansweredTurn } from "../send-queue.js";
 import type { Speaker } from "../speech.js";
 import type { AnswerFeedback } from "../review.js";
 import { ChatScreen } from "./Screen.js";
@@ -646,6 +647,13 @@ export const ChatApp = forwardRef<ChatAppHandle, ChatAppProps>(function ChatApp(
   );
 
   const lastFailed = app.messages[app.messages.length - 1]?.failed;
+  // A question a reload (or a dropped connection) left with nothing under it.
+  const unanswered =
+    unansweredTurn(app.messages, {
+      sending: app.busy,
+      loading: app.loading,
+      queued: app.queued.length,
+    }) !== null;
   const renderFooter = thread?.renderFooter;
   const onFeedback = thread?.onFeedback;
   const cls = ["ck-app"];
@@ -685,7 +693,8 @@ export const ChatApp = forwardRef<ChatAppHandle, ChatAppProps>(function ChatApp(
           live={app.live}
           stopped={app.stopped}
           onStop={app.stop}
-          onRetry={lastFailed || app.stopped ? app.retry : undefined}
+          unanswered={unanswered}
+          onRetry={lastFailed || app.stopped || unanswered ? app.retry : undefined}
           onReply={(text) => void app.send(text)}
           renderLink={thread?.renderLink}
           renderFooter={

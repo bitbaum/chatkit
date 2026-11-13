@@ -113,6 +113,8 @@ export type ThreadLabels = AnswerActionsLabels & {
   thinking: string;
   working: string;
   stopped: string;
+  /** Under a question nothing answered: the page closed, or the turn was cut off. */
+  unanswered: string;
   jump: string;
   failed: string;
   loading: string;
@@ -132,6 +134,7 @@ export const DEFAULT_THREAD_LABELS: ThreadLabels = {
   thinking: "Thinking",
   working: "Working on it",
   stopped: "Stopped. Send it again to retry.",
+  unanswered: "This was not answered. The page closed or the answer stopped before it was done.",
   jump: "Jump to the latest message",
   failed: "That did not go through.",
   loading: "Loading conversation",
@@ -422,6 +425,7 @@ export function ChatThread({
   live = null,
   loading = false,
   stopped = false,
+  unanswered = false,
   onStop,
   onRetry,
   onReply,
@@ -453,6 +457,13 @@ export function ChatThread({
   loading?: boolean;
   /** The person stopped the last turn themselves. */
   stopped?: boolean;
+  /**
+   * The last message is the person's and nothing is answering it
+   * (`unansweredTurn`): the thread says so and, with `onRetry`, offers to ask
+   * again. Without this a reload mid-answer left a question with nothing
+   * under it and no way forward.
+   */
+  unanswered?: boolean;
   onStop?: () => void;
   /** Retry the last answer (offered on it, and on a failed one). */
   onRetry?: () => void;
@@ -551,6 +562,17 @@ export function ChatThread({
             <p className="ck-stopped" role="status">
               {labels.stopped}
             </p>
+          )}
+          {unanswered && !stopped && !live && !loading && (
+            <div className="ck-unanswered" role="status">
+              <p>{labels.unanswered}</p>
+              {onRetry && (
+                <button type="button" className="ck-action" onClick={onRetry}>
+                  <IconRetry />
+                  <span>{labels.retry}</span>
+                </button>
+              )}
+            </div>
           )}
           {children}
           <div ref={endRef} />

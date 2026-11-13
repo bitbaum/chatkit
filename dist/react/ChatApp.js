@@ -3,6 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, } from "react";
 import { DEFAULT_ATTACHMENT_LIMITS, acceptsImages, } from "../attachments.js";
 import { localConversationStore } from "../stores.js";
+import { unansweredTurn } from "../send-queue.js";
 import { ChatScreen } from "./Screen.js";
 import { ChatStarters, ChatThread, } from "./Thread.js";
 import { Composer } from "./Composer.js";
@@ -265,6 +266,12 @@ export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStor
                     return app.send(text, attachments, chips ? { chips } : undefined);
                 }, sending: app.busy, onStop: app.stop, queue: true })] }));
     const lastFailed = app.messages[app.messages.length - 1]?.failed;
+    // A question a reload (or a dropped connection) left with nothing under it.
+    const unanswered = unansweredTurn(app.messages, {
+        sending: app.busy,
+        loading: app.loading,
+        queued: app.queued.length,
+    }) !== null;
     const renderFooter = thread?.renderFooter;
     const onFeedback = thread?.onFeedback;
     const cls = ["ck-app"];
@@ -277,7 +284,7 @@ export const ChatApp = forwardRef(function ChatApp({ transport, store: givenStor
     return (_jsxs("div", { ref: rootRef, className: cls.join(" "), children: [wide ? (_jsx("aside", { className: "ck-app-rail", children: history })) : (_jsx("dialog", { ref: drawerRef, className: "ck-app-drawer", "aria-label": labels.chats, onClose: () => setDrawerOpen(false), onClick: (e) => {
                     if (e.target === e.currentTarget)
                         setDrawerOpen(false);
-                }, children: drawerOpen && _jsx("div", { className: "ck-app-drawer-panel", children: history }) })), _jsx(ChatScreen, { fill: "parent", className: "ck-app-screen", header: header, composer: dock, footnote: footnote, renderers: thread?.renderers, children: _jsx(ChatThread, { messages: app.messages, loading: app.loading, live: app.live, stopped: app.stopped, onStop: app.stop, onRetry: lastFailed || app.stopped ? app.retry : undefined, onReply: (text) => void app.send(text), renderLink: thread?.renderLink, renderFooter: renderFooter
+                }, children: drawerOpen && _jsx("div", { className: "ck-app-drawer-panel", children: history }) })), _jsx(ChatScreen, { fill: "parent", className: "ck-app-screen", header: header, composer: dock, footnote: footnote, renderers: thread?.renderers, children: _jsx(ChatThread, { messages: app.messages, loading: app.loading, live: app.live, stopped: app.stopped, onStop: app.stop, unanswered: unanswered, onRetry: lastFailed || app.stopped || unanswered ? app.retry : undefined, onReply: (text) => void app.send(text), renderLink: thread?.renderLink, renderFooter: renderFooter
                         ? (m, info) => renderFooter(m, {
                             ...info,
                             send: (text, options) => void app.send(text, [], options),
