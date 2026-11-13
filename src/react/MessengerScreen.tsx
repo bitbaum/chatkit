@@ -40,6 +40,7 @@ import {
   IconCheck,
   IconCopy,
   IconFile,
+  IconMic,
   IconMore,
   IconPencil,
   IconReply,
@@ -61,6 +62,7 @@ import {
 } from "./messenger-labels.js";
 import { Sheet, prefersSheet } from "./Sheet.js";
 import { useMessenger } from "./use-messenger.js";
+import { VoiceRecorder, canRecordVoice } from "./VoiceRecorder.js";
 import {
   useUploads,
   type UploadItem,
@@ -553,6 +555,7 @@ export function Messenger({
     setEditing(null);
     setReplying(null);
     setAsking(null);
+    setRecordingVoice(false);
     if (!openId) {
       setDraftState("");
       return;
@@ -640,6 +643,22 @@ export function Messenger({
           },
         }))
     : [];
+  // A voice message: recorded here, then a file like any other.
+  const [recordingVoice, setRecordingVoice] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  useEffect(() => setVoiceSupported(canRecordVoice()), []);
+  const voiceExtras: AttachExtra[] =
+    canUpload && voiceSupported && policy.maxBytes.audio > 0
+      ? [
+          {
+            id: "voice-message",
+            label: labels.voiceMessage,
+            detail: labels.voiceHint,
+            icon: <IconMic />,
+            onPick: () => setRecordingVoice(true),
+          },
+        ]
+      : [];
   const agentExtras: AttachExtra[] = agents.map((agent) => ({
     id: `agent-${agent.id}`,
     label: labels.askAgent.replace("{name}", agent.name),
@@ -651,7 +670,7 @@ export function Messenger({
     },
   }));
 
-  const extras = [...appExtras, ...agentExtras];
+  const extras = [...voiceExtras, ...appExtras, ...agentExtras];
   const replyName = !replying
     ? ""
     : replying.authorId === viewer.id
@@ -1095,6 +1114,24 @@ export function Messenger({
             </>
           )}
         </div>
+      </Sheet>
+
+      <Sheet
+        open={recordingVoice}
+        onClose={() => setRecordingVoice(false)}
+        title={labels.voiceMessage}
+        closeLabel={labels.close}
+      >
+        {/* Mounted only while open: closing the sheet closes the microphone. */}
+        {recordingVoice && (
+          <VoiceRecorder
+            labels={labels}
+            onDone={(file) => {
+              setRecordingVoice(false);
+              uploads.add([file]);
+            }}
+          />
+        )}
       </Sheet>
 
       <AmountSheet

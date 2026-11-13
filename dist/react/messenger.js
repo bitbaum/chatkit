@@ -14,6 +14,7 @@
  * what is unread, what may be attached — are `@bitbaum/threadkit`'s.
  */
 export { Messenger } from "./MessengerScreen.js";
+export { VoiceRecorder, VOICE_MESSAGE_MAX_MS, canRecordVoice, voiceFileName, voiceMimeType, } from "./VoiceRecorder.js";
 export { useMessenger } from "./use-messenger.js";
 export { ConversationList } from "./ConversationList.js";
 export { MessageThread } from "./MessageThread.js";

@@ -720,3 +720,22 @@ test("a reactions event replaces the reactions of that message only", () => {
   assert.equal(a.reactions, undefined);
   assert.deepEqual(b.reactions, [{ emoji: "👍", actorIds: ["me"] }]);
 });
+
+test("a voice message is recorded in what the browser can record, and named so it can be found", async () => {
+  const { voiceMimeType, voiceFileName } = await import("../dist/react/messenger.js");
+  assert.equal(
+    voiceMimeType(() => true),
+    "audio/webm;codecs=opus",
+  );
+  assert.equal(
+    voiceMimeType((t) => t === "audio/mp4"),
+    "audio/mp4",
+  );
+  assert.equal(
+    voiceMimeType(() => false),
+    null,
+  );
+  const at = new Date(2026, 10, 13, 20, 4);
+  assert.equal(voiceFileName(at, "audio/webm;codecs=opus"), "voice-2026-11-13-2004.webm");
+  assert.equal(voiceFileName(at, "audio/mp4"), "voice-2026-11-13-2004.m4a");
+});

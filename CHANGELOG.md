@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.34.0 — `Messenger`: voice messages
+
+Owner, 2026-11-13: the Messenger has to stand beside WhatsApp, Telegram and Signal. Speaking a message was the feature most missed: the box could take dictation (speech to words) but not a voice.
+
+- **Voice message** in the box's "+", wherever the app can upload and its policy takes audio: one button to start, the same one to stop, then listen, and "Add to message" or "Record again". The take goes into the tray as a file like any other, so it is uploaded, shown and sent by what already sends a photo, and words can go with it.
+- The microphone is open only while recording and is closed on every way out: stop, the take reaching five minutes (`VOICE_MESSAGE_MAX_MS`), the sheet closing. One request at a time, so a second tap cannot open a second microphone.
+- WebM/Opus where the browser records it, MP4 on Safari (`voiceMimeType`); the file is called `voice-2026-11-13-2004.webm` (`voiceFileName`). `VoiceRecorder` and `canRecordVoice` are exported for an app with its own arrangement.
+- `test/browser-messenger.mjs` records with a fake microphone on a 390px phone and counts every track opened: one while recording, none after stopping, none after closing the sheet mid-take.
+
 ## 0.33.0 — `Messenger`: "New" opens on suggestions, and an agent is offered as one
 
 - `transport.suggestions()`: who to offer in "New" before anything is typed (the viewer's own agents, the people they wrote to last). The sheet shows them at once; typing replaces them with the search. Without the method the sheet opens on its hint, as before. Suggestions that cannot be read leave the hint and never an error: nothing was asked for that failed.

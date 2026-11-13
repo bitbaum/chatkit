@@ -75,6 +75,16 @@ export type MessengerLabels = {
     editing: string;
     cancel: string;
     waitForUploads: string;
+    voiceMessage: string;
+    voiceHint: string;
+    voiceStart: string;
+    voiceStop: string;
+    /** "Recording {time}". */
+    voiceRecording: string;
+    voiceFailed: string;
+    voiceTake: string;
+    voiceAgain: string;
+    voiceAdd: string;
     sendFailed: string;
     editFailed: string;
     removeFailed: string;
