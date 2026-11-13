@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.1 — An action's amount sheet takes the app's note length
+
+- `MessengerComposerAction.amount.noteMaxLength`: how long a note the app can keep (140 when not given), so the sheet never lets a person type a note the server would then refuse.
+
 ## 0.31.0 — `Messenger`: replies, reactions, and things of value in a conversation
 
 Owner, 2026-11-13: the Messenger has to stand beside WhatsApp, Telegram and Signal, and carry any exchange: information, with or without an agent, and value (money, gifts).
