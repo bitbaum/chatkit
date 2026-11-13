@@ -4,6 +4,16 @@
 
 - The empty chat's starters (`.ck-starters-list`) wrapped into a row of pills of different widths, so on a phone two short ones shared a line and a long one sat alone. The fleet rule "One shape per kind" says a row of choices is never wrapping pills (found in OrangeCat's UX audit, 2026-11-12, auth-firstrun#5). The list is now one column at every width and each `.ck-starter` is a full-width row, text on the left, still 44px tall. Every product's chat changes with it. Checked in `test/styles.test.js` and in `test/browser-app.mjs` at 390px and 1440px.
 
+## 0.31.3 — The Messenger holds its shape inside a product's own styles
+
+Owner, 2026-11-13, a phone screenshot of OrangeCat: "a Frankenstein element". The Messenger had been looked at in its own demo page, where no other stylesheet exists and every profile picture is square.
+
+- **Fix:** a profile photo that is not square was drawn as a tall oval (36×60 in a 36px circle). A percentage height does not resolve inside the avatar's grid; the picture is now pinned to the circle.
+- **Fix:** a host's focus ring (`*:focus-visible`) landed on the message field, a box inside the composer. The field has no ring of its own; the composer's border shows the focus.
+- **Fix:** a host's minimum size for links (`a { min-height: 44px }`) made the name in the top bar a 44px row and pushed it off its subtitle. Links in a sentence, and the name, are text.
+- **Fix:** a host's paragraph rules loosened an agent's answer against a person's. Paragraphs in a bubble take the bubble's line height.
+- `demo/messenger.html?host=hostile` loads such a stylesheet and a 300×500 photo; `test/browser-messenger.mjs` measures all four on a 390px phone. The test fails on 0.31.2 in each place.
+
 ## 0.31.2 — `MessengerComposerAction` is exported
 
 - 0.31.0 took an app's actions in `MessengerProps` but did not export their type from `@bitbaum/chatkit/messenger`, so an app could not type its own action list (found wiring OrangeCat's "Request money"). It is exported now.
