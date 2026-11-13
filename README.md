@@ -679,6 +679,28 @@ punctuation but a closing colon, plus an `---` beside it. A bold sentence
 it is, so it never flashes. `dropReplyLabel(text)` is exported for apps that
 pass their own `replies`.
 
+### Voice mode — talking with a chat
+
+```tsx
+import { VoiceMode } from "@bitbaum/chatkit/react";
+
+<VoiceMode
+  open={talking}
+  onClose={() => setTalking(false)}
+  name="Day Planner"
+  dictation={{ transcribeUrl: "/api/transcribe" }}
+  onTurn={async (text) => (await send(text)).answer}
+/>;
+```
+
+A spoken conversation, full screen: listening → thinking → speaking →
+listening. One big button ends the person's turn (a pause ends it by itself
+where the browser's own recogniser runs) and cuts in while the answer is read.
+Open it from a tap. The microphone and the voice are never both open, and
+neither is open once the call is over; nothing heard twice, a failed
+transcription or an answer that never comes each end the call in words.
+`useVoiceMode` is the loop without the screen; `voiceModeReducer` is its rules.
+
 ### Under every answer — Copy, Listen, Share
 
 `AnswerActions` is the row under an answer, the same in every product:

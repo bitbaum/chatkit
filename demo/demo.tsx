@@ -2,6 +2,7 @@ import { mountScrollFixture } from "./scroll.js";
 import { mountAppFixture } from "./app.js";
 import { mountFieldFixture } from "./field.js";
 import { mountMessengerFixture } from "./messenger.js";
+import { mountVoiceFixture } from "./voice.js";
 // The visual check: every part of the chat on one page, in light and dark.
 // `pnpm run demo` builds demo/dist/; open demo/index.html. Screenshot it at
 // 390px and at desktop width before calling a change to chatkit done.
@@ -402,3 +403,4 @@ mountScrollFixture();
 mountAppFixture();
 mountFieldFixture();
 mountMessengerFixture();
+mountVoiceFixture();

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0 — `VoiceMode`: talking with a chat, and a microphone that cannot be opened twice
+
+Owner, 2026-11-13: Cat Bot has to be a complete equivalent of Grok Bot, which has a voice mode. The chat could take dictation and read an answer aloud, but not hold a spoken conversation.
+
+- `VoiceMode` (the screen), `useVoiceMode` (the loop) and `voiceModeReducer` (the rules, pure): listening → thinking → speaking → listening. One big button: while listening it ends the person's turn (where the browser's own recogniser runs, a pause ends it by itself); while the answer is read it cuts in. The app passes `onTurn(text) => Promise<answer>` and, if it has one, a studio `speaker`; the microphone options are the composer's own.
+- The microphone and the voice follow the phase and nothing else (`voiceModeWants`): never both open, neither open when the call is off. Two takes in a row with nothing in them close the call ("Nothing was heard"), and so do a failed transcription and an answer that never comes, each with its sentence and a "Talk again".
+- **Fix, `useDictation`:** a second `start()` before the browser had handed the microphone over opened a second microphone and orphaned the first, whose track stayed live with nothing left to stop it (a double tap on the mic could do it). One request at a time now, and a take cancelled while the microphone was still opening closes it where it arrives.
+- `test/voice-mode.test.js` (8, the rules in Node) and `test/browser-voice.mjs` (a real browser with a fake-device microphone, every opened track counted: the loop, cutting in, End, silence, no answer, a dead transcription, 390px and 320px). `demo/voice.html`.
+
 ## 0.29.0 — `Messenger`: people talking to people, and to the agents among them
 
 Owner, 2026-11-12, looking at OrangeCat's direct messages on a phone: the Cat had answered in a conversation between two people and "it's hard to tell whether it was the cat or my friend"; nothing said an AI was taking part; "you scroll down and then the half screen is taken"; and nothing could be attached. That messenger was built in the app (about 8,700 lines), so none of it could be fixed for the next product either. This is the messenger as a package.

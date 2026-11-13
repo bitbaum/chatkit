@@ -15,6 +15,8 @@ export { ChatScreen } from "./Screen.js";
 export { Markdown, SourcesRow, defaultRenderLink, defaultRenderCitation } from "./Markdown.js";
 export { AnswerActions, DEFAULT_ANSWER_ACTIONS_LABELS } from "./AnswerActions.js";
 export { useSpeech } from "./use-speech.js";
+export { useVoiceMode } from "./use-voice-mode.js";
+export { VoiceMode, DEFAULT_VOICE_MODE_LABELS } from "./VoiceMode.js";
 export { Sheet, prefersSheet } from "./Sheet.js";
 export { useDictation } from "./use-dictation.js";
 export { AttachMenu, DEFAULT_ATTACH_MENU_LABELS } from "./AttachMenu.js";
