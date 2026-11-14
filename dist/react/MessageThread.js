@@ -50,7 +50,7 @@ function Dots() {
  * only while the reader is at the end, and keeps its place when earlier
  * messages are loaded above.
  */
-export function MessageThread({ conversation, viewerId, messages, agents = [], status = "ready", onReload, hasOlder = false, loadingOlder = false, olderFailed = false, onLoadOlder, unreadFrom = null, typing = [], awaited = [], onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, renderLink = defaultRenderLink, agentMark, locale, timeZone, labels = DEFAULT_MESSENGER_LABELS, }) {
+export function MessageThread({ conversation, viewerId, messages, agents = [], status = "ready", onReload, hasOlder = false, loadingOlder = false, olderFailed = false, onLoadOlder, unreadFrom = null, typing = [], awaited = [], onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, reveal = null, renderLink = defaultRenderLink, agentMark, locale, timeZone, labels = DEFAULT_MESSENGER_LABELS, }) {
     const items = useMemo(() => threadItems(messages, { viewerId, timeZone, unreadFrom }), [messages, viewerId, timeZone, unreadFrom]);
     const named = needsNames(conversation, viewerId);
     // When the viewer last wrote. It grows only when they send — never when
@@ -137,6 +137,14 @@ export function MessageThread({ conversation, viewerId, messages, agents = [], s
             return;
         }
     };
+    const showRef = useRef(showMessage);
+    useEffect(() => {
+        showRef.current = showMessage;
+    });
+    useEffect(() => {
+        if (reveal)
+            showRef.current(reveal.id);
+    }, [reveal]);
     const empty = status === "ready" && messages.length === 0;
     const typingNames = typing.map(nameOf).filter(Boolean);
     return (_jsxs("div", { className: "ck-msgr-thread-wrap", children: [_jsx("div", { className: "ck-msgr-scroll", ref: scrollRef, onScroll: onScroll, role: "log", "aria-live": "polite", "aria-relevant": "additions", tabIndex: 0, children: _jsxs("div", { className: "ck-msgr-thread-inner", children: [hasOlder && messages.length > 0 && (_jsx("button", { ref: olderRef, type: "button", className: "ck-msgr-older", onClick: () => onLoadOlder?.(), disabled: loadingOlder, children: loadingOlder ? (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), " ", labels.loadingOlder] })) : olderFailed ? (labels.olderFailed) : (labels.loadOlder) })), status === "loading" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "status", children: [_jsx(IconSpinner, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.loading })] })), status === "failed" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "alert", children: [_jsx("p", { children: labels.threadFailed }), onReload && (_jsx("button", { type: "button", className: "ck-msgr-btn", onClick: onReload, children: labels.retry }))] })), empty && (_jsxs("div", { className: "ck-msgr-state", children: [_jsx("p", { children: labels.threadEmpty }), agents.map((agent) => (_jsx("p", { className: "ck-msgr-hint", children: labels.agentHint

@@ -580,6 +580,49 @@ try {
     );
     check(true, "actions: a comma is a decimal point, and the card is in the thread");
 
+    // ── search inside a conversation ──
+    await page.goto(`${base}?open=long`);
+    await page.waitForSelector(".ck-msgr-bubble");
+    check(
+      (await count(page, "Line 3 of a long conversation.")) === 0,
+      "search: the message looked for is not loaded yet",
+    );
+    await page.locator('.ck-msgr-top [aria-label="Search this conversation"]').tap();
+    await page.waitForSelector(".ck-sheet[open] .ck-msgr-search input");
+    m = await layout(page);
+    check(m.small.length === 0, `search: every control is 44px (${m.small.join(", ")})`);
+    await page.fill(".ck-sheet[open] .ck-msgr-search input", "zzz-not-there");
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".ck-sheet[open] .ck-msgr-hint")?.textContent ===
+        "No message has that.",
+    );
+    check(true, "search: words nobody wrote say so");
+    await page.fill(".ck-sheet[open] .ck-msgr-search input", "Line 3 of");
+    await page
+      .locator(".ck-sheet[open] .ck-msgr-row", { hasText: "Line 3 of a long" })
+      .first()
+      .waitFor();
+    const hits = await page.locator(".ck-sheet[open] .ck-msgr-row").count();
+    check(hits >= 1, `search: the server's matches are listed (${hits})`);
+    await page
+      .locator(".ck-sheet[open] .ck-msgr-row", { hasText: "Line 3 of a long conversation." })
+      .first()
+      .tap();
+    await page.waitForSelector(".ck-msgr-found", { timeout: 15000 });
+    check(
+      (await page.locator(".ck-msgr-found").textContent())?.includes(
+        "Line 3 of a long conversation.",
+      ),
+      "search: tapping a match loads back to it, leads there and marks it",
+    );
+    check(
+      (await page.locator(".ck-sheet[open]").count()) === 0,
+      "search: and the sheet is out of the way",
+    );
+    m = await layout(page);
+    check(m.overflow <= 0, `search: nothing scrolls sideways (${m.overflow}px)`);
+
     // ── a voice message: record, listen, add, send ──
     await page.goto(`${base}?open=maya`);
     await page.waitForSelector(".ck-msgr-bubble");
@@ -693,6 +736,25 @@ try {
     );
     m = await layout(page);
     check(m.overflow <= 0, `host styles: nothing scrolls sideways (${m.overflow}px)`);
+    // A search field is a pill; a host's ring on the input inside it is the
+    // same box inside a box (seen in the search sheet, 2026-11-14).
+    await page.locator('.ck-msgr-top [aria-label="Search this conversation"]').tap();
+    await page.locator(".ck-sheet[open] .ck-msgr-search input").focus();
+    await page.fill(".ck-sheet[open] .ck-msgr-search input", "birds");
+    await page.locator(".ck-sheet[open] .ck-msgr-row").first().waitFor();
+    const field = await page.$eval(".ck-sheet[open] .ck-msgr-search input", (el) => {
+      const cs = getComputedStyle(el);
+      return `${cs.boxShadow} ${cs.borderRadius}`;
+    });
+    check(
+      field === "none 0px",
+      `host styles: a search field has no ring inside its pill (${field})`,
+    );
+    const shown = await page.$$eval(".ck-sheet[open] .ck-msgr-found-text", (els) =>
+      els.map((e) => e.textContent ?? "").join(" "),
+    );
+    check(!shown.includes("**"), "search: an agent's answer is listed as words, not markdown");
+    await page.locator(".ck-sheet[open] .ck-sheet-close").click();
 
     // A failed upload keeps its tile, with a way to try again.
     await page.goto(`${base}?open=hike&fail=upload`);
