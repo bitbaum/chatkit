@@ -914,6 +914,31 @@ try {
       "new: the box is at the bottom of an empty conversation too",
     );
 
+    // Alone with an agent: nothing to type to bring it in, and its answer is
+    // what makes the message read.
+    await page.tap(".ck-msgr-back");
+    await page.locator(".ck-msgr-btn-primary", { hasText: "New" }).tap();
+    await page.locator(".ck-sheet[open] .ck-msgr-row", { hasText: "Chef" }).tap();
+    await page.locator(".ck-sheet[open] .ck-msgr-btn-primary").tap();
+    await page.waitForSelector(".ck-msgr-thread-wrap .ck-msgr-hint");
+    const aloneHint = (await page.locator(".ck-msgr-thread-wrap").textContent()) ?? "";
+    check(
+      /Chef answers every message here\./.test(aloneHint) && !/Type @cat/.test(aloneHint),
+      "agent alone: the empty conversation says it answers every message, with no mention to type",
+    );
+    await page.fill(".ck-input", "How long for pasta?");
+    await page.tap(".ck-send");
+    await page.waitForSelector(".ck-msgr-own .ck-msgr-tick");
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".ck-msgr-bubble")].some(
+        (b) => b.textContent === "Salt the water first.",
+      ),
+    );
+    check(
+      (await page.locator(".ck-msgr-own .ck-msgr-tick-read").count()) === 1,
+      "agent alone: a message the agent answered shows Read",
+    );
+
     // The list fails once, says so, and Try again loads it.
     await page.goto(`${base}?fail=list`);
     await page.waitForSelector(".ck-msgr-list [role=alert]");
@@ -922,6 +947,96 @@ try {
     check(true, "list: a failed load says so, and Try again loads it");
 
     check(errors.length === 0, `phone flows: no page errors (${errors.join("; ")})`);
+    await context.close();
+  }
+
+  // ── a keyboard, no mouse: what can be done to a message ──
+  for (const [name, width, height, touch] of [
+    ["keyboard, desktop", 1280, 800, false],
+    ["keyboard, phone", 390, 844, true],
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width, height },
+      hasTouch: touch,
+      isMobile: touch,
+    });
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(`${base}?open=maya`);
+    await page.waitForSelector(".ck-msgr-bubble");
+    // From the thread, Tab reaches a message's own button.
+    await page.focus(".ck-msgr-scroll");
+    let reached = false;
+    for (let i = 0; i < 80 && !reached; i++) {
+      await page.keyboard.press("Tab");
+      reached = await page.evaluate(
+        () =>
+          document.activeElement?.classList.contains("ck-msgr-act") &&
+          Boolean(document.activeElement.closest(".ck-msgr-own")),
+      );
+    }
+    check(reached, `${name}: Tab reaches the actions of a message of the viewer's`);
+    const act = await page.evaluate(() => {
+      const el = document.activeElement;
+      const r = el.getBoundingClientRect();
+      return {
+        opacity: getComputedStyle(el).opacity,
+        ring: el.matches(":focus-visible"),
+        width: Math.round(r.width),
+        height: Math.round(r.height),
+        left: Math.round(r.left),
+        right: Math.round(r.right),
+        vw: window.innerWidth,
+        label: el.getAttribute("aria-label"),
+        sideways: document.querySelector(".ck-msgr-scroll").scrollLeft,
+      };
+    });
+    check(
+      act.opacity === "1" && act.ring,
+      `${name}: the focused button is drawn (opacity ${act.opacity})`,
+    );
+    check(
+      act.width >= 44 && act.height >= 44,
+      `${name}: it is a 44px target (${act.width}x${act.height})`,
+    );
+    check(
+      act.left >= 0 && act.right <= act.vw && act.sideways === 0,
+      `${name}: it is on the screen and the thread did not move sideways (${act.left}..${act.right} of ${act.vw})`,
+    );
+    check(Boolean(act.label), `${name}: it has a name a screen reader can say (${act.label})`);
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".ck-sheet[open] .ck-attach-extra");
+    const offered = await page.$$eval(".ck-sheet[open] .ck-attach-extra-text", (els) =>
+      els.map((e) => e.textContent),
+    );
+    check(
+      offered.includes("Edit") && offered.includes("Delete"),
+      `${name}: Enter opens the sheet with Edit and Delete (${offered.join(",")})`,
+    );
+    // Edit, by keyboard alone: Tab to it, Enter, and the words are in the box.
+    let onEdit = false;
+    for (let i = 0; i < 20 && !onEdit; i++) {
+      await page.keyboard.press("Tab");
+      onEdit = await page.evaluate(
+        () =>
+          document.activeElement?.closest(".ck-sheet[open]") !== null &&
+          document.activeElement?.textContent?.trim() === "Edit",
+      );
+    }
+    check(onEdit, `${name}: Tab inside the sheet reaches Edit`);
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".ck-msgr-editing");
+    check(
+      (await page.inputValue(".ck-input")).length > 0,
+      `${name}: Enter on Edit puts the message in the box`,
+    );
+    // Somebody else's message is reachable too (Reply, Copy).
+    const others = await page.$$eval(".ck-msgr-other .ck-msgr-act", (els) => els.length);
+    check(others > 0, `${name}: other people's messages have the button too`);
+    const m = await layout(page);
+    check(m.overflow <= 0, `${name}: nothing scrolls sideways (${m.overflow}px)`);
+    check(errors.length === 0, `${name}: no page errors (${errors.join("; ")})`);
     await context.close();
   }
 } finally {

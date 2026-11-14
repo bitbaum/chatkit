@@ -205,6 +205,33 @@ test("an empty conversation says so, and how to bring the agent in", () => {
   assert.match(html, /Type @cat to bring Cat in\. Everyone here sees its answer\./);
 });
 
+test("alone with an agent: the empty conversation says it answers, and its answer makes a message read", () => {
+  const alone = (extra = {}) => ({
+    id: "c1",
+    createdAt: START,
+    participants: [person("me", "Georgy"), { ...catSeat, ...extra }],
+  });
+  const empty = thread(alone(), []);
+  assert.match(empty, /Cat answers every message here\./);
+  assert.doesNotMatch(empty, /Type @cat/, "there is nobody to bring in");
+  const sent = thread(alone(), [msg("1", "me", "hi", "2026-11-10T10:00:00Z")]);
+  assert.match(sent, /aria-label="Sent"/);
+  const read = thread(alone({ lastReadAt: new Date("2026-11-10T10:00:05Z") }), [
+    msg("1", "me", "hi", "2026-11-10T10:00:00Z"),
+    msg("2", "cat", "Hello.", "2026-11-10T10:00:05Z"),
+  ]);
+  assert.match(read, /aria-label="Read"/);
+});
+
+test("an awaited agent is not also shown typing", () => {
+  const html = thread(withCat, [msg("1", "me", "@cat hi", "2026-11-10T10:00:00Z")], {
+    awaited: [{ agentId: "cat", state: "thinking" }],
+    typing: ["cat"],
+  });
+  assert.match(html, /Cat is thinking/);
+  assert.doesNotMatch(html, /is typing/);
+});
+
 test("the list: one row anatomy, an unread count a screen reader can hear, the agent on the face", () => {
   const html = renderToStaticMarkup(
     h(ConversationList, {

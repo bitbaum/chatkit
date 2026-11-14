@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
-import { readState } from "../thread-rules.js";
 import {
   clockTime,
   dayLabel,
@@ -10,6 +9,8 @@ import {
   needsNames,
   participantOf,
   quoteText,
+  receiptOf,
+  soleAgent,
   threadItems,
   typingLabel,
   type MessengerAgent,
@@ -306,7 +307,13 @@ export function MessageThread({
   };
 
   const empty = status === "ready" && messages.length === 0;
-  const typingNames = typing.map(nameOf).filter(Boolean);
+  // Alone with an agent, every message is for it: no mention to explain.
+  const alone = soleAgent(conversation, viewerId, agents);
+  // An agent that is awaited already says it is thinking; one line, not two.
+  const typingNames = typing
+    .filter((id) => !awaited.some((w) => w.agentId === id))
+    .map(nameOf)
+    .filter(Boolean);
 
   return (
     <div className="ck-msgr-thread-wrap">
@@ -359,13 +366,17 @@ export function MessageThread({
           {empty && (
             <div className="ck-msgr-state">
               <p>{labels.threadEmpty}</p>
-              {agents.map((agent) => (
-                <p key={agent.id} className="ck-msgr-hint">
-                  {labels.agentHint
-                    .replace("{mention}", agent.mention)
-                    .replace("{name}", agent.name)}
-                </p>
-              ))}
+              {alone ? (
+                <p className="ck-msgr-hint">{labels.agentDirect.replace("{name}", alone.name)}</p>
+              ) : (
+                agents.map((agent) => (
+                  <p key={agent.id} className="ck-msgr-hint">
+                    {labels.agentHint
+                      .replace("{mention}", agent.mention)
+                      .replace("{name}", agent.name)}
+                  </p>
+                ))
+              )}
             </div>
           )}
 
@@ -393,7 +404,8 @@ export function MessageThread({
             const time = clockTime(last.createdAt, locale, timeZone);
             const pending = last.delivery === "sending";
             const failed = item.messages.some((m) => m.delivery === "failed");
-            const receipt = item.own && !last.delivery ? readState(conversation, last).state : null;
+            const receipt =
+              item.own && !last.delivery ? receiptOf(conversation, last, agents) : null;
             return (
               <div
                 key={item.key}

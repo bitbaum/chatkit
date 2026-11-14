@@ -15,7 +15,7 @@
  * screen is `@bitbaum/chatkit/messenger`.
  */
 import { mergeMessages } from "@bitbaum/threadkit";
-import { mentionMatcher, } from "./thread-rules.js";
+import { mentionMatcher, readState, } from "./thread-rules.js";
 /** An error whose words are meant for the person (a server's "You are sending
  *  too fast"). Anything else is reported in the package's own words. */
 export class MessengerError extends Error {
@@ -89,6 +89,37 @@ export function isAgent(conversation, actorId, agents = []) {
 /** The agents that are in this conversation: named ones that hold a seat. */
 export function agentsPresent(conversation, agents = []) {
     return conversation.participants.filter((p) => !p.leftAt && (p.kind !== "human" || agents.some((a) => a.id === p.actorId)));
+}
+/**
+ * The agent this conversation is with, when nobody else is in it: one person
+ * and one agent. Every message there is for the agent, so nothing has to name
+ * it. Undefined as soon as a second person or a second agent is here.
+ */
+export function soleAgent(conversation, viewerId, agents = []) {
+    if (!conversation)
+        return undefined;
+    const others = conversation.participants.filter((p) => p.actorId !== viewerId && !p.leftAt);
+    const only = others.length === 1 ? others[0] : undefined;
+    return only && isAgent(conversation, only.actorId, agents) ? only : undefined;
+}
+/**
+ * The tick under a message: sent, read by some, read by all.
+ *
+ * threadkit's `readState` wherever a person could read it. Where nobody
+ * could (the message was written to agents only) the agents are its audience:
+ * an agent has read a message once its own read mark is past it, which an app
+ * moves when the agent answers. Without this a conversation with only an
+ * agent stayed at "Sent" for ever, whatever was answered.
+ */
+export function receiptOf(conversation, message, agents = []) {
+    const read = readState(conversation, message);
+    if (read.audience > 0)
+        return read.state;
+    const audience = conversation.participants.filter((p) => p.actorId !== message.authorId && !p.leftAt && isAgent(conversation, p.actorId, agents));
+    const readers = audience.filter((p) => p.lastReadAt && p.lastReadAt.getTime() >= message.createdAt.getTime());
+    if (audience.length === 0 || readers.length === 0)
+        return "none";
+    return readers.length >= audience.length ? "all" : "some";
 }
 /** Everyone else who is a person and still here. */
 export function otherPeople(conversation, viewerId, agents = []) {

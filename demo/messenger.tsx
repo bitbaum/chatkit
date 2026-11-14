@@ -269,6 +269,22 @@ const transport: MessengerTransport = {
       ...(draft.card ? { card: draft.card } : {}),
     };
     store[id] = [...(store[id] ?? []), stored];
+    const room = conversations.find((c) => c.id === id);
+    if (room?.participants.length === 2 && room.participants.some((p) => p.actorId === "chef")) {
+      // Alone with an agent: it answers every message, and has read what it answers.
+      setTimeout(() => {
+        const reply: MessengerMessage = {
+          id: `m${++seq}`,
+          threadId: id,
+          authorId: "chef",
+          body: "Salt the water first.",
+          createdAt: new Date(),
+        };
+        store[id] = [...(store[id] ?? []), reply];
+        emit({ type: "read", conversationId: id, actorId: "chef", at: new Date() });
+        emit({ type: "message", message: reply });
+      }, 300);
+    }
     if (/(^|\W)@cat\b/i.test(draft.body) && params.get("agent") !== "quiet") {
       setTimeout(() => {
         const reply: MessengerMessage = {
@@ -367,7 +383,11 @@ const transport: MessengerTransport = {
       createdAt: new Date(),
       participants: [
         me(new Date()),
-        ...ids.map((id) => people[id] ?? person(id, id === "ada" ? "Ada Okafor" : id)),
+        ...ids.map((id) =>
+          id === "chef"
+            ? person("chef", "Chef", { kind: "ai" as const })
+            : (people[id] ?? person(id, id === "ada" ? "Ada Okafor" : id)),
+        ),
       ],
       last: null,
     };

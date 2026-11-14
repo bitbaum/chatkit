@@ -1,8 +1,7 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { readState } from "../thread-rules.js";
-import { clockTime, dayLabel, isAgent, linkify, needsNames, participantOf, quoteText, threadItems, typingLabel, } from "../messenger.js";
+import { clockTime, dayLabel, isAgent, linkify, needsNames, participantOf, quoteText, receiptOf, soleAgent, threadItems, typingLabel, } from "../messenger.js";
 import { useStickToBottom } from "./hooks.js";
 import { IconAgent, IconAlert, IconArrowDown, IconCheck, IconChecks, IconClock, IconMore, IconSpinner, } from "./icons.js";
 import { Markdown, defaultRenderLink } from "./Markdown.js";
@@ -138,10 +137,16 @@ export function MessageThread({ conversation, viewerId, messages, agents = [], s
         }
     };
     const empty = status === "ready" && messages.length === 0;
-    const typingNames = typing.map(nameOf).filter(Boolean);
-    return (_jsxs("div", { className: "ck-msgr-thread-wrap", children: [_jsx("div", { className: "ck-msgr-scroll", ref: scrollRef, onScroll: onScroll, role: "log", "aria-live": "polite", "aria-relevant": "additions", tabIndex: 0, children: _jsxs("div", { className: "ck-msgr-thread-inner", children: [hasOlder && messages.length > 0 && (_jsx("button", { ref: olderRef, type: "button", className: "ck-msgr-older", onClick: () => onLoadOlder?.(), disabled: loadingOlder, children: loadingOlder ? (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), " ", labels.loadingOlder] })) : olderFailed ? (labels.olderFailed) : (labels.loadOlder) })), status === "loading" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "status", children: [_jsx(IconSpinner, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.loading })] })), status === "failed" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "alert", children: [_jsx("p", { children: labels.threadFailed }), onReload && (_jsx("button", { type: "button", className: "ck-msgr-btn", onClick: onReload, children: labels.retry }))] })), empty && (_jsxs("div", { className: "ck-msgr-state", children: [_jsx("p", { children: labels.threadEmpty }), agents.map((agent) => (_jsx("p", { className: "ck-msgr-hint", children: labels.agentHint
+    // Alone with an agent, every message is for it: no mention to explain.
+    const alone = soleAgent(conversation, viewerId, agents);
+    // An agent that is awaited already says it is thinking; one line, not two.
+    const typingNames = typing
+        .filter((id) => !awaited.some((w) => w.agentId === id))
+        .map(nameOf)
+        .filter(Boolean);
+    return (_jsxs("div", { className: "ck-msgr-thread-wrap", children: [_jsx("div", { className: "ck-msgr-scroll", ref: scrollRef, onScroll: onScroll, role: "log", "aria-live": "polite", "aria-relevant": "additions", tabIndex: 0, children: _jsxs("div", { className: "ck-msgr-thread-inner", children: [hasOlder && messages.length > 0 && (_jsx("button", { ref: olderRef, type: "button", className: "ck-msgr-older", onClick: () => onLoadOlder?.(), disabled: loadingOlder, children: loadingOlder ? (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), " ", labels.loadingOlder] })) : olderFailed ? (labels.olderFailed) : (labels.loadOlder) })), status === "loading" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "status", children: [_jsx(IconSpinner, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.loading })] })), status === "failed" && messages.length === 0 && (_jsxs("div", { className: "ck-msgr-state", role: "alert", children: [_jsx("p", { children: labels.threadFailed }), onReload && (_jsx("button", { type: "button", className: "ck-msgr-btn", onClick: onReload, children: labels.retry }))] })), empty && (_jsxs("div", { className: "ck-msgr-state", children: [_jsx("p", { children: labels.threadEmpty }), alone ? (_jsx("p", { className: "ck-msgr-hint", children: labels.agentDirect.replace("{name}", alone.name) })) : (agents.map((agent) => (_jsx("p", { className: "ck-msgr-hint", children: labels.agentHint
                                         .replace("{mention}", agent.mention)
-                                        .replace("{name}", agent.name) }, agent.id)))] })), items.map((item) => {
+                                        .replace("{name}", agent.name) }, agent.id))))] })), items.map((item) => {
                             if (item.type === "day") {
                                 return (_jsx("div", { className: "ck-msgr-day", role: "separator", children: _jsx("span", { children: dayLabel(item.date, now, labels.days, locale, timeZone) }) }, item.key));
                             }
@@ -157,7 +162,7 @@ export function MessageThread({ conversation, viewerId, messages, agents = [], s
                             const time = clockTime(last.createdAt, locale, timeZone);
                             const pending = last.delivery === "sending";
                             const failed = item.messages.some((m) => m.delivery === "failed");
-                            const receipt = item.own && !last.delivery ? readState(conversation, last).state : null;
+                            const receipt = item.own && !last.delivery ? receiptOf(conversation, last, agents) : null;
                             return (_jsxs("div", { className: [
                                     "ck-msgr-run",
                                     item.own ? "ck-msgr-own" : "ck-msgr-other",

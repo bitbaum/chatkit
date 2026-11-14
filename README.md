@@ -576,7 +576,7 @@ width (a container query) the two sit side by side.
 | (with `upload`, and a policy that takes audio) | Voice message: record, listen, add to the message (0.34) |
 | `subscribe(scope, on)` | messages, read marks, typing and presence from elsewhere (`MessengerEvent`) |
 | `markRead` · `typing` | ticks on the other side; "Maya is typing…" |
-| `edit` · `remove` | Edit and Delete on the viewer's own messages (long press, right click, or "…") |
+| `edit` · `remove` | Edit and Delete on the viewer's own messages (long press, right click, or "…", which Tab reaches) |
 | `react(message, emoji \| null)` | six emoji on every message, chips with counts, one per person (0.31) |
 | `people` · `open` | "New": find people, start a conversation |
 | `suggestions()` | who "New" offers before anything is typed: the viewer's agents, recent people (0.33) |
@@ -599,6 +599,9 @@ What it settles, so no product decides it again:
   and rendered as markdown; the top bar says "Cat is in this conversation".
   A message that names an agent (`@cat`, whole word — `@catalogue` is somebody
   else) shows "Cat is thinking…" until it answers, and says so if it never does.
+  Alone with an agent (one person, one agent: `soleAgent`) nothing has to name
+  it: every message is for it, the empty conversation says "Cat answers every
+  message here", and "Ask Cat" is not offered.
 - **Whose message is whose.** The viewer's on the right. Everyone else on the
   left, named as soon as more than one other voice is present. A person's
   words are shown exactly as typed, with `http(s)` addresses made links;
@@ -606,7 +609,9 @@ What it settles, so no product decides it again:
 - **A thread that reads.** Runs of messages share one name and one time, a
   line where each day begins, a "New" line where the unread begin, ticks from
   threadkit's `readState` (an agent in the room does not hold a message at
-  unread). It follows new messages only while the reader is at the end, and
+  unread). Where only agents could read a message, it is read once an agent's
+  own read mark is past it (`receiptOf`): move that mark when the agent
+  answers. It follows new messages only while the reader is at the end, and
   loading earlier messages keeps their place.
 - **A box of one row**: attach · the words · microphone · send
   (`Composer layout="inline"`), growing upward with the text. Top bar and box

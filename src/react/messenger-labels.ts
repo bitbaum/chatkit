@@ -53,6 +53,8 @@ export type MessengerLabels = {
   threadFailed: string;
   /** "Type {mention} to bring {name} in. Everyone here sees its answer." */
   agentHint: string;
+  /** In a conversation with only an agent: "{name} answers every message here." */
+  agentDirect: string;
   loadOlder: string;
   loadingOlder: string;
   olderFailed: string;
@@ -192,6 +194,7 @@ export const DEFAULT_MESSENGER_LABELS: MessengerLabels = {
   threadEmpty: "No messages yet. Say hello.",
   threadFailed: "The messages could not be loaded.",
   agentHint: "Type {mention} to bring {name} in. Everyone here sees its answer.",
+  agentDirect: "{name} answers every message here.",
   loadOlder: "Earlier messages",
   loadingOlder: "Loading earlier messages",
   olderFailed: "Earlier messages could not be loaded. Try again",
