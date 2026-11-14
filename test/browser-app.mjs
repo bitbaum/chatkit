@@ -49,7 +49,9 @@ const PNG = Buffer.from(
   "base64",
 );
 
-/** Layout facts the eye checks: sideways scroll, small targets, cut words. */
+/** Layout facts the eye checks: sideways scroll, small targets, cut words.
+ * A box measured while its drawer is still sliding in can read 43.99998px for
+ * a 44px control (a fractional translate); that is float error, not a small target. */
 async function layout(page) {
   return page.evaluate(`(() => {
     const small = [...document.querySelectorAll(
@@ -57,7 +59,7 @@ async function layout(page) {
     )]
       .filter((e) => !e.closest(".ck-sheet") && !e.closest("[hidden]"))
       .map((e) => [e, e.getBoundingClientRect()])
-      .filter(([, r]) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
+      .filter(([, r]) => r.width > 0 && r.height > 0 && (r.width < 43.99 || r.height < 43.99))
       .filter(([e]) => !e.classList.contains("ck-attach-remove"))
       .map(([e, r]) => (e.getAttribute("aria-label") || e.className || e.tagName) + " " + Math.round(r.width) + "x" + Math.round(r.height));
     return {
