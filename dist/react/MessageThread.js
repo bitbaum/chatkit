@@ -49,7 +49,7 @@ function Dots() {
  * only while the reader is at the end, and keeps its place when earlier
  * messages are loaded above.
  */
-export function MessageThread({ conversation, viewerId, messages, agents = [], status = "ready", onReload, hasOlder = false, loadingOlder = false, olderFailed = false, onLoadOlder, unreadFrom = null, typing = [], awaited = [], onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, renderLink = defaultRenderLink, agentMark, locale, timeZone, labels = DEFAULT_MESSENGER_LABELS, }) {
+export function MessageThread({ conversation, viewerId, messages, agents = [], status = "ready", onReload, hasOlder = false, loadingOlder = false, olderFailed = false, onLoadOlder, unreadFrom = null, typing = [], awaited = [], onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, reveal = null, renderLink = defaultRenderLink, agentMark, locale, timeZone, labels = DEFAULT_MESSENGER_LABELS, }) {
     const items = useMemo(() => threadItems(messages, { viewerId, timeZone, unreadFrom }), [messages, viewerId, timeZone, unreadFrom]);
     const named = needsNames(conversation, viewerId);
     // When the viewer last wrote. It grows only when they send — never when
@@ -136,6 +136,14 @@ export function MessageThread({ conversation, viewerId, messages, agents = [], s
             return;
         }
     };
+    const showRef = useRef(showMessage);
+    useEffect(() => {
+        showRef.current = showMessage;
+    });
+    useEffect(() => {
+        if (reveal)
+            showRef.current(reveal.id);
+    }, [reveal]);
     const empty = status === "ready" && messages.length === 0;
     // Alone with an agent, every message is for it: no mention to explain.
     const alone = soleAgent(conversation, viewerId, agents);

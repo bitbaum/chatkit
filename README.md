@@ -581,6 +581,7 @@ width (a container query) the two sit side by side.
 | `people` · `open` | "New": find people, start a conversation |
 | `suggestions()` | who "New" offers before anything is typed: the viewer's agents, recent people (0.33) |
 | `leave` | "Delete conversation" (for the viewer only) |
+| `search(conversationId, query)` | search in the top bar: the matches, and a jump to the one tapped (0.35) |
 | `conversation(id)` | a link to a conversation the list has not loaded |
 | `usage()` | the storage quota checked before an upload starts |
 

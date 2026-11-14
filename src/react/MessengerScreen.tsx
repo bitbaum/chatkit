@@ -3,17 +3,21 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { canWrite } from "@bitbaum/threadkit";
 import { DEFAULT_ATTACHMENT_POLICY } from "../thread-rules.js";
+import { plainTextForSpeech } from "../speech.js";
 import { MESSAGE_FILES_ACCEPT, type AttachSource } from "../attachments.js";
 import {
   agentsPresent,
+  attachmentSummary,
   conversationTitle,
   failureText,
+  listTime,
   otherPeople,
   participantOf,
   QUICK_REACTIONS,
   quoteOf,
   quoteText,
   reactionOf,
+  reviveMessage,
   sessionDrafts,
   soleAgent,
   withMention,
@@ -70,6 +74,9 @@ import {
   type UploadOptions,
   type UploadsController,
 } from "./use-uploads.js";
+
+/** How many earlier pages are loaded to reach a found message. */
+const REVEAL_MAX_PAGES = 20;
 
 export type MessengerComposerOptions = {
   /** The microphone. Pass `{ transcribeUrl }` so it works where the browser's
@@ -309,6 +316,139 @@ function UploadTile({
         <IconX />
       </button>
     </div>
+  );
+}
+
+/** A found message's words on a list row: an agent writes markdown, and a
+ *  row of results is not where its asterisks belong. */
+function foundText(message: MessengerMessage, conversation: MessengerConversation | null): string {
+  const kind = participantOf(conversation ?? undefined, message.authorId)?.kind;
+  return kind && kind !== "human" ? plainTextForSpeech(message.body) : message.body;
+}
+
+/** Find a message in the open conversation by its words. */
+function ConversationSearch({
+  open,
+  onClose,
+  conversation,
+  viewerId,
+  search,
+  onPick,
+  locale,
+  timeZone,
+  labels,
+}: {
+  open: boolean;
+  onClose: () => void;
+  conversation: MessengerConversation | null;
+  viewerId: string;
+  search: NonNullable<MessengerTransport["search"]>;
+  onPick: (message: MessengerMessage) => void;
+  locale?: string;
+  timeZone?: string;
+  labels: MessengerLabels;
+}) {
+  const [query, setQuery] = useState("");
+  const [found, setFound] = useState<MessengerMessage[]>([]);
+  const [state, setState] = useState<"idle" | "searching" | "failed">("idle");
+  const id = conversation?.id;
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setFound([]);
+      setState("idle");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const asked = query.trim();
+    if (!open || !id || !asked) {
+      setFound([]);
+      setState("idle");
+      return;
+    }
+    const request = new AbortController();
+    setState("searching");
+    const timer = setTimeout(() => {
+      search(id, asked, { signal: request.signal })
+        .then((list) => {
+          if (request.signal.aborted) return;
+          setFound(list.map(reviveMessage));
+          setState("idle");
+        })
+        .catch(() => {
+          if (!request.signal.aborted) setState("failed");
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      request.abort();
+    };
+  }, [open, id, query, search]);
+
+  const now = new Date();
+  return (
+    <Sheet open={open} onClose={onClose} title={labels.searchMessages} closeLabel={labels.close}>
+      <div className="ck-msgr-new">
+        <label className="ck-msgr-search">
+          <IconSearch />
+          <span className="ck-msgr-sr">{labels.searchMessages}</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={labels.searchMessagesPlaceholder}
+            enterKeyHint="search"
+          />
+        </label>
+        <div className="ck-msgr-new-body" aria-live="polite">
+          {found.length === 0 && (
+            <p className="ck-msgr-hint">
+              {state === "searching" ? (
+                <IconSpinner />
+              ) : state === "failed" ? (
+                labels.searchMessagesFailed
+              ) : query.trim() ? (
+                labels.searchMessagesEmpty
+              ) : (
+                labels.searchMessagesHint
+              )}
+            </p>
+          )}
+          {found.length > 0 && (
+            <ul className="ck-msgr-rows">
+              {found.map((message) => (
+                <li key={message.id}>
+                  <button type="button" className="ck-msgr-row" onClick={() => onPick(message)}>
+                    <span className="ck-msgr-row-text">
+                      <span className="ck-msgr-row-top">
+                        <span className="ck-msgr-row-name ck-truncate">
+                          {message.authorId === viewerId
+                            ? labels.you
+                            : (participantOf(conversation ?? undefined, message.authorId)?.name ??
+                              "")}
+                        </span>
+                        <time dateTime={message.createdAt.toISOString()}>
+                          {listTime(message.createdAt, now, labels.days, locale, timeZone)}
+                        </time>
+                      </span>
+                      <span className="ck-msgr-found-text">
+                        {foundText(message, conversation) ||
+                          attachmentSummary(
+                            (message.attachments ?? []).map((a) => a.kind),
+                            labels.preview,
+                          )}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </Sheet>
   );
 }
 
@@ -557,6 +697,9 @@ export function Messenger({
     setReplying(null);
     setAsking(null);
     setRecordingVoice(false);
+    setSearching(false);
+    setReveal(null);
+    wanted.current = null;
     if (!openId) {
       setDraftState("");
       return;
@@ -645,6 +788,35 @@ export function Messenger({
         }))
     : [];
   // A voice message: recorded here, then a file like any other.
+  // Search inside the conversation, and the way to a found message: it is
+  // revealed where it is loaded, and earlier pages are loaded until it is.
+  const [searching, setSearching] = useState(false);
+  const [reveal, setReveal] = useState<{ id: string } | null>(null);
+  const wanted = useRef<{ id: string; pages: number } | null>(null);
+  const [wantedTick, setWantedTick] = useState(0);
+  const loadedIds = thread?.messages;
+  const olderLeft = thread ? thread.before !== null : false;
+  const loadingOlder = thread?.loadingOlder ?? false;
+  useEffect(() => {
+    const want = wanted.current;
+    if (!want || !loadedIds) return;
+    if (loadedIds.some((m) => m.id === want.id)) {
+      wanted.current = null;
+      setReveal({ id: want.id });
+      return;
+    }
+    if (loadingOlder) return;
+    if (!olderLeft || want.pages >= REVEAL_MAX_PAGES) {
+      wanted.current = null;
+      setNotice(labels.searchTooFar);
+      return;
+    }
+    want.pages += 1;
+    controller.loadOlder();
+    // `controller` and `labels` are read, not watched: this runs when the
+    // thread changes or a new message is asked for.
+  }, [loadedIds, olderLeft, loadingOlder, wantedTick]);
+
   const [recordingVoice, setRecordingVoice] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   useEffect(() => setVoiceSupported(canRecordVoice()), []);
@@ -857,6 +1029,18 @@ export function Messenger({
                     {subtitle && <p className="ck-msgr-top-sub ck-truncate">{subtitle}</p>}
                   </div>
                   {headerActions?.(open)}
+                  {transport.search && (
+                    <button
+                      type="button"
+                      className="ck-icon-btn"
+                      onClick={() => setSearching(true)}
+                      aria-label={labels.searchMessages}
+                      aria-haspopup="dialog"
+                      title={labels.searchMessages}
+                    >
+                      <IconSearch />
+                    </button>
+                  )}
                   {transport.leave && (
                     <button
                       type="button"
@@ -910,6 +1094,7 @@ export function Messenger({
                 renderCardAction={renderCardAction}
                 onSeen={controller.seen}
                 onFollowingChange={controller.setFollowing}
+                reveal={reveal}
                 renderLink={renderLink}
                 agentMark={agentMark}
                 locale={locale}
@@ -1151,6 +1336,24 @@ export function Messenger({
           }
         }}
       />
+
+      {transport.search && (
+        <ConversationSearch
+          open={searching}
+          onClose={() => setSearching(false)}
+          conversation={open}
+          viewerId={viewer.id}
+          search={transport.search}
+          locale={locale}
+          timeZone={timeZone}
+          labels={labels}
+          onPick={(message) => {
+            setSearching(false);
+            wanted.current = { id: message.id, pages: 0 };
+            setWantedTick((n) => n + 1);
+          }}
+        />
+      )}
 
       <NewConversation
         open={creating}

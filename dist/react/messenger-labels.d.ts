@@ -134,6 +134,13 @@ export type MessengerLabels = {
     peopleHint: string;
     peopleEmpty: string;
     peopleFailed: string;
+    searchMessages: string;
+    searchMessagesPlaceholder: string;
+    searchMessagesHint: string;
+    searchMessagesEmpty: string;
+    searchMessagesFailed: string;
+    /** A found message that is further back than the thread could load. */
+    searchTooFar: string;
     start: string;
     startFailed: string;
     days: MessengerDayLabels;

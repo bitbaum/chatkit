@@ -230,7 +230,16 @@ for (const c of conversations) {
 
 const listeners = new Set<(event: MessengerEvent) => void>();
 const emit = (event: MessengerEvent) => listeners.forEach((on) => on(event));
-const calls = { react: 0, send: 0, markRead: 0, upload: 0, messages: 0, typing: 0, list: 0 };
+const calls = {
+  search: 0,
+  react: 0,
+  send: 0,
+  markRead: 0,
+  upload: 0,
+  messages: 0,
+  typing: 0,
+  list: 0,
+};
 const PAGE = 30;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let listFailed = false;
@@ -394,6 +403,13 @@ const transport: MessengerTransport = {
     conversations.push(made);
     store[made.id] = [];
     return made;
+  },
+  async search(id, query) {
+    calls.search++;
+    await wait(40);
+    if (fail === "search") throw new Error("no");
+    const q = query.toLowerCase();
+    return (store[id] ?? []).filter((m) => m.body.toLowerCase().includes(q)).reverse();
   },
   async leave(ids) {
     await wait(60);

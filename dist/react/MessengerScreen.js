@@ -3,8 +3,9 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useMemo, useRef, useState } from "react";
 import { canWrite } from "@bitbaum/threadkit";
 import { DEFAULT_ATTACHMENT_POLICY } from "../thread-rules.js";
+import { plainTextForSpeech } from "../speech.js";
 import { MESSAGE_FILES_ACCEPT } from "../attachments.js";
-import { agentsPresent, conversationTitle, failureText, otherPeople, participantOf, QUICK_REACTIONS, quoteOf, quoteText, reactionOf, sessionDrafts, soleAgent, withMention, } from "../messenger.js";
+import { agentsPresent, attachmentSummary, conversationTitle, failureText, listTime, otherPeople, participantOf, QUICK_REACTIONS, quoteOf, quoteText, reactionOf, reviveMessage, sessionDrafts, soleAgent, withMention, } from "../messenger.js";
 import { Composer, } from "./Composer.js";
 import { ConversationList } from "./ConversationList.js";
 import { useViewportHeight } from "./hooks.js";
@@ -16,6 +17,8 @@ import { Sheet, prefersSheet } from "./Sheet.js";
 import { useMessenger } from "./use-messenger.js";
 import { VoiceRecorder, canRecordVoice } from "./VoiceRecorder.js";
 import { useUploads, } from "./use-uploads.js";
+/** How many earlier pages are loaded to reach a found message. */
+const REVEAL_MAX_PAGES = 20;
 /** "How much?", asked once, the same way for every action that needs it. */
 function AmountSheet({ action, onClose, onConfirm, labels, }) {
     const [amount, setAmount] = useState("");
@@ -49,6 +52,59 @@ function UploadTray({ uploads, labels }) {
 function UploadTile({ item, uploads, labels, }) {
     const busy = item.state === "preparing" || item.state === "uploading";
     return (_jsxs("div", { className: `ck-msgr-upload ck-msgr-upload-${item.state}`, title: item.name, "data-upload": item.state, children: [item.previewUrl ? (_jsx("img", { src: item.previewUrl, alt: item.name })) : (_jsxs("span", { className: "ck-msgr-upload-file", children: [item.kind === "video" ? _jsx(IconVideo, {}) : _jsx(IconFile, {}), _jsx("span", { className: "ck-truncate", children: item.name })] })), busy && (_jsx("span", { className: "ck-msgr-upload-bar", role: "progressbar", "aria-label": labels.uploading.replace("{name}", item.name), "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(item.progress * 100), children: _jsx("span", { style: { width: `${Math.round(item.progress * 100)}%` } }) })), item.state === "failed" && (_jsx("button", { type: "button", className: "ck-msgr-upload-retry", onClick: () => uploads.retry(item.key), "aria-label": `${labels.retryUpload}: ${item.name}`, title: labels.retryUpload, children: _jsx(IconRetry, {}) })), _jsx("button", { type: "button", className: "ck-attach-remove", onClick: () => uploads.remove(item.key), "aria-label": labels.removeUpload(item.name), title: labels.removeUpload(item.name), children: _jsx(IconX, {}) })] }));
+}
+/** A found message's words on a list row: an agent writes markdown, and a
+ *  row of results is not where its asterisks belong. */
+function foundText(message, conversation) {
+    const kind = participantOf(conversation ?? undefined, message.authorId)?.kind;
+    return kind && kind !== "human" ? plainTextForSpeech(message.body) : message.body;
+}
+/** Find a message in the open conversation by its words. */
+function ConversationSearch({ open, onClose, conversation, viewerId, search, onPick, locale, timeZone, labels, }) {
+    const [query, setQuery] = useState("");
+    const [found, setFound] = useState([]);
+    const [state, setState] = useState("idle");
+    const id = conversation?.id;
+    useEffect(() => {
+        if (!open) {
+            setQuery("");
+            setFound([]);
+            setState("idle");
+        }
+    }, [open]);
+    useEffect(() => {
+        const asked = query.trim();
+        if (!open || !id || !asked) {
+            setFound([]);
+            setState("idle");
+            return;
+        }
+        const request = new AbortController();
+        setState("searching");
+        const timer = setTimeout(() => {
+            search(id, asked, { signal: request.signal })
+                .then((list) => {
+                if (request.signal.aborted)
+                    return;
+                setFound(list.map(reviveMessage));
+                setState("idle");
+            })
+                .catch(() => {
+                if (!request.signal.aborted)
+                    setState("failed");
+            });
+        }, 250);
+        return () => {
+            clearTimeout(timer);
+            request.abort();
+        };
+    }, [open, id, query, search]);
+    const now = new Date();
+    return (_jsx(Sheet, { open: open, onClose: onClose, title: labels.searchMessages, closeLabel: labels.close, children: _jsxs("div", { className: "ck-msgr-new", children: [_jsxs("label", { className: "ck-msgr-search", children: [_jsx(IconSearch, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.searchMessages }), _jsx("input", { type: "search", value: query, onChange: (e) => setQuery(e.target.value), placeholder: labels.searchMessagesPlaceholder, enterKeyHint: "search" })] }), _jsxs("div", { className: "ck-msgr-new-body", "aria-live": "polite", children: [found.length === 0 && (_jsx("p", { className: "ck-msgr-hint", children: state === "searching" ? (_jsx(IconSpinner, {})) : state === "failed" ? (labels.searchMessagesFailed) : query.trim() ? (labels.searchMessagesEmpty) : (labels.searchMessagesHint) })), found.length > 0 && (_jsx("ul", { className: "ck-msgr-rows", children: found.map((message) => (_jsx("li", { children: _jsx("button", { type: "button", className: "ck-msgr-row", onClick: () => onPick(message), children: _jsxs("span", { className: "ck-msgr-row-text", children: [_jsxs("span", { className: "ck-msgr-row-top", children: [_jsx("span", { className: "ck-msgr-row-name ck-truncate", children: message.authorId === viewerId
+                                                            ? labels.you
+                                                            : (participantOf(conversation ?? undefined, message.authorId)?.name ??
+                                                                "") }), _jsx("time", { dateTime: message.createdAt.toISOString(), children: listTime(message.createdAt, now, labels.days, locale, timeZone) })] }), _jsx("span", { className: "ck-msgr-found-text", children: foundText(message, conversation) ||
+                                                    attachmentSummary((message.attachments ?? []).map((a) => a.kind), labels.preview) })] }) }) }, message.id))) }))] })] }) }));
 }
 /** Find people and start a conversation with them. */
 function NewConversation({ open, onClose, transport, onStart, labels, }) {
@@ -170,6 +226,9 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
         setReplying(null);
         setAsking(null);
         setRecordingVoice(false);
+        setSearching(false);
+        setReveal(null);
+        wanted.current = null;
         if (!openId) {
             setDraftState("");
             return;
@@ -244,6 +303,36 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
         }))
         : [];
     // A voice message: recorded here, then a file like any other.
+    // Search inside the conversation, and the way to a found message: it is
+    // revealed where it is loaded, and earlier pages are loaded until it is.
+    const [searching, setSearching] = useState(false);
+    const [reveal, setReveal] = useState(null);
+    const wanted = useRef(null);
+    const [wantedTick, setWantedTick] = useState(0);
+    const loadedIds = thread?.messages;
+    const olderLeft = thread ? thread.before !== null : false;
+    const loadingOlder = thread?.loadingOlder ?? false;
+    useEffect(() => {
+        const want = wanted.current;
+        if (!want || !loadedIds)
+            return;
+        if (loadedIds.some((m) => m.id === want.id)) {
+            wanted.current = null;
+            setReveal({ id: want.id });
+            return;
+        }
+        if (loadingOlder)
+            return;
+        if (!olderLeft || want.pages >= REVEAL_MAX_PAGES) {
+            wanted.current = null;
+            setNotice(labels.searchTooFar);
+            return;
+        }
+        want.pages += 1;
+        controller.loadOlder();
+        // `controller` and `labels` are read, not watched: this runs when the
+        // thread changes or a new message is asked for.
+    }, [loadedIds, olderLeft, loadingOlder, wantedTick]);
     const [recordingVoice, setRecordingVoice] = useState(false);
     const [voiceSupported, setVoiceSupported] = useState(false);
     useEffect(() => setVoiceSupported(canRecordVoice()), []);
@@ -320,13 +409,13 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
     const canRemove = Boolean(acting && ownActing && transport.remove);
     return (_jsxs("div", { ref: rootRef, className: ["ck-msgr", fill === "viewport" ? "ck-msgr-viewport" : "", className ?? ""]
             .filter(Boolean)
-            .join(" "), "data-pane": openId ? "thread" : "list", children: [_jsx("div", { className: "ck-msgr-side", children: _jsx(ConversationList, { conversations: state.conversations, viewerId: viewer.id, agents: agents, status: state.status, selectedId: openId, onSelect: controller.select, onNew: transport.people && transport.open ? () => setCreating(true) : undefined, onReload: controller.reload, typing: state.typing, search: search, header: listHeader, agentMark: agentMark, locale: locale, timeZone: timeZone, labels: labels }) }), _jsx("section", { className: "ck-msgr-main", "aria-label": open ? labels.thread.replace("{name}", title) : undefined, children: !openId ? (_jsx("div", { className: "ck-msgr-state ck-msgr-nothing", children: _jsx("p", { children: labels.pickOne }) })) : (_jsxs(_Fragment, { children: [_jsxs("header", { className: "ck-msgr-top", children: [_jsx("button", { type: "button", className: "ck-icon-btn ck-msgr-back", onClick: () => controller.select(null), "aria-label": labels.back, title: labels.back, children: _jsx(IconArrowLeft, {}) }), open && (_jsxs(_Fragment, { children: [one ? (_jsx(MessengerAvatar, { name: one.name, src: one.avatarUrl, online: one.online })) : people.length === 0 && present[0] ? (_jsx(MessengerAvatar, { name: present[0].name, src: present[0].avatarUrl, agent: true, fallback: agentMark ?? _jsx(IconAgent, {}) })) : (_jsx(MessengerAvatar, { name: title, fallback: people.length > 1 ? _jsx(IconUsers, {}) : _jsx(IconPencil, {}) })), _jsxs("div", { className: "ck-msgr-top-text", children: [one && profileHref?.(one) ? (_jsx("a", { className: "ck-msgr-top-name ck-truncate", href: profileHref(one), children: title })) : (_jsx("h2", { className: "ck-msgr-top-name ck-truncate", children: title })), subtitle && _jsx("p", { className: "ck-msgr-top-sub ck-truncate", children: subtitle })] }), headerActions?.(open), transport.leave && (_jsx("button", { type: "button", className: "ck-icon-btn ck-msgr-top-more", onClick: () => setMenu(true), "aria-label": labels.more, "aria-haspopup": "dialog", title: labels.more, children: _jsx(IconMore, {}) }))] }))] }), state.connection !== "online" && (_jsx("p", { className: "ck-msgr-banner", role: "status", children: state.connection === "offline" ? labels.offline : labels.reconnecting })), open ? (_jsx(MessageThread, { conversation: open, viewerId: viewer.id, messages: thread?.messages ?? [], agents: agents, status: thread?.status ?? "loading", onReload: controller.reloadThread, hasOlder: thread ? thread.before !== null : false, loadingOlder: thread?.loadingOlder, olderFailed: thread?.olderFailed, onLoadOlder: controller.loadOlder, unreadFrom: thread?.unreadFrom, typing: state.typing[open.id], awaited: state.awaited[open.id], onDismissAgent: controller.dismissAgent, onRetry: controller.retry, onDiscard: controller.discard, onAction: setActing, onReact: transport.react
+            .join(" "), "data-pane": openId ? "thread" : "list", children: [_jsx("div", { className: "ck-msgr-side", children: _jsx(ConversationList, { conversations: state.conversations, viewerId: viewer.id, agents: agents, status: state.status, selectedId: openId, onSelect: controller.select, onNew: transport.people && transport.open ? () => setCreating(true) : undefined, onReload: controller.reload, typing: state.typing, search: search, header: listHeader, agentMark: agentMark, locale: locale, timeZone: timeZone, labels: labels }) }), _jsx("section", { className: "ck-msgr-main", "aria-label": open ? labels.thread.replace("{name}", title) : undefined, children: !openId ? (_jsx("div", { className: "ck-msgr-state ck-msgr-nothing", children: _jsx("p", { children: labels.pickOne }) })) : (_jsxs(_Fragment, { children: [_jsxs("header", { className: "ck-msgr-top", children: [_jsx("button", { type: "button", className: "ck-icon-btn ck-msgr-back", onClick: () => controller.select(null), "aria-label": labels.back, title: labels.back, children: _jsx(IconArrowLeft, {}) }), open && (_jsxs(_Fragment, { children: [one ? (_jsx(MessengerAvatar, { name: one.name, src: one.avatarUrl, online: one.online })) : people.length === 0 && present[0] ? (_jsx(MessengerAvatar, { name: present[0].name, src: present[0].avatarUrl, agent: true, fallback: agentMark ?? _jsx(IconAgent, {}) })) : (_jsx(MessengerAvatar, { name: title, fallback: people.length > 1 ? _jsx(IconUsers, {}) : _jsx(IconPencil, {}) })), _jsxs("div", { className: "ck-msgr-top-text", children: [one && profileHref?.(one) ? (_jsx("a", { className: "ck-msgr-top-name ck-truncate", href: profileHref(one), children: title })) : (_jsx("h2", { className: "ck-msgr-top-name ck-truncate", children: title })), subtitle && _jsx("p", { className: "ck-msgr-top-sub ck-truncate", children: subtitle })] }), headerActions?.(open), transport.search && (_jsx("button", { type: "button", className: "ck-icon-btn", onClick: () => setSearching(true), "aria-label": labels.searchMessages, "aria-haspopup": "dialog", title: labels.searchMessages, children: _jsx(IconSearch, {}) })), transport.leave && (_jsx("button", { type: "button", className: "ck-icon-btn ck-msgr-top-more", onClick: () => setMenu(true), "aria-label": labels.more, "aria-haspopup": "dialog", title: labels.more, children: _jsx(IconMore, {}) }))] }))] }), state.connection !== "online" && (_jsx("p", { className: "ck-msgr-banner", role: "status", children: state.connection === "offline" ? labels.offline : labels.reconnecting })), open ? (_jsx(MessageThread, { conversation: open, viewerId: viewer.id, messages: thread?.messages ?? [], agents: agents, status: thread?.status ?? "loading", onReload: controller.reloadThread, hasOlder: thread ? thread.before !== null : false, loadingOlder: thread?.loadingOlder, olderFailed: thread?.olderFailed, onLoadOlder: controller.loadOlder, unreadFrom: thread?.unreadFrom, typing: state.typing[open.id], awaited: state.awaited[open.id], onDismissAgent: controller.dismissAgent, onRetry: controller.retry, onDiscard: controller.discard, onAction: setActing, onReact: transport.react
                                 ? async (message, emoji) => {
                                     const ok = await controller.react(message, emoji);
                                     if (!ok)
                                         setNotice(labels.reactFailed);
                                 }
-                                : undefined, renderCardAction: renderCardAction, onSeen: controller.seen, onFollowingChange: controller.setFollowing, renderLink: renderLink, agentMark: agentMark, locale: locale, timeZone: timeZone, labels: labels }, open.id)) : (_jsx("div", { className: "ck-msgr-thread-wrap", children: _jsx("div", { className: "ck-msgr-state", role: "status", children: state.status === "failed" ? (_jsxs(_Fragment, { children: [_jsx("p", { children: labels.threadFailed }), _jsx("button", { type: "button", className: "ck-msgr-btn", onClick: controller.reload, children: labels.retry })] })) : (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.loading })] })) }) })), _jsxs("div", { className: "ck-msgr-dock", children: [shownNotice && (_jsx("button", { type: "button", className: "ck-note", onClick: () => {
+                                : undefined, renderCardAction: renderCardAction, onSeen: controller.seen, onFollowingChange: controller.setFollowing, reveal: reveal, renderLink: renderLink, agentMark: agentMark, locale: locale, timeZone: timeZone, labels: labels }, open.id)) : (_jsx("div", { className: "ck-msgr-thread-wrap", children: _jsx("div", { className: "ck-msgr-state", role: "status", children: state.status === "failed" ? (_jsxs(_Fragment, { children: [_jsx("p", { children: labels.threadFailed }), _jsx("button", { type: "button", className: "ck-msgr-btn", onClick: controller.reload, children: labels.retry })] })) : (_jsxs(_Fragment, { children: [_jsx(IconSpinner, {}), _jsx("span", { className: "ck-msgr-sr", children: labels.loading })] })) }) })), _jsxs("div", { className: "ck-msgr-dock", children: [shownNotice && (_jsx("button", { type: "button", className: "ck-note", onClick: () => {
                                         setNotice(null);
                                         uploads.clearNote();
                                     }, children: shownNotice })), writable ? (composer.wrap ? (composer.wrap(box)) : (box)) : (_jsx("p", { className: "ck-msgr-closed", children: labels.cannotWrite }))] })] })) }), _jsx(Sheet, { open: acting !== null, onClose: closeActions, title: labels.actions, closeLabel: labels.close, children: _jsxs("div", { className: "ck-sheet-extra ck-sheet-only", children: [transport.react && acting && !confirming && (_jsx("div", { className: "ck-msgr-react-row", role: "group", "aria-label": labels.react.replace("{emoji}", ""), children: QUICK_REACTIONS.map((emoji) => (_jsx("button", { type: "button", className: "ck-msgr-react", "aria-pressed": reactionOf(acting.reactions, viewer.id) === emoji, "aria-label": labels.react.replace("{emoji}", emoji), onClick: async () => {
@@ -380,6 +469,10 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
                     if (action && open) {
                         void action.onPick({ conversation: open, amount, note, send: sendCard });
                     }
-                } }), _jsx(NewConversation, { open: creating, onClose: () => setCreating(false), transport: transport, onStart: controller.start, labels: labels })] }));
+                } }), transport.search && (_jsx(ConversationSearch, { open: searching, onClose: () => setSearching(false), conversation: open, viewerId: viewer.id, search: transport.search, locale: locale, timeZone: timeZone, labels: labels, onPick: (message) => {
+                    setSearching(false);
+                    wanted.current = { id: message.id, pages: 0 };
+                    setWantedTick((n) => n + 1);
+                } })), _jsx(NewConversation, { open: creating, onClose: () => setCreating(false), transport: transport, onStart: controller.start, labels: labels })] }));
 }
 //# sourceMappingURL=MessengerScreen.js.map

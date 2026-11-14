@@ -68,6 +68,9 @@ export type MessageThreadProps = {
   /** The viewer is at the newest message and it is on screen. */
   onSeen?: () => void;
   onFollowingChange?: (following: boolean) => void;
+  /** Lead to this message and mark it (a search result). A new object each
+   *  time, so the same message can be asked for twice. */
+  reveal?: { id: string } | null;
   renderLink?: RenderLink;
   /** A product's own mark for an agent with no picture. */
   agentMark?: ReactNode;
@@ -203,6 +206,7 @@ export function MessageThread({
   renderCardAction,
   onSeen,
   onFollowingChange,
+  reveal = null,
   renderLink = defaultRenderLink,
   agentMark,
   locale,
@@ -305,6 +309,14 @@ export function MessageThread({
       return;
     }
   };
+
+  const showRef = useRef(showMessage);
+  useEffect(() => {
+    showRef.current = showMessage;
+  });
+  useEffect(() => {
+    if (reveal) showRef.current(reveal.id);
+  }, [reveal]);
 
   const empty = status === "ready" && messages.length === 0;
   // Alone with an agent, every message is for it: no mention to explain.

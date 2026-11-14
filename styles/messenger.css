@@ -2694,6 +2694,14 @@ details.ck-thinking[open] > summary svg {
   border-radius: 0;
   box-shadow: none;
 }
+/* The same for a search field: its pill is the box, and shows the focus. */
+.ck-msgr-search > input,
+.ck-msgr-search > input:focus,
+.ck-msgr-search > input:focus-visible {
+  outline: none;
+  border-radius: 0;
+  box-shadow: none;
+}
 .ck-msgr .ck-msgr-top-name,
 .ck-msgr .ck-msgr-link,
 .ck-msgr .ck-md a {
@@ -3443,4 +3451,17 @@ details.ck-thinking[open] > summary svg {
 }
 .ck-msgr-voice > .ck-msgr-confirm {
   align-self: stretch;
+}
+
+/* ── a message found by search: its words, up to three lines ───────────── */
+.ck-msgr-found-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ck-fg-2);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }

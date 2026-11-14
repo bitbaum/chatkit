@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.35.0 — `Messenger`: a message's actions by keyboard; alone with an agent
+## 0.36.0 — `Messenger`: a message's actions by keyboard; alone with an agent
 
 Found in OrangeCat's full-path review (2026-11-13): Edit and Delete could not be reached without a mouse, the Cat did not answer in a conversation with only the Cat, and such a conversation never showed "Read".
 
@@ -9,6 +9,12 @@ Found in OrangeCat's full-path review (2026-11-13): Edit and Delete could not be
 - **Read, for a message only an agent could read** (`receiptOf(conversation, message, agents)`): read once the agent's own `lastReadAt` is past the message. An app moves that mark when the agent answers (and sends the `read` event). Where a person can read the message, threadkit's `readState` decides as before.
 - An agent that is awaited ("is thinking…") is no longer also shown typing.
 - For a consumer: nothing to change to get the keyboard fix and the label. `labels.agentDirect` is new and has a default; an app with its own full label set in another language adds it.
+
+## 0.35.0 — `Messenger`: search inside a conversation
+
+- `transport.search(conversationId, query)` puts a search in the top bar. The sheet lists what the server found (who, when, up to three lines; an agent's answer as words, not markdown). Tapping a match closes the sheet, loads earlier pages until that message is there (up to 20), leads to it and marks it. A match further back than that says so.
+- **Fix:** a search field (in "New", in the list, and here) took a host's focus ring on the input inside its pill, the same box inside a box as the composer had. Found by looking at the sheet under the hostile host stylesheet; measured there now.
+- `test/browser-messenger.mjs`: search for a message that is not loaded, nothing found, the jump, 44px targets.
 
 ## 0.34.0 — `Messenger`: voice messages
 
