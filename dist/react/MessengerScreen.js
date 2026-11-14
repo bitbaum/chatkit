@@ -5,7 +5,7 @@ import { canWrite } from "@bitbaum/threadkit";
 import { DEFAULT_ATTACHMENT_POLICY } from "../thread-rules.js";
 import { plainTextForSpeech } from "../speech.js";
 import { MESSAGE_FILES_ACCEPT } from "../attachments.js";
-import { agentsPresent, attachmentSummary, conversationTitle, failureText, listTime, otherPeople, participantOf, QUICK_REACTIONS, quoteOf, quoteText, reactionOf, reviveMessage, sessionDrafts, withMention, } from "../messenger.js";
+import { agentsPresent, attachmentSummary, conversationTitle, failureText, listTime, otherPeople, participantOf, QUICK_REACTIONS, quoteOf, quoteText, reactionOf, reviveMessage, sessionDrafts, soleAgent, withMention, } from "../messenger.js";
 import { Composer, } from "./Composer.js";
 import { ConversationList } from "./ConversationList.js";
 import { useViewportHeight } from "./hooks.js";
@@ -347,7 +347,11 @@ export function Messenger({ viewer, transport, agents = [], conversationId, onCo
             },
         ]
         : [];
-    const agentExtras = agents.map((agent) => ({
+    // Alone with an agent there is nobody to bring in: it answers every message.
+    const alone = soleAgent(open, viewer.id, agents);
+    const agentExtras = agents
+        .filter((agent) => agent.id !== alone?.actorId)
+        .map((agent) => ({
         id: `agent-${agent.id}`,
         label: labels.askAgent.replace("{name}", agent.name),
         detail: agent.hint,

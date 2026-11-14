@@ -9,7 +9,7 @@
  * shown once" and "opening a conversation clears its badge" are tests that
  * run in Node, not hopes about an effect order.
  */
-import { mentionedAgents, mergeThread, participantOf, sortByNewest, upsertConversation, withMessage, withRead, } from "./messenger.js";
+import { mentionedAgents, mergeThread, participantOf, soleAgent, sortByNewest, upsertConversation, withMessage, withRead, } from "./messenger.js";
 export function initialMessengerState(viewerId) {
     return {
         viewerId,
@@ -164,7 +164,14 @@ export function messengerReducer(state, action) {
             // calling on each other is a loop, not a conversation.
             let awaited = waiting.filter((w) => w.agentId !== message.authorId);
             if (!fromAgent && message.delivery !== "failed") {
-                for (const agent of mentionedAgents(message.body, agents)) {
+                // Alone with an agent, every message is for it: nothing has to name it.
+                const conversation = state.conversations.find((c) => c.id === id);
+                const only = soleAgent(conversation, message.authorId, agents);
+                const called = mentionedAgents(message.body, agents);
+                const alone = agents.find((a) => a.id === only?.actorId);
+                if (alone && message.body.trim() && !called.includes(alone))
+                    called.push(alone);
+                for (const agent of called) {
                     awaited = [
                         ...awaited.filter((w) => w.agentId !== agent.id),
                         { agentId: agent.id, state: "thinking" },

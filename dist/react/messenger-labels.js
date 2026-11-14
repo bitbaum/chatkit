@@ -28,6 +28,7 @@ export const DEFAULT_MESSENGER_LABELS = {
     threadEmpty: "No messages yet. Say hello.",
     threadFailed: "The messages could not be loaded.",
     agentHint: "Type {mention} to bring {name} in. Everyone here sees its answer.",
+    agentDirect: "{name} answers every message here.",
     loadOlder: "Earlier messages",
     loadingOlder: "Loading earlier messages",
     olderFailed: "Earlier messages could not be loaded. Try again",

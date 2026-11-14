@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.36.0 — `Messenger`: a message's actions by keyboard; alone with an agent
+
+Found in OrangeCat's full-path review (2026-11-13): Edit and Delete could not be reached without a mouse, the Cat did not answer in a conversation with only the Cat, and such a conversation never showed "Read".
+
+- **Fix:** the "…" beside a message was `display: none` until the message was hovered, so it could not take focus: Tab walked past every message. It is now hidden by opacity, takes focus, is a 44px target and stays on the screen at 390px. Enter opens the same sheet a long press and a right click open (Reply, Copy, Edit, Delete). `test/browser-messenger.mjs` does it with a keyboard alone, at 1280px and 390px.
+- **Alone with an agent** (`soleAgent(conversation, viewerId, agents)`: one person, one agent) every message is for the agent. The empty conversation says "{name} answers every message here." (`labels.agentDirect`) in place of "Type @cat to bring Cat in", "Ask Cat" is not offered in the "+", and a message starts "Cat is thinking…" for a named agent without naming it. Whether the agent answers is the app's server: an app must answer every message there, not only a mention.
+- **Read, for a message only an agent could read** (`receiptOf(conversation, message, agents)`): read once the agent's own `lastReadAt` is past the message. An app moves that mark when the agent answers (and sends the `read` event). Where a person can read the message, threadkit's `readState` decides as before.
+- An agent that is awaited ("is thinking…") is no longer also shown typing.
+- For a consumer: nothing to change to get the keyboard fix and the label. `labels.agentDirect` is new and has a default; an app with its own full label set in another language adds it.
+
 ## 0.35.0 — `Messenger`: search inside a conversation
 
 - `transport.search(conversationId, query)` puts a search in the top bar. The sheet lists what the server found (who, when, up to three lines; an agent's answer as words, not markdown). Tapping a match closes the sheet, loads earlier pages until that message is there (up to 20), leads to it and marks it. A match further back than that says so.

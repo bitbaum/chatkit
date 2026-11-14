@@ -21,11 +21,13 @@ import {
   messengerReducer,
   needsNames,
   readMarkToSend,
+  receiptOf,
   refusalText,
   reviveConversation,
   reviveMessage,
   searchConversations,
   sessionDrafts,
+  soleAgent,
   threadItems,
   typingLabel,
   withMention,
@@ -738,4 +740,77 @@ test("a voice message is recorded in what the browser can record, and named so i
   const at = new Date(2026, 10, 13, 20, 4);
   assert.equal(voiceFileName(at, "audio/webm;codecs=opus"), "voice-2026-11-13-2004.webm");
   assert.equal(voiceFileName(at, "audio/mp4"), "voice-2026-11-13-2004.m4a");
+});
+
+// ── Alone with an agent ─────────────────────────────────────────────────────
+
+const catDm = (extra = {}) => ({
+  id: "c1",
+  createdAt: START,
+  participants: [person("me", "Georgy"), { ...catSeat, ...extra }],
+});
+
+test("alone with an agent: it is the sole agent; with a second person, or a person only, nobody is", () => {
+  assert.equal(soleAgent(catDm(), "me", [CAT])?.actorId, "cat");
+  assert.equal(soleAgent(catDm(), "me")?.actorId, "cat", "its seat says it is an agent");
+  assert.equal(soleAgent(dm(), "me", [CAT]), undefined);
+  assert.equal(
+    soleAgent({ ...dm(), participants: [...dm().participants, catSeat] }, "me", [CAT]),
+    undefined,
+  );
+  assert.equal(soleAgent(undefined, "me", [CAT]), undefined);
+});
+
+test("alone with an agent, a message starts the wait without naming it; files alone do not", () => {
+  let s = opened(ready([catDm()]));
+  s = messengerReducer(s, {
+    type: "message",
+    message: msg("1", "me", "hello", "2026-11-10T10:00:00Z"),
+    seen: true,
+    agents: [CAT],
+  });
+  assert.deepEqual(s.awaited.c1, [{ agentId: "cat", state: "thinking" }]);
+  s = messengerReducer(s, {
+    type: "message",
+    message: msg("2", "cat", "Hello.", "2026-11-10T10:00:05Z"),
+    seen: true,
+    agents: [CAT],
+  });
+  assert.deepEqual(s.awaited.c1, []);
+  s = messengerReducer(s, {
+    type: "message",
+    message: msg("3", "me", "", "2026-11-10T10:01:00Z"),
+    seen: true,
+    agents: [CAT],
+  });
+  assert.deepEqual(s.awaited.c1, []);
+  // With a person in the room an unnamed agent is not waited for.
+  let t = opened(ready([{ ...dm(), participants: [...dm().participants, catSeat] }]));
+  t = messengerReducer(t, {
+    type: "message",
+    message: msg("1", "me", "hello", "2026-11-10T10:00:00Z"),
+    seen: true,
+    agents: [CAT],
+  });
+  assert.deepEqual(t.awaited.c1, []);
+});
+
+test("a message to an agent alone is read once the agent's read mark is past it", () => {
+  const sent = msg("1", "me", "hello", "2026-11-10T10:00:00Z");
+  assert.equal(receiptOf(catDm(), sent, [CAT]), "none");
+  assert.equal(receiptOf(catDm({ lastReadAt: T("2026-11-10T09:00:00Z") }), sent, [CAT]), "none");
+  assert.equal(receiptOf(catDm({ lastReadAt: T("2026-11-10T10:00:05Z") }), sent, [CAT]), "all");
+  // Where a person can read it, the person decides and the agent is not waited for.
+  const withMaya = (readAt) => ({
+    ...dm(),
+    participants: [
+      person("me", "Georgy"),
+      person("maya", "Maya Keller", readAt ? { lastReadAt: T(readAt) } : {}),
+      { ...catSeat, lastReadAt: T("2026-11-10T10:00:05Z") },
+    ],
+  });
+  assert.equal(receiptOf(withMaya(null), sent, [CAT]), "none");
+  assert.equal(receiptOf(withMaya("2026-11-10T10:00:05Z"), sent, [CAT]), "all");
+  // Notes to self: nobody to read it.
+  assert.equal(receiptOf({ ...dm(), participants: [person("me", "Georgy")] }, sent), "none");
 });

@@ -323,6 +323,22 @@ export declare function participantOf(conversation: MessengerConversation | null
 export declare function isAgent(conversation: MessengerConversation | null | undefined, actorId: string, agents?: readonly MessengerAgent[]): boolean;
 /** The agents that are in this conversation: named ones that hold a seat. */
 export declare function agentsPresent(conversation: MessengerConversation, agents?: readonly MessengerAgent[]): MessengerParticipant[];
+/**
+ * The agent this conversation is with, when nobody else is in it: one person
+ * and one agent. Every message there is for the agent, so nothing has to name
+ * it. Undefined as soon as a second person or a second agent is here.
+ */
+export declare function soleAgent(conversation: MessengerConversation | null | undefined, viewerId: string, agents?: readonly MessengerAgent[]): MessengerParticipant | undefined;
+/**
+ * The tick under a message: sent, read by some, read by all.
+ *
+ * threadkit's `readState` wherever a person could read it. Where nobody
+ * could (the message was written to agents only) the agents are its audience:
+ * an agent has read a message once its own read mark is past it, which an app
+ * moves when the agent answers. Without this a conversation with only an
+ * agent stayed at "Sent" for ever, whatever was answered.
+ */
+export declare function receiptOf(conversation: MessengerConversation, message: MessengerMessage, agents?: readonly MessengerAgent[]): "none" | "some" | "all";
 /** Everyone else who is a person and still here. */
 export declare function otherPeople(conversation: MessengerConversation, viewerId: string, agents?: readonly MessengerAgent[]): MessengerParticipant[];
 export type MessengerTitleLabels = {

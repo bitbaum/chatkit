@@ -19,6 +19,7 @@ import {
   reactionOf,
   reviveMessage,
   sessionDrafts,
+  soleAgent,
   withMention,
   type MessengerAgent,
   type MessengerCard,
@@ -831,16 +832,20 @@ export function Messenger({
           },
         ]
       : [];
-  const agentExtras: AttachExtra[] = agents.map((agent) => ({
-    id: `agent-${agent.id}`,
-    label: labels.askAgent.replace("{name}", agent.name),
-    detail: agent.hint,
-    icon: agentMark ?? <IconAgent />,
-    onPick: () => {
-      setDraft(withMention(draft, agent.mention));
-      setTimeout(() => handle.current?.focus(), 0);
-    },
-  }));
+  // Alone with an agent there is nobody to bring in: it answers every message.
+  const alone = soleAgent(open, viewer.id, agents);
+  const agentExtras: AttachExtra[] = agents
+    .filter((agent) => agent.id !== alone?.actorId)
+    .map((agent) => ({
+      id: `agent-${agent.id}`,
+      label: labels.askAgent.replace("{name}", agent.name),
+      detail: agent.hint,
+      icon: agentMark ?? <IconAgent />,
+      onPick: () => {
+        setDraft(withMention(draft, agent.mention));
+        setTimeout(() => handle.current?.focus(), 0);
+      },
+    }));
 
   const extras = [...voiceExtras, ...appExtras, ...agentExtras];
   const replyName = !replying

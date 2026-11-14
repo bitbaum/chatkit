@@ -3563,11 +3563,11 @@ a.ck-turn-chip:hover {
 .ck-msgr-act {
   position: absolute;
   top: 50%;
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -3575,17 +3575,39 @@ a.ck-turn-chip:hover {
   font-size: 1rem;
   transform: translateY(-50%);
   cursor: pointer;
+  /* Out of sight until it is pointed at or reached with the keyboard, and
+     never taken out of the page: a button that is not drawn cannot take focus, so
+     Tab walked past every message and Edit and Delete had no way in without
+     a mouse. On a phone the way in is a long press; this is the same sheet
+     for a keyboard and for a screen reader. */
+  opacity: 0;
 }
 .ck-msgr-own .ck-msgr-act {
-  right: calc(100% + 0.25rem);
+  right: 100%;
 }
 .ck-msgr-other .ck-msgr-act {
-  left: calc(100% + 0.25rem);
+  left: 100%;
+}
+.ck-msgr-act:focus-visible {
+  background: var(--ck-raised);
+  color: var(--ck-fg);
+  opacity: 1;
+}
+@media (max-width: 40rem) {
+  /* Beside a wide bubble on a phone there is no room: with a keyboard the
+     button sits on the bubble's far corner instead of off the screen. */
+  .ck-msgr-own .ck-msgr-act:focus-visible {
+    right: auto;
+    left: 0;
+  }
+  .ck-msgr-other .ck-msgr-act:focus-visible {
+    right: 0;
+    left: auto;
+  }
 }
 @media (hover: hover) and (pointer: fine) {
-  .ck-msgr-msg:hover > .ck-msgr-act,
-  .ck-msgr-act:focus-visible {
-    display: inline-flex;
+  .ck-msgr-msg:hover > .ck-msgr-act {
+    opacity: 1;
   }
   .ck-msgr-act:hover {
     background: var(--ck-raised);

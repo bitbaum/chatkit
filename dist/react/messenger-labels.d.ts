@@ -41,6 +41,8 @@ export type MessengerLabels = {
     threadFailed: string;
     /** "Type {mention} to bring {name} in. Everyone here sees its answer." */
     agentHint: string;
+    /** In a conversation with only an agent: "{name} answers every message here." */
+    agentDirect: string;
     loadOlder: string;
     loadingOlder: string;
     olderFailed: string;

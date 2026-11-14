@@ -83,3 +83,17 @@ test("starters are one column at every width, never wrapping pills", () => {
   assert.match(source, /\.ck-starter\s*\{[^}]*min-height:\s*var\(--ck-target\)/);
   assert.match(source, /\.ck-starter\s*\{[^}]*text-align:\s*left/);
 });
+
+test("a message's actions button can take focus: hidden by opacity, never by display", () => {
+  const rule = (css, selector) => {
+    const at = css.indexOf(`\n${selector} {`);
+    assert.notEqual(at, -1, `${selector} is styled`);
+    return css.slice(at, css.indexOf("}", at));
+  };
+  const act = rule(messenger, ".ck-msgr-act");
+  assert.doesNotMatch(act, /display:\s*none/, "a button that is not drawn cannot be tabbed to");
+  assert.match(act, /opacity:\s*0/);
+  assert.match(act, /width:\s*2\.75rem/, "a 44px target");
+  assert.match(act, /height:\s*2\.75rem/);
+  assert.match(rule(messenger, ".ck-msgr-act:focus-visible"), /opacity:\s*1/);
+});
