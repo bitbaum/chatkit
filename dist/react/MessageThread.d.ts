@@ -36,6 +36,11 @@ export type MessageThreadProps = {
     /** The viewer is at the newest message and it is on screen. */
     onSeen?: () => void;
     onFollowingChange?: (following: boolean) => void;
+    /** Lead to this message and mark it (a search result). A new object each
+     *  time, so the same message can be asked for twice. */
+    reveal?: {
+        id: string;
+    } | null;
     renderLink?: RenderLink;
     /** A product's own mark for an agent with no picture. */
     agentMark?: ReactNode;
@@ -58,5 +63,5 @@ export type MessageThreadProps = {
  * only while the reader is at the end, and keeps its place when earlier
  * messages are loaded above.
  */
-export declare function MessageThread({ conversation, viewerId, messages, agents, status, onReload, hasOlder, loadingOlder, olderFailed, onLoadOlder, unreadFrom, typing, awaited, onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, renderLink, agentMark, locale, timeZone, labels, }: MessageThreadProps): import("react").JSX.Element;
+export declare function MessageThread({ conversation, viewerId, messages, agents, status, onReload, hasOlder, loadingOlder, olderFailed, onLoadOlder, unreadFrom, typing, awaited, onDismissAgent, onRetry, onDiscard, onAction, onReact, renderCardAction, onSeen, onFollowingChange, reveal, renderLink, agentMark, locale, timeZone, labels, }: MessageThreadProps): import("react").JSX.Element;
 //# sourceMappingURL=MessageThread.d.ts.map

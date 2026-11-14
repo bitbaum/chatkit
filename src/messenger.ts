@@ -255,6 +255,16 @@ export type MessengerTransport = {
   open?(personIds: readonly string[]): Promise<MessengerConversation>;
   /** Take conversations off the viewer's list. Others keep theirs. */
   leave?(conversationIds: readonly string[]): Promise<void>;
+  /**
+   * The messages of a conversation that hold these words, newest first. With
+   * it the top bar has a search. The server decides what "holds" means; the
+   * Messenger shows what comes back and leads to it.
+   */
+  search?(
+    conversationId: string,
+    query: string,
+    options: { signal?: AbortSignal },
+  ): Promise<MessengerMessage[]>;
 };
 
 /** An error whose words are meant for the person (a server's "You are sending

@@ -153,6 +153,15 @@ export type MessengerLabels = {
   peopleHint: string;
   peopleEmpty: string;
   peopleFailed: string;
+
+  // ── search inside a conversation ──
+  searchMessages: string;
+  searchMessagesPlaceholder: string;
+  searchMessagesHint: string;
+  searchMessagesEmpty: string;
+  searchMessagesFailed: string;
+  /** A found message that is further back than the thread could load. */
+  searchTooFar: string;
   start: string;
   startFailed: string;
 
@@ -292,6 +301,13 @@ export const DEFAULT_MESSENGER_LABELS: MessengerLabels = {
   peopleHint: "Type a name to find someone.",
   peopleEmpty: "Nobody found.",
   peopleFailed: "People could not be searched. Try again.",
+
+  searchMessages: "Search this conversation",
+  searchMessagesPlaceholder: "A word in a message",
+  searchMessagesHint: "Type a word to find a message.",
+  searchMessagesEmpty: "No message has that.",
+  searchMessagesFailed: "The conversation could not be searched. Try again.",
+  searchTooFar: "That message is too far back to open here.",
   start: "Start conversation",
   startFailed: "The conversation could not be opened. Try again.",
 

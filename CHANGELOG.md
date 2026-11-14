@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.35.0 — `Messenger`: search inside a conversation
+
+- `transport.search(conversationId, query)` puts a search in the top bar. The sheet lists what the server found (who, when, up to three lines; an agent's answer as words, not markdown). Tapping a match closes the sheet, loads earlier pages until that message is there (up to 20), leads to it and marks it. A match further back than that says so.
+- **Fix:** a search field (in "New", in the list, and here) took a host's focus ring on the input inside its pill, the same box inside a box as the composer had. Found by looking at the sheet under the hostile host stylesheet; measured there now.
+- `test/browser-messenger.mjs`: search for a message that is not loaded, nothing found, the jump, 44px targets.
+
 ## 0.34.0 — `Messenger`: voice messages
 
 Owner, 2026-11-13: the Messenger has to stand beside WhatsApp, Telegram and Signal. Speaking a message was the feature most missed: the box could take dictation (speech to words) but not a voice.
